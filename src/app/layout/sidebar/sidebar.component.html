@@ -1,32 +1,36 @@
 <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">G</span>
-    <span>Git App</span>
+    <span class="brand-name">Git App</span>
+    @if (!collapsed) {
+      <button
+        type="button"
+        class="collapse-button"
+        aria-label="Recolher menu principal"
+        title="Recolher menu principal"
+        (click)="toggleRequested.emit()"
+      >
+        ‹
+      </button>
+    }
   </div>
 
   <nav aria-label="Navegação principal">
-    <a routerLink="/repositories" routerLinkActive="active">
-      <span aria-hidden="true">▣</span>
-      Repositórios
-    </a>
-    <a routerLink="/changes" routerLinkActive="active">
-      <span aria-hidden="true">◐</span>
-      Alterações
-    </a>
-    <a routerLink="/history" routerLinkActive="active">
-      <span aria-hidden="true">◴</span>
-      Histórico
-    </a>
-    <a routerLink="/branches" routerLinkActive="active">
-      <span aria-hidden="true">⑂</span>
-      Branches
+    <a
+      routerLink="/repositories"
+      routerLinkActive="active"
+      data-tooltip="Repositórios"
+      (click)="closeCurrentRepository()"
+    >
+      <span class="nav-icon" aria-hidden="true">▣</span>
+      <span class="nav-label">Repositórios</span>
     </a>
   </nav>
 
   <div class="sidebar-footer">
-    <a routerLink="/settings" routerLinkActive="active">
-      <span aria-hidden="true">⚙</span>
-      Configurações
+    <a routerLink="/settings" routerLinkActive="active" data-tooltip="Configurações">
+      <span class="nav-icon" aria-hidden="true">⚙</span>
+      <span class="nav-label">Configurações</span>
     </a>
   </div>
 </aside>

@@ -10,6 +10,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::repository::inspect_repository,
+            commands::repository::get_repository_references,
+            commands::repository::get_repository_status,
+            commands::repository::stage_repository_files,
+            commands::repository::unstage_repository_files,
+            commands::repository::commit_repository,
+            commands::repository::get_repository_staged_diff,
+            commands::repository::get_repository_commits,
             commands::system::ping
         ])
         .run(tauri::generate_context!())

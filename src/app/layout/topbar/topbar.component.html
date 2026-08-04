@@ -1,4 +1,16 @@
 <header class="topbar" (mousedown)="startDragging($event)">
+  @if (showMainSidebarButton) {
+    <button
+      type="button"
+      class="main-sidebar-button"
+      aria-label="Abrir menu principal"
+      title="Abrir menu principal"
+      (click)="mainSidebarRequested.emit()"
+    >
+      <span aria-hidden="true">›</span>
+    </button>
+  }
+
   <div class="window-title" data-tauri-drag-region>
     <span class="brand-mark" data-tauri-drag-region>G</span>
     <span class="brand-name" data-tauri-drag-region>Git App</span>

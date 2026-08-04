@@ -1,11 +1,13 @@
-import { Component, EventEmitter, HostListener, Input, Output } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from "@angular/core";
 
 @Component({
   selector: "app-confirm-dialog",
   templateUrl: "./confirm-dialog.component.html",
   styleUrl: "./confirm-dialog.component.css",
 })
-export class ConfirmDialogComponent {
+export class ConfirmDialogComponent implements AfterViewInit {
+  @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
+
   @Input() title = "Confirmar ação";
   @Input() message = "Tem certeza que deseja continuar?";
   @Input() confirmLabel = "Confirmar";
@@ -15,8 +17,12 @@ export class ConfirmDialogComponent {
   @Output() confirmed = new EventEmitter<void>();
   @Output() cancelled = new EventEmitter<void>();
 
-  @HostListener("document:keydown.escape")
-  onEscape(): void {
+  ngAfterViewInit(): void {
+    this.dialog.nativeElement.showModal();
+  }
+
+  onCancel(event: Event): void {
+    event.preventDefault();
     this.cancelled.emit();
   }
 

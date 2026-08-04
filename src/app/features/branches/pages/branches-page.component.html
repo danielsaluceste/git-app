@@ -1,8 +1,117 @@
 <section class="page">
-  <p class="eyebrow">Branches</p>
-  <h2>Branches</h2>
-  <div class="panel">
-    <h3>Nenhum repositório selecionado</h3>
-    <p>Criação, checkout, merge e exclusão de branches serão implementados aqui.</p>
-  </div>
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Referências</p>
+        <h2>Branches</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <button type="button" class="refresh-button" [disabled]="isLoading()" (click)="loadReferences()">
+        <span aria-hidden="true">↻</span>
+        Atualizar
+      </button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="panel loading-state">Lendo as referências do Git...</div>
+    } @else if (errorMessage()) {
+      <div class="panel error-state">{{ errorMessage() }}</div>
+    } @else if (references(); as repositoryReferences) {
+      <div class="branch-summary">
+        <span class="branch-icon" aria-hidden="true">⑂</span>
+        <div>
+          <span>Branch atual</span>
+          <strong>{{ repositoryReferences.currentBranch || "HEAD destacado" }}</strong>
+        </div>
+      </div>
+
+      <div class="reference-grid">
+        <section class="panel reference-panel">
+          <div class="panel-heading">
+            <h3>Branches locais</h3>
+            <span>{{ repositoryReferences.localBranches.length }}</span>
+          </div>
+          @if (repositoryReferences.localBranches.length > 0) {
+            <div class="reference-list">
+              @for (branch of repositoryReferences.localBranches; track branch) {
+                <div class="reference-item" [class.current]="branch === repositoryReferences.currentBranch">
+                  <span class="branch-dot" aria-hidden="true"></span>
+                  <span>{{ branch }}</span>
+                  @if (branch === repositoryReferences.currentBranch) {
+                    <small>atual</small>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-reference">Nenhuma branch local.</p>
+          }
+        </section>
+
+        <section class="panel reference-panel">
+          <div class="panel-heading">
+            <h3>Branches remotas</h3>
+            <span>{{ repositoryReferences.remoteBranches.length }}</span>
+          </div>
+          @if (repositoryReferences.remoteBranches.length > 0) {
+            <div class="reference-list">
+              @for (branch of repositoryReferences.remoteBranches; track branch) {
+                <div class="reference-item">
+                  <span class="remote-dot" aria-hidden="true"></span>
+                  <span>{{ branch }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-reference">Nenhuma branch remota.</p>
+          }
+        </section>
+
+        <section class="panel reference-panel">
+          <div class="panel-heading">
+            <h3>Tags</h3>
+            <span>{{ repositoryReferences.tags.length }}</span>
+          </div>
+          @if (repositoryReferences.tags.length > 0) {
+            <div class="reference-list">
+              @for (tag of repositoryReferences.tags; track tag) {
+                <div class="reference-item">
+                  <span class="tag-dot" aria-hidden="true">◆</span>
+                  <span>{{ tag }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-reference">Nenhuma tag.</p>
+          }
+        </section>
+
+        <section class="panel reference-panel">
+          <div class="panel-heading">
+            <h3>Stashes</h3>
+            <span>{{ repositoryReferences.stashes.length }}</span>
+          </div>
+          @if (repositoryReferences.stashes.length > 0) {
+            <div class="reference-list">
+              @for (stash of repositoryReferences.stashes; track stash) {
+                <div class="reference-item">
+                  <span class="stash-dot" aria-hidden="true">◆</span>
+                  <span>{{ stash }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-reference">Nenhum stash.</p>
+          }
+        </section>
+      </div>
+    }
+  } @else {
+    <p class="eyebrow">Referências</p>
+    <h2>Branches</h2>
+    <div class="panel empty-state">
+      <h3>Nenhum repositório selecionado</h3>
+      <p>Abra um repositório para visualizar suas branches e referências.</p>
+    </div>
+  }
 </section>

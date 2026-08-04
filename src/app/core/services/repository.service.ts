@@ -1,18 +1,53 @@
 import { Injectable, signal } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
-import { LocalRepositoryInfo, Repository } from "../models/repository.model";
+import {
+  LocalRepositoryInfo,
+  Repository,
+  RepositoryStatus,
+  RepositoryReferences,
+} from "../models/repository.model";
+import { Commit } from "../models/commit.model";
 
 const STORAGE_KEY = "git-app.repositories";
 
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
-  private activeRepository?: Repository;
+  private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
 
   readonly repositories = this.repositoriesState.asReadonly();
+  readonly activeRepository = this.activeRepositoryState.asReadonly();
 
   async inspectLocalRepository(path: string): Promise<LocalRepositoryInfo> {
     return invoke<LocalRepositoryInfo>("inspect_repository", { path });
+  }
+
+  async getReferences(path: string): Promise<RepositoryReferences> {
+    return invoke<RepositoryReferences>("get_repository_references", { path });
+  }
+
+  async getStatus(path: string): Promise<RepositoryStatus> {
+    return invoke<RepositoryStatus>("get_repository_status", { path });
+  }
+
+  async stageFiles(path: string, files: string[]): Promise<void> {
+    await invoke("stage_repository_files", { path, files });
+  }
+
+  async unstageFiles(path: string, files: string[]): Promise<void> {
+    await invoke("unstage_repository_files", { path, files });
+  }
+
+  async commit(path: string, message: string): Promise<void> {
+    await invoke("commit_repository", { path, message });
+  }
+
+  async getStagedDiff(path: string): Promise<string> {
+    return invoke<string>("get_repository_staged_diff", { path });
+  }
+
+  async getCommits(path: string): Promise<Commit[]> {
+    return invoke<Commit[]>("get_repository_commits", { path });
   }
 
   add(repository: Repository): boolean {
@@ -39,11 +74,11 @@ export class RepositoryService {
   }
 
   getActive(): Repository | undefined {
-    return this.activeRepository;
+    return this.activeRepositoryState();
   }
 
   setActive(repository: Repository | undefined): void {
-    this.activeRepository = repository;
+    this.activeRepositoryState.set(repository);
   }
 
   private loadRepositories(): Repository[] {

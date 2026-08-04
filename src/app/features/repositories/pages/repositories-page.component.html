@@ -26,7 +26,7 @@
   @if (repositories().length > 0) {
     <div class="repository-list">
       @for (repository of repositories(); track trackRepository($index, repository)) {
-        <article class="repository-card">
+        <article class="repository-card" tabindex="0" (click)="openRepository(repository)">
           <div class="repository-icon" aria-hidden="true">▣</div>
           <div class="repository-info">
             <h3>{{ repository.name }}</h3>

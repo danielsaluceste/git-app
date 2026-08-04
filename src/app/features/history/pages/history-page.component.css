@@ -5,8 +5,15 @@
   margin: 0 auto;
 }
 
+.page-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .eyebrow {
-  margin: 0;
+  margin: 0 0 0.45rem;
   color: #f97316;
   font-size: 0.75rem;
   font-weight: 700;
@@ -15,8 +22,13 @@
 }
 
 h2,
-h3 {
+h3,
+p {
   margin: 0;
+}
+
+h2,
+h3 {
   color: #f9fafb;
 }
 
@@ -24,14 +36,131 @@ h2 {
   font-size: 2rem;
 }
 
+h3 {
+  font-size: 1rem;
+}
+
+.description,
+.panel-heading p,
+.commit-main span,
+.empty-state p {
+  margin-top: 0.4rem;
+  color: #9ca3af;
+}
+
+.description {
+  max-width: 55rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.refresh-button:hover:not(:disabled) {
+  border-color: #4b5563;
+  background: #263244;
+}
+
+.refresh-button span {
+  color: #f97316;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .panel {
   border: 1px solid #263244;
   border-radius: 0.75rem;
-  padding: 2rem;
+  padding: 1.25rem;
   background: #172033;
 }
 
-.panel p {
-  margin-bottom: 0;
+.loading-state,
+.empty-state {
   color: #9ca3af;
+}
+
+.error-state {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.panel-heading {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #263244;
+}
+
+.commit-list {
+  display: grid;
+}
+
+.commit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  border-bottom: 1px solid #202b3d;
+  padding: 1rem 0.15rem;
+}
+
+.commit-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0.15rem;
+}
+
+.commit-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 0.65rem;
+  border: 2px solid #f97316;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #172033;
+}
+
+.commit-main {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.commit-main strong {
+  overflow: hidden;
+  color: #f3f4f6;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-main span {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+code {
+  flex: 0 0 auto;
+  color: #fbbf24;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .page-heading {
+    align-items: start;
+    flex-direction: column;
+  }
 }

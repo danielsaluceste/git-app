@@ -1,8 +1,18 @@
 <div class="app-shell">
-  <app-sidebar />
+  <app-sidebar
+    [collapsed]="!mainSidebarOpen()"
+    (toggleRequested)="closeMainSidebar()"
+  />
+
+  @if (activeRepository(); as repository) {
+    <app-repository-sidebar [repository]="repository" />
+  }
 
   <section class="workspace">
-    <app-topbar />
+    <app-topbar
+      [showMainSidebarButton]="!mainSidebarOpen()"
+      (mainSidebarRequested)="openMainSidebar()"
+    />
 
     <main class="content">
       <router-outlet />

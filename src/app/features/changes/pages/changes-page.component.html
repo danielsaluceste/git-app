@@ -1,8 +1,214 @@
 <section class="page">
-  <p class="eyebrow">Working tree</p>
-  <h2>Alterações</h2>
-  <div class="panel">
-    <h3>Nenhum repositório selecionado</h3>
-    <p>Arquivos modificados, staging e diff ficarão nesta feature.</p>
-  </div>
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Working tree</p>
+        <h2>Alterações</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="loadStatus()">
+        <span aria-hidden="true">↻</span>
+        Atualizar
+      </button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="panel loading-state">Lendo o status do Git...</div>
+    } @else if (status(); as repositoryStatus) {
+      @if (errorMessage()) {
+        <div class="panel error-state">{{ errorMessage() }}</div>
+      }
+      <div class="summary-grid">
+        <article class="summary-card">
+          <span class="summary-label">Branch atual</span>
+          <strong>{{ repositoryStatus.currentBranch || "HEAD destacado" }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Staged</span>
+          <strong>{{ repositoryStatus.stagedCount }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Não staged</span>
+          <strong>{{ repositoryStatus.unstagedCount }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Não rastreados</span>
+          <strong>{{ repositoryStatus.untrackedCount }}</strong>
+        </article>
+      </div>
+
+      @if (successMessage()) {
+        <div class="success-message"><span aria-hidden="true">✓</span>{{ successMessage() }}</div>
+      }
+
+      <div class="changes-layout">
+        <section class="panel files-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Não preparados</h3>
+              <p>Alterações no working tree</p>
+            </div>
+            <button
+              type="button"
+              class="text-button"
+              [disabled]="isSaving() || unstagedFiles(repositoryStatus.files).length === 0"
+              (click)="stageAll(repositoryStatus.files)"
+            >
+              Stage all
+            </button>
+          </div>
+
+          @if (unstagedFiles(repositoryStatus.files).length > 0) {
+            <div class="file-list">
+              @for (file of unstagedFiles(repositoryStatus.files); track file.path) {
+                <button type="button" class="file-row" [disabled]="isSaving()" (click)="stageFile(file)">
+                  <span
+                    class="file-status"
+                    [class.status-added]="file.status === 'added'"
+                    [class.status-deleted]="file.status === 'deleted'"
+                    [class.status-untracked]="file.status === 'untracked'"
+                    [class.status-renamed]="file.status === 'renamed'"
+                    [attr.title]="statusLabel(file.status)"
+                  >{{ statusCode(file.status) }}</span>
+                  <span class="file-path" [title]="file.path">{{ file.path }}</span>
+                  <span class="file-action" aria-hidden="true">+</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="empty-files">Nenhuma alteração não preparada.</p>
+          }
+        </section>
+
+        <section class="panel files-panel staged-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Preparados</h3>
+              <p>Arquivos incluídos no próximo commit</p>
+            </div>
+            <button
+              type="button"
+              class="text-button"
+              [disabled]="isSaving() || stagedFiles(repositoryStatus.files).length === 0"
+              (click)="unstageAll(repositoryStatus.files)"
+            >
+              Unstage all
+            </button>
+          </div>
+
+          @if (stagedFiles(repositoryStatus.files).length > 0) {
+            <div class="file-list">
+              @for (file of stagedFiles(repositoryStatus.files); track file.path) {
+                <button type="button" class="file-row" [disabled]="isSaving()" (click)="unstageFile(file)">
+                  <span
+                    class="file-status"
+                    [class.status-added]="file.status === 'added'"
+                    [class.status-deleted]="file.status === 'deleted'"
+                    [class.status-untracked]="file.status === 'untracked'"
+                    [class.status-renamed]="file.status === 'renamed'"
+                    [attr.title]="statusLabel(file.status)"
+                  >{{ statusCode(file.status) }}</span>
+                  <span class="file-path" [title]="file.path">{{ file.path }}</span>
+                  <span class="file-action" aria-hidden="true">−</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="empty-files">Nenhum arquivo preparado.</p>
+          }
+        </section>
+
+        <section class="panel commit-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Commit</h3>
+              <p>Registre as alterações preparadas</p>
+            </div>
+          </div>
+          <div class="textarea-wrap">
+            <textarea
+              [ngModel]="commitMessage()"
+              (ngModelChange)="commitMessage.set($event)"
+              [disabled]="isSaving() || aiLoadingModel() || aiGenerating()"
+              rows="5"
+              placeholder="Descreva o que foi alterado..."
+            ></textarea>
+            @if (aiEnabled() && aiSupported()) {
+              <button
+                type="button"
+                class="ai-button"
+                [disabled]="isSaving() || aiLoadingModel() || aiGenerating() || stagedFiles(repositoryStatus.files).length === 0"
+                (click)="generateCommitWithAi(repositoryStatus.files)"
+                title="Gerar mensagem com IA local"
+              >
+                <span class="ai-spark" aria-hidden="true">✦</span>
+                @if (aiLoadingModel()) {
+                  Preparando IA...
+                } @else if (aiGenerating()) {
+                  Gerando...
+                } @else {
+                  Gerar com IA
+                }
+              </button>
+            }
+          </div>
+
+          @if (aiLoadingModel()) {
+            <div class="ai-progress" aria-live="polite">
+              <div class="ai-progress-heading">
+                <span>Baixando e preparando a IA local</span>
+                <strong>{{ aiProgress() }}%</strong>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <span [style.width.%]="aiProgress()"></span>
+              </div>
+              <p>{{ aiProgressText() }}</p>
+            </div>
+          }
+
+          @if (aiGenerating()) {
+            <div class="ai-generating" aria-live="polite">
+              <span class="loading-spinner" aria-hidden="true"></span>
+              Analisando as alterações e gerando uma sugestão...
+            </div>
+          }
+          <div class="commit-footer">
+            <span>{{ stagedFiles(repositoryStatus.files).length }} arquivo(s) preparado(s)</span>
+            <button
+              type="button"
+              class="commit-button"
+              [disabled]="isSaving() || !commitMessage().trim() || stagedFiles(repositoryStatus.files).length === 0"
+              (click)="commitChanges(repositoryStatus.files)"
+            >
+              @if (isSaving()) {
+                Salvando...
+              } @else {
+                Criar commit
+              }
+            </button>
+          </div>
+        </section>
+      </div>
+    } @else if (errorMessage()) {
+      <div class="panel error-state">{{ errorMessage() }}</div>
+    }
+  } @else {
+    <p class="eyebrow">Working tree</p>
+    <h2>Alterações</h2>
+    <div class="panel empty-state">
+      <h3>Nenhum repositório selecionado</h3>
+      <p>Abra um repositório para visualizar e preparar arquivos.</p>
+    </div>
+  }
+
+  @if (showAiDownloadConfirm()) {
+    <app-confirm-dialog
+      title="Baixar IA local?"
+      [message]="'A IA será executada localmente neste computador. Na primeira utilização, será baixado um modelo de ' + aiModelSize + '. Deseja continuar?'"
+      confirmLabel="Baixar modelo"
+      cancelLabel="Agora não"
+      (confirmed)="confirmAiDownload()"
+      (cancelled)="cancelAiDownload()"
+    />
+  }
 </section>

@@ -1,5 +1,7 @@
 import { Component, computed, inject } from "@angular/core";
+import { Router } from "@angular/router";
 import { open } from "@tauri-apps/plugin-dialog";
+import { LayoutService } from "../../../core/services/layout.service";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
@@ -12,6 +14,8 @@ import { WorkspaceService } from "../../../core/services/workspace.service";
 export class RepositoriesPageComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly workspaceService = inject(WorkspaceService);
+  private readonly router = inject(Router);
+  private readonly layoutService = inject(LayoutService);
 
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
   readonly repositories = computed(() =>
@@ -56,6 +60,12 @@ export class RepositoriesPageComponent {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  openRepository(repository: Repository): void {
+    this.repositoryService.setActive(repository);
+    this.layoutService.closeMainSidebar();
+    void this.router.navigate(["/changes"]);
   }
 
   trackRepository(_index: number, repository: Repository): string {

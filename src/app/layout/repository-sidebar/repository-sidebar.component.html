@@ -1,0 +1,150 @@
+<aside class="repository-sidebar">
+  <div class="repository-heading">
+    <div class="repository-mark" aria-hidden="true">▣</div>
+    <div class="repository-heading-copy">
+      <span>Repositório aberto</span>
+      <strong [title]="repository.name">{{ repository.name }}</strong>
+    </div>
+    <button
+      type="button"
+      class="close-repository"
+      aria-label="Voltar para repositórios"
+      title="Voltar para repositórios"
+      (click)="closeRepository()"
+    >
+      ×
+    </button>
+  </div>
+
+  <div class="branch-summary">
+    <span class="branch-icon" aria-hidden="true">⑂</span>
+    <span>{{ references().currentBranch || "HEAD destacado" }}</span>
+  </div>
+
+  <nav aria-label="Navegação do repositório">
+    <a routerLink="/changes" routerLinkActive="active">
+      <span aria-hidden="true">◐</span>
+      Alterações
+    </a>
+    <a routerLink="/history" routerLinkActive="active">
+      <span aria-hidden="true">◴</span>
+      Histórico
+    </a>
+    <a routerLink="/branches" routerLinkActive="active">
+      <span aria-hidden="true">⑂</span>
+      Branches
+    </a>
+  </nav>
+
+  <section class="reference-section">
+    <div class="section-heading">REFERÊNCIAS</div>
+
+    @if (isLoadingReferences()) {
+      <div class="reference-status">Carregando referências...</div>
+    }
+
+    @if (referenceError()) {
+      <div class="reference-error">{{ referenceError() }}</div>
+    }
+
+    <button
+      type="button"
+      class="reference-row"
+      [attr.aria-expanded]="expandedSections.local"
+      (click)="toggleSection('local')"
+    >
+      <span class="reference-chevron" [class.expanded]="expandedSections.local" aria-hidden="true"></span>
+      <span>Branches locais</span>
+      <span class="reference-count">{{ references().localBranches.length }}</span>
+    </button>
+    @if (expandedSections.local) {
+      <div class="reference-items">
+        @if (references().localBranches.length > 0) {
+          @for (branch of references().localBranches; track branch) {
+            <button type="button" class="reference-item" [class.current]="branch === references().currentBranch">
+              <span class="branch-dot" aria-hidden="true"></span>
+              <span>{{ branch }}</span>
+            </button>
+          }
+        } @else {
+          <span class="reference-empty">Nenhuma branch local</span>
+        }
+      </div>
+    }
+
+    <button
+      type="button"
+      class="reference-row"
+      [attr.aria-expanded]="expandedSections.remote"
+      (click)="toggleSection('remote')"
+    >
+      <span class="reference-chevron" [class.expanded]="expandedSections.remote" aria-hidden="true"></span>
+      <span>Branches remotas</span>
+      <span class="reference-count">{{ references().remoteBranches.length }}</span>
+    </button>
+    @if (expandedSections.remote) {
+      <div class="reference-items">
+        @if (references().remoteBranches.length > 0) {
+          @for (branch of references().remoteBranches; track branch) {
+            <button type="button" class="reference-item">
+              <span class="remote-dot" aria-hidden="true"></span>
+              <span>{{ branch }}</span>
+            </button>
+          }
+        } @else {
+          <span class="reference-empty">Nenhuma branch remota</span>
+        }
+      </div>
+    }
+
+    <button
+      type="button"
+      class="reference-row"
+      [attr.aria-expanded]="expandedSections.tags"
+      (click)="toggleSection('tags')"
+    >
+      <span class="reference-chevron" [class.expanded]="expandedSections.tags" aria-hidden="true"></span>
+      <span>Tags</span>
+      <span class="reference-count">{{ references().tags.length }}</span>
+    </button>
+    @if (expandedSections.tags) {
+      <div class="reference-items">
+        @if (references().tags.length > 0) {
+          @for (tag of references().tags; track tag) {
+            <button type="button" class="reference-item">
+              <span class="tag-dot" aria-hidden="true">◆</span>
+              <span>{{ tag }}</span>
+            </button>
+          }
+        } @else {
+          <span class="reference-empty">Nenhuma tag</span>
+        }
+      </div>
+    }
+
+    <button
+      type="button"
+      class="reference-row"
+      [attr.aria-expanded]="expandedSections.stashes"
+      (click)="toggleSection('stashes')"
+    >
+      <span class="reference-chevron" [class.expanded]="expandedSections.stashes" aria-hidden="true"></span>
+      <span>Stashes</span>
+      <span class="reference-count">{{ references().stashes.length }}</span>
+    </button>
+    @if (expandedSections.stashes) {
+      <div class="reference-items">
+        @if (references().stashes.length > 0) {
+          @for (stash of references().stashes; track stash) {
+            <button type="button" class="reference-item">
+              <span class="stash-dot" aria-hidden="true">◆</span>
+              <span>{{ stash }}</span>
+            </button>
+          }
+        } @else {
+          <span class="reference-empty">Nenhum stash</span>
+        }
+      </div>
+    }
+  </section>
+</aside>

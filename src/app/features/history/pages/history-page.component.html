@@ -1,8 +1,55 @@
 <section class="page">
-  <p class="eyebrow">Commits</p>
-  <h2>Histórico</h2>
-  <div class="panel">
-    <h3>O histórico aparecerá aqui</h3>
-    <p>Esta área receberá o gráfico de commits e os detalhes do commit selecionado.</p>
-  </div>
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Commits</p>
+        <h2>Histórico</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <button type="button" class="refresh-button" [disabled]="isLoading()" (click)="loadCommits()">
+        <span aria-hidden="true">↻</span>
+        Atualizar
+      </button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="panel loading-state">Lendo o histórico do Git...</div>
+    } @else if (errorMessage()) {
+      <div class="panel error-state">{{ errorMessage() }}</div>
+    } @else if (commits().length === 0) {
+      <div class="panel empty-state">
+        <h3>Nenhum commit encontrado</h3>
+        <p>Este repositório ainda não possui commits.</p>
+      </div>
+    } @else {
+      <section class="panel history-panel">
+        <div class="panel-heading">
+          <div>
+            <h3>Commits recentes</h3>
+            <p>Mostrando os últimos {{ commits().length }} commits</p>
+          </div>
+        </div>
+
+        <div class="commit-list">
+          @for (commit of commits(); track commit.hash) {
+            <article class="commit-row">
+              <span class="commit-dot" aria-hidden="true"></span>
+              <div class="commit-main">
+                <strong [title]="commit.subject">{{ commit.subject }}</strong>
+                <span>{{ commit.authorName }} · {{ formatDate(commit.date) }}</span>
+              </div>
+              <code [title]="commit.hash">{{ commit.shortHash }}</code>
+            </article>
+          }
+        </div>
+      </section>
+    }
+  } @else {
+    <p class="eyebrow">Commits</p>
+    <h2>Histórico</h2>
+    <div class="panel empty-state">
+      <h3>Nenhum repositório selecionado</h3>
+      <p>Abra um repositório para visualizar seus commits.</p>
+    </div>
+  }
 </section>

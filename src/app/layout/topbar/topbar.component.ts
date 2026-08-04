@@ -1,4 +1,4 @@
-import { Component } from "@angular/core";
+import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WorkspaceMenuComponent } from "../../features/workspaces/components/workspace-menu.component";
 
@@ -9,6 +9,9 @@ import { WorkspaceMenuComponent } from "../../features/workspaces/components/wor
   styleUrl: "./topbar.component.css",
 })
 export class TopbarComponent {
+  @Input() showMainSidebarButton = false;
+  @Output() mainSidebarRequested = new EventEmitter<void>();
+
   minimize(): Promise<void> {
     return this.runWindowAction((appWindow) => appWindow.minimize());
   }
