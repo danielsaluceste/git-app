@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
 import { RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
@@ -17,6 +18,7 @@ import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialo
 })
 export class ChangesPageComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
+  private readonly router = inject(Router);
   private readonly settingsService = inject(SettingsService);
   private readonly commitAiService = inject(CommitAiService);
   private readonly toastService = inject(ToastService);
@@ -159,6 +161,7 @@ export class ChangesPageComponent implements OnInit {
     );
     if (committed) {
       this.commitMessage.set("");
+      void this.router.navigate(["/overview"]);
     }
   }
 
