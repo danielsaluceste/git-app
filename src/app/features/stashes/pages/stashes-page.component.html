@@ -42,7 +42,10 @@
             } @else if (stashFiles().length > 0) {
               <div class="detail-layout">
                 <div class="file-list-panel">
-                  <div class="list-heading">ARQUIVOS <span>{{ stashFiles().length }}</span></div>
+                  <div class="list-heading">
+                    <span>ARQUIVOS</span>
+                    <span>{{ stashFiles().length }} · ↑ ↓</span>
+                  </div>
                   @for (file of stashFiles(); track file.path) {
                     <button
                       type="button"

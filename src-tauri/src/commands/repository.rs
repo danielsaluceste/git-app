@@ -682,6 +682,18 @@ pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&commit_hash)?;
+    run_git_with_timeout(
+        &path,
+        &["checkout", "--detach", &commit_hash],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
 pub fn create_branch(
     path: String,
     branch: String,

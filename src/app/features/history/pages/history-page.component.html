@@ -48,7 +48,7 @@
           <div class="panel-heading">
             <div>
               <h3>Histórico de commits</h3>
-              <p>{{ commits().length }} commits recentes · clique em um commit para ver os detalhes</p>
+              <p>{{ commits().length }} commits recentes · clique, dê duplo clique ou use o botão direito</p>
             </div>
           </div>
 
@@ -59,6 +59,9 @@
                 class="commit-row"
                 [class.selected]="selectedCommit()?.hash === commit.hash"
                 (click)="selectCommit(commit)"
+                (dblclick)="requestCheckoutCommit(commit)"
+                (contextmenu)="openCommitContextMenu($event, commit)"
+                [disabled]="isCheckingOut() || !!syncAction()"
                 role="listitem"
               >
                 <span class="graph-column" [class.merge-commit]="commit.parents.length > 1" aria-hidden="true">
@@ -170,6 +173,39 @@
       [error]="commitFileDiffError()"
       [contextLabel]="'Arquivo do commit ' + (selectedCommit()?.shortHash || '')"
       (closed)="closeCommitFile()"
+    />
+  }
+
+  @if (commitContextMenu(); as menu) {
+    <div
+      class="commit-context-menu"
+      [style.left.px]="menu.x"
+      [style.top.px]="menu.y"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="commit-context-heading">
+        <span>COMMIT</span>
+        <code>{{ menu.commit.shortHash }}</code>
+      </div>
+      <button type="button" (click)="checkoutFromContextMenu()">
+        <span class="context-menu-icon" aria-hidden="true">↓</span>
+        <span>
+          <strong>Fazer checkout</strong>
+          <small>Ir para este commit</small>
+        </span>
+      </button>
+    </div>
+  }
+
+  @if (pendingCheckoutCommit(); as commit) {
+    <app-confirm-dialog
+      title="Guardar alterações antes do checkout?"
+      [message]="'Existem alterações não commitadas. Deseja guardá-las em um stash e ir para o commit ' + commit.shortHash + '? Elas poderão ser aplicadas novamente pela tela Stashes.'"
+      [messageHighlight]="commit.shortHash"
+      confirmLabel="Guardar stash e continuar"
+      cancelLabel="Cancelar"
+      (confirmed)="confirmCheckoutCommit()"
+      (cancelled)="cancelCheckoutCommit()"
     />
   }
 </section>

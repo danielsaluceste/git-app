@@ -1,17 +1,24 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, HostListener, inject, OnInit, signal } from "@angular/core";
 import { Router } from "@angular/router";
 import { Commit } from "../../../core/models/commit.model";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { GitFile } from "../../../core/models/git-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
 
 type SyncAction = "fetch" | "pull" | "push" | "";
 
+interface CommitContextMenu {
+  commit: Commit;
+  x: number;
+  y: number;
+}
+
 @Component({
   selector: "app-history-page",
-  imports: [FileDiffDialogComponent],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent],
   templateUrl: "./history-page.component.html",
   styleUrl: "./history-page.component.css",
 })
@@ -35,6 +42,9 @@ export class HistoryPageComponent implements OnInit {
   readonly commitFileDiff = signal("");
   readonly commitFileDiffLoading = signal(false);
   readonly commitFileDiffError = signal("");
+  readonly isCheckingOut = signal(false);
+  readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
+  readonly commitContextMenu = signal<CommitContextMenu | undefined>(undefined);
 
   ngOnInit(): void {
     void this.loadOverview();
@@ -73,6 +83,7 @@ export class HistoryPageComponent implements OnInit {
   }
 
   selectCommit(commit: Commit): void {
+    this.closeCommitContextMenu();
     this.selectedCommit.set(commit);
     this.selectedCommitFiles.set([]);
     this.commitFilesError.set("");
@@ -85,6 +96,89 @@ export class HistoryPageComponent implements OnInit {
     if (commit) {
       void this.router.navigate(["/branches"], { queryParams: { from: commit.hash } });
     }
+  }
+
+  async requestCheckoutCommit(commit: Commit): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository || this.isCheckingOut() || this.syncAction()) {
+      return;
+    }
+
+    this.closeCommitContextMenu();
+    this.isCheckingOut.set(true);
+
+    try {
+      const status = await this.repositoryService.getStatus(repository.path);
+      if (status.isDirty) {
+        this.pendingCheckoutCommit.set(commit);
+        return;
+      }
+
+      await this.executeCheckoutCommit(commit, false);
+    } catch (error: unknown) {
+      this.toastService.error(this.getCommitCheckoutErrorMessage(error), "Checkout do commit");
+    } finally {
+      this.isCheckingOut.set(false);
+    }
+  }
+
+  cancelCheckoutCommit(): void {
+    this.pendingCheckoutCommit.set(undefined);
+  }
+
+  async confirmCheckoutCommit(): Promise<void> {
+    const commit = this.pendingCheckoutCommit();
+    this.pendingCheckoutCommit.set(undefined);
+    if (commit) {
+      await this.executeCheckoutCommit(commit, true);
+    }
+  }
+
+  openCommitContextMenu(event: MouseEvent, commit: Commit): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectCommit(commit);
+    const position = this.getCommitContextMenuPosition(event);
+    this.commitContextMenu.set({
+      commit,
+      x: position.x,
+      y: position.y,
+    });
+  }
+
+  checkoutFromContextMenu(): void {
+    const commit = this.commitContextMenu()?.commit;
+    this.closeCommitContextMenu();
+    if (commit) {
+      void this.requestCheckoutCommit(commit);
+    }
+  }
+
+  @HostListener("document:click")
+  closeCommitContextMenu(): void {
+    this.commitContextMenu.set(undefined);
+  }
+
+  @HostListener("document:keydown.escape")
+  onEscapeKeydown(): void {
+    this.closeCommitContextMenu();
+  }
+
+  private getCommitContextMenuPosition(event: MouseEvent): { x: number; y: number } {
+    const target = event.currentTarget as HTMLElement | null;
+    const page = target?.closest<HTMLElement>(".page");
+    const pageRect = page?.getBoundingClientRect();
+    const originX = pageRect?.left ?? 0;
+    const originY = pageRect?.top ?? 0;
+    const availableWidth = pageRect?.width ?? window.innerWidth;
+    const availableHeight = pageRect?.height ?? window.innerHeight;
+    const menuWidth = 224;
+    const menuHeight = 96;
+
+    return {
+      x: Math.max(8, Math.min(event.clientX - originX, availableWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY - originY, availableHeight - menuHeight - 8)),
+    };
   }
 
   async loadCommitFiles(commit: Commit): Promise<void> {
@@ -182,6 +276,33 @@ export class HistoryPageComponent implements OnInit {
     }
   }
 
+  private async executeCheckoutCommit(commit: Commit, saveChanges: boolean): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.isCheckingOut.set(true);
+    try {
+      if (saveChanges) {
+        await this.repositoryService.stash(repository.path, `Antes do checkout ${commit.shortHash}`);
+      }
+
+      await this.repositoryService.checkoutCommit(repository.path, commit.hash);
+      this.toastService.success(
+        saveChanges
+          ? `Alterações guardadas em stash. Checkout no commit ${commit.shortHash} concluído.`
+          : `Checkout no commit ${commit.shortHash} concluído. O repositório está em HEAD destacado.`,
+        "Checkout do commit",
+      );
+      await this.loadOverview();
+    } catch (error: unknown) {
+      this.toastService.error(this.getCommitCheckoutErrorMessage(error), "Checkout do commit");
+    } finally {
+      this.isCheckingOut.set(false);
+    }
+  }
+
   formatDate(date: string): string {
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) {
@@ -212,6 +333,18 @@ export class HistoryPageComponent implements OnInit {
     }
 
     return "Não foi possível executar a sincronização com o repositório remoto.";
+  }
+
+  private getCommitCheckoutErrorMessage(error: unknown): string {
+    if (typeof error === "string" && error.trim()) {
+      return `Não foi possível fazer checkout neste commit: ${error.trim()}`;
+    }
+
+    if (error instanceof Error && error.message) {
+      return `Não foi possível fazer checkout neste commit: ${error.message}`;
+    }
+
+    return "Não foi possível fazer checkout neste commit.";
   }
 
   private getCommitFilesErrorMessage(error: unknown): string {

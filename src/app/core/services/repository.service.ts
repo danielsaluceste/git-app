@@ -107,6 +107,10 @@ export class RepositoryService {
     await invoke("checkout_branch", { path, branch });
   }
 
+  async checkoutCommit(path: string, commitHash: string): Promise<void> {
+    await invoke("checkout_commit", { path, commitHash });
+  }
+
   async createBranch(path: string, branch: string, startPoint?: string): Promise<void> {
     await invoke("create_branch", { path, branch, startPoint });
   }

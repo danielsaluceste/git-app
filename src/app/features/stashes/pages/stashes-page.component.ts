@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnInit, signal } from "@angular/core";
+import { Component, computed, effect, HostListener, inject, OnInit, signal } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
@@ -30,6 +30,7 @@ export class StashesPageComponent implements OnInit {
   readonly fileDiff = signal("");
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
+  private fileDiffRequestId = 0;
 
   private readonly closeMissingSelection = effect(() => {
     const references = this.references();
@@ -133,6 +134,38 @@ export class StashesPageComponent implements OnInit {
     }
   }
 
+  @HostListener("document:keydown", ["$event"])
+  onArrowKeydown(event: KeyboardEvent): void {
+    const direction = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+    const files = this.stashFiles();
+
+    if (!direction || !files.length || this.stashLoading() || this.pendingDeleteStash()) {
+      return;
+    }
+
+    const activeElement = document.activeElement as HTMLElement | null;
+    if (
+      activeElement?.tagName === "INPUT" ||
+      activeElement?.tagName === "TEXTAREA" ||
+      activeElement?.tagName === "SELECT" ||
+      activeElement?.isContentEditable
+    ) {
+      return;
+    }
+
+    const currentIndex = files.findIndex((file) => file.path === this.selectedFile()?.path);
+    const nextIndex = currentIndex < 0
+      ? direction > 0 ? 0 : files.length - 1
+      : Math.min(Math.max(currentIndex + direction, 0), files.length - 1);
+
+    if (nextIndex === currentIndex) {
+      return;
+    }
+
+    event.preventDefault();
+    void this.openStashFile(files[nextIndex]);
+  }
+
   requestDeleteStash(): void {
     const stashRef = this.selectedStash();
     if (stashRef && !this.isApplying()) {
@@ -173,6 +206,7 @@ export class StashesPageComponent implements OnInit {
       return;
     }
 
+    const requestId = ++this.fileDiffRequestId;
     this.selectedFile.set(file);
     this.fileDiff.set("");
     this.fileDiffError.set("");
@@ -180,13 +214,17 @@ export class StashesPageComponent implements OnInit {
 
     try {
       const diff = await this.repositoryService.getStashFileDiff(repository.path, stashRef, file.path);
-      if (this.selectedFile() === file) {
+      if (requestId === this.fileDiffRequestId) {
         this.fileDiff.set(diff);
       }
     } catch (error: unknown) {
-      this.fileDiffError.set(this.getErrorMessage(error));
+      if (requestId === this.fileDiffRequestId) {
+        this.fileDiffError.set(this.getErrorMessage(error));
+      }
     } finally {
-      this.fileDiffLoading.set(false);
+      if (requestId === this.fileDiffRequestId) {
+        this.fileDiffLoading.set(false);
+      }
     }
   }
 

@@ -2,7 +2,6 @@ import { Routes } from "@angular/router";
 import { AppShellComponent } from "./layout/app-shell/app-shell.component";
 import { BranchesPageComponent } from "./features/branches/pages/branches-page.component";
 import { ChangesPageComponent } from "./features/changes/pages/changes-page.component";
-import { HistoryPageComponent } from "./features/history/pages/history-page.component";
 import { IntegrationsPageComponent } from "./features/integrations/pages/integrations-page.component";
 import { RepositoriesPageComponent } from "./features/repositories/pages/repositories-page.component";
 import { SettingsPageComponent } from "./features/settings/pages/settings-page.component";
@@ -23,7 +22,13 @@ export const routes: Routes = [
             (module) => module.StashesPageComponent,
           ),
       },
-      { path: "overview", component: HistoryPageComponent },
+      {
+        path: "overview",
+        loadComponent: () =>
+          import("./features/history/pages/history-page.component").then(
+            (module) => module.HistoryPageComponent,
+          ),
+      },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },
       { path: "settings", component: SettingsPageComponent },

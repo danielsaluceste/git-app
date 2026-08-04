@@ -240,6 +240,11 @@ h3 {
   color: #fff;
 }
 
+.commit-row:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .commit-row.selected {
   border-color: #9a5b18;
   box-shadow: inset 0 0 0 1px rgb(249 115 22 / 20%);
@@ -563,6 +568,100 @@ dd {
   color: #6b7280;
   font-size: 1.1rem;
   line-height: 1;
+}
+
+.commit-context-menu {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  width: min(14rem, calc(100vw - 1rem));
+  gap: 0.45rem;
+  box-sizing: border-box;
+  border: 1px solid #3b4658;
+  border-radius: 0.65rem;
+  padding: 0.55rem;
+  background: #172033;
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 38%);
+  animation: commit-context-menu-in 140ms ease-out both;
+}
+
+.commit-context-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.3rem 0.45rem 0.45rem;
+  border-bottom: 1px solid #263244;
+}
+
+.commit-context-heading span {
+  color: #f97316;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.commit-context-heading code {
+  color: #fbbf24;
+  font-size: 0.68rem;
+}
+
+.commit-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.45rem;
+  background: transparent;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.commit-context-menu button:hover {
+  border-color: #374151;
+  background: #1f2937;
+}
+
+.commit-context-menu button > span:last-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.commit-context-menu button strong {
+  color: #f9fafb;
+  font-size: 0.76rem;
+}
+
+.commit-context-menu button small {
+  color: #9ca3af;
+  font-size: 0.67rem;
+}
+
+.context-menu-icon {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: 0.35rem;
+  background: #123b2e;
+  color: #6ee7b7;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+@keyframes commit-context-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-width: 900px) {

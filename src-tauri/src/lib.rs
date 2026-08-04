@@ -29,6 +29,7 @@ pub fn run() {
             commands::repository::pull_repository,
             commands::repository::push_repository,
             commands::repository::checkout_branch,
+            commands::repository::checkout_commit,
             commands::repository::create_branch,
             commands::repository::rename_branch,
             commands::repository::delete_branch,
