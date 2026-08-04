@@ -489,7 +489,32 @@ pub fn pull_repository(path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn push_repository(path: String) -> Result<(), String> {
     ensure_repository(&path)?;
-    run_git_with_timeout(&path, &["push"], GIT_NETWORK_TIMEOUT).map(|_| ())
+
+    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).map_err(|_| {
+        "Não é possível fazer push enquanto o repositório estiver em detached HEAD.".to_string()
+    })?;
+
+    if run_git(
+        &path,
+        &[
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{upstream}",
+        ],
+    )
+    .is_ok()
+    {
+        return run_git_with_timeout(&path, &["push"], GIT_NETWORK_TIMEOUT).map(|_| ());
+    }
+
+    let remote = preferred_push_remote(&path)?;
+    run_git_with_timeout(
+        &path,
+        &["push", "--set-upstream", &remote, &current_branch],
+        GIT_NETWORK_TIMEOUT,
+    )
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -625,6 +650,17 @@ fn get_ahead_behind(path: &str) -> (usize, usize) {
         .filter_map(|value| value.parse::<usize>().ok());
 
     (counts.next().unwrap_or(0), counts.next().unwrap_or(0))
+}
+
+fn preferred_push_remote(path: &str) -> Result<String, String> {
+    let remotes = run_git_lines(path, &["remote"])?;
+
+    remotes
+        .iter()
+        .find(|remote| remote.as_str() == "origin")
+        .cloned()
+        .or_else(|| remotes.first().cloned())
+        .ok_or_else(|| "Nenhum repositório remoto foi configurado para este projeto.".to_string())
 }
 
 fn run_git(path: &str, args: &[&str]) -> Result<String, String> {
