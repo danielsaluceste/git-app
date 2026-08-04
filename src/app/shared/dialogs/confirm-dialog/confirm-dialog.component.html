@@ -1,0 +1,26 @@
+<div class="dialog-backdrop" role="presentation" (click)="onBackdropClick($event)">
+  <section class="dialog" role="alertdialog" aria-modal="true" [attr.aria-labelledby]="'dialog-title'">
+    <div class="dialog-icon" [class.danger]="destructive" aria-hidden="true">
+      <span>{{ destructive ? "!" : "?" }}</span>
+    </div>
+
+    <div class="dialog-content">
+      <h2 id="dialog-title">{{ title }}</h2>
+      <p>{{ message }}</p>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="cancel-button" (click)="cancelled.emit()">
+        {{ cancelLabel }}
+      </button>
+      <button
+        type="button"
+        class="confirm-button"
+        [class.danger]="destructive"
+        (click)="confirmed.emit()"
+      >
+        {{ confirmLabel }}
+      </button>
+    </div>
+  </section>
+</div>

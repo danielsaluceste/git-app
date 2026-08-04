@@ -1,0 +1,114 @@
+<div class="workspace-menu-wrapper">
+  <button
+    type="button"
+    class="workspace-switcher"
+    aria-haspopup="menu"
+    [attr.aria-expanded]="isOpen"
+    (mousedown)="$event.stopPropagation()"
+    (click)="toggleMenu()"
+  >
+    <span class="workspace-label">Workspace</span>
+    <span class="workspace-name">
+      <span class="workspace-dot" [style.background-color]="activeWorkspace().color"></span>
+      {{ activeWorkspace().name }}
+      <span class="chevron" aria-hidden="true"></span>
+    </span>
+  </button>
+
+  @if (isOpen) {
+    <div class="workspace-menu" role="menu" (mousedown)="$event.stopPropagation()">
+      <div class="menu-heading">
+        <div>
+          <strong>Meus workspaces</strong>
+          <span>Separe seus repositórios por contexto</span>
+        </div>
+        <button type="button" class="icon-button" aria-label="Fechar" (click)="toggleMenu()">×</button>
+      </div>
+
+      <div class="workspace-list">
+        @for (workspace of workspaces(); track workspace.id) {
+          <div class="workspace-item" [class.active]="workspace.id === activeWorkspace().id">
+            <button type="button" class="workspace-select" (click)="selectWorkspace(workspace.id)">
+              <span class="workspace-dot" [style.background-color]="workspace.color"></span>
+              <span class="workspace-info">
+                <strong>{{ workspace.name }}</strong>
+                <small>{{ workspace.description || "Sem descrição" }}</small>
+              </span>
+              @if (workspace.id === activeWorkspace().id) {
+                <span class="check" aria-label="Selecionado">✓</span>
+              }
+            </button>
+            <button
+              type="button"
+              class="item-action"
+              aria-label="Editar workspace"
+              title="Editar"
+              (click)="startEdit(workspace)"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              class="item-action danger"
+              aria-label="Excluir workspace"
+              title="Excluir"
+              (click)="removeWorkspace(workspace)"
+            >
+              <span aria-hidden="true"></span>
+            </button>
+          </div>
+        }
+      </div>
+
+      @if (isFormOpen) {
+        <form class="workspace-form" (ngSubmit)="saveWorkspace()">
+          <strong>{{ editingId ? "Editar workspace" : "Novo workspace" }}</strong>
+
+          <label>
+            Nome
+            <input [(ngModel)]="formName" name="workspaceName" placeholder="Ex.: Cliente X" autofocus />
+          </label>
+
+          <label>
+            Descrição
+            <input
+              [(ngModel)]="formDescription"
+              name="workspaceDescription"
+              placeholder="Ex.: Projetos do cliente"
+            />
+          </label>
+
+          @if (formError) {
+            <p class="form-error">{{ formError }}</p>
+          }
+
+          <div class="form-actions">
+            <button type="button" class="secondary-button" (click)="cancelForm()">Cancelar</button>
+            <button type="submit" class="primary-button">Salvar</button>
+          </div>
+        </form>
+      } @else if (formError) {
+        <p class="form-error menu-error">{{ formError }}</p>
+      }
+
+      @if (!isFormOpen) {
+        <button type="button" class="new-workspace-button" (click)="startCreate()">
+          <span aria-hidden="true">＋</span>
+          Novo workspace
+        </button>
+      }
+    </div>
+  }
+</div>
+
+@if (workspaceToDelete) {
+  <app-confirm-dialog
+    title="Excluir workspace?"
+    [message]="'Excluir o workspace “' + workspaceToDelete.name + '”? Os repositórios não serão apagados.'"
+    confirmLabel="Excluir"
+    cancelLabel="Cancelar"
+    [destructive]="true"
+    (confirmed)="confirmRemoveWorkspace()"
+    (cancelled)="cancelRemoveWorkspace()"
+  />
+}

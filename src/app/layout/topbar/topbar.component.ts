@@ -1,8 +1,10 @@
 import { Component } from "@angular/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { WorkspaceMenuComponent } from "../../features/workspaces/components/workspace-menu.component";
 
 @Component({
   selector: "app-topbar",
+  imports: [WorkspaceMenuComponent],
   templateUrl: "./topbar.component.html",
   styleUrl: "./topbar.component.css",
 })
