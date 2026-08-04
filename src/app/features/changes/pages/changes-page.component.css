@@ -234,7 +234,8 @@ h3 {
 .text-button:disabled,
 .refresh-button:disabled,
 .commit-button:disabled,
-.file-row:disabled {
+.file-details-button:disabled,
+.file-action-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -255,9 +256,6 @@ h3 {
   padding: 0.7rem 0.55rem;
   background: transparent;
   color: #e5e7eb;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
   transition: background 140ms ease, color 140ms ease;
 }
 
@@ -268,6 +266,27 @@ h3 {
 .file-row:hover:not(:disabled) {
   background: #1f2937;
   color: #fff;
+}
+
+.file-details-button {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.file-details-button:focus-visible,
+.file-action-button:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
 }
 
 .file-status {
@@ -318,6 +337,50 @@ h3 {
   color: #6b7280;
   font-size: 1.15rem;
   line-height: 1;
+}
+
+.file-action-button {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #9a5b18;
+  border-radius: 0.55rem;
+  padding: 0;
+  background: #4a2d14;
+  color: #fed7aa;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.file-action-button span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.04em);
+}
+
+.file-action-button:hover:not(:disabled) {
+  border-color: #fb923c;
+  background: #6b3b14;
+  color: #fff7ed;
+  transform: translateY(-1px);
+}
+
+.file-action-button.staged-action {
+  border-color: #286047;
+  background: #123b2e;
+  color: #a7f3d0;
+}
+
+.file-action-button.staged-action:hover:not(:disabled) {
+  border-color: #34d399;
+  background: #14532d;
+  color: #ecfdf5;
 }
 
 .empty-files {
