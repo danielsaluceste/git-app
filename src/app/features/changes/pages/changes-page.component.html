@@ -34,6 +34,84 @@
         </article>
       </div>
 
+      <section class="panel stash-panel">
+        <div class="panel-heading">
+          <div>
+            <div class="panel-title-row">
+              <h3>Stashes</h3>
+              <span class="file-count stash-count">{{ stashes().length }}</span>
+            </div>
+            <p>Guarde alterações temporariamente para trocar de contexto.</p>
+          </div>
+          <button
+            type="button"
+            class="text-button"
+            [disabled]="isSaving() || isLoading()"
+            (click)="openStashForm()"
+          >
+            Guardar stash
+          </button>
+        </div>
+
+        @if (showStashForm()) {
+          <form class="stash-form" (ngSubmit)="saveStash()">
+            <div>
+              <strong>Guardar alterações atuais</strong>
+              <p>Os arquivos rastreados e não rastreados serão removidos do working tree.</p>
+            </div>
+            <input
+              [ngModel]="stashMessage()"
+              (ngModelChange)="stashMessage.set($event)"
+              name="stashMessage"
+              placeholder="Mensagem opcional, ex.: antes de trocar de branch"
+              autocomplete="off"
+              [disabled]="isSaving()"
+            />
+            <div class="stash-form-actions">
+              <button type="button" class="stash-cancel-button" [disabled]="isSaving()" (click)="closeStashForm()">
+                Cancelar
+              </button>
+              <button type="submit" class="stash-save-button" [disabled]="isSaving()">
+                {{ isSaving() ? "Guardando..." : "Guardar alterações" }}
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (stashes().length > 0) {
+          <div class="stash-list">
+            @for (stash of stashes(); track stash) {
+              <div class="stash-row">
+                <div class="stash-info">
+                  <strong>{{ stashReference(stash) }}</strong>
+                  <span>{{ stashDescription(stash) }}</span>
+                </div>
+                <div class="stash-actions">
+                  <button
+                    type="button"
+                    class="stash-apply-button"
+                    [disabled]="isSaving()"
+                    (click)="applyStash(stashReference(stash))"
+                  >
+                    Aplicar
+                  </button>
+                  <button
+                    type="button"
+                    class="stash-drop-button"
+                    [disabled]="isSaving()"
+                    (click)="requestDropStash(stashReference(stash))"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else if (!showStashForm()) {
+          <p class="empty-stashes">Nenhum stash salvo neste repositório.</p>
+        }
+      </section>
+
       <div class="changes-layout">
         <section class="panel files-panel">
           <div class="panel-heading">
@@ -224,6 +302,19 @@
       cancelLabel="Agora não"
       (confirmed)="confirmAiDownload()"
       (cancelled)="cancelAiDownload()"
+    />
+  }
+
+  @if (pendingDropStash(); as stash) {
+    <app-confirm-dialog
+      title="Excluir stash?"
+      [message]="'O stash ' + stash + ' será removido permanentemente deste repositório. Deseja continuar?'"
+      [messageHighlight]="stash"
+      confirmLabel="Excluir stash"
+      cancelLabel="Manter stash"
+      [destructive]="true"
+      (confirmed)="confirmDropStash()"
+      (cancelled)="cancelDropStash()"
     />
   }
 </section>

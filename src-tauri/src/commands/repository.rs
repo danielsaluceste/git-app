@@ -297,6 +297,52 @@ pub fn get_repository_file_diff(
     Ok(truncated)
 }
 
+#[tauri::command]
+pub fn stash_repository(path: String, message: Option<String>) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let status = run_git(&path, &["status", "--porcelain", "--untracked-files=all"])?;
+    if status.trim().is_empty() {
+        return Err("Não há alterações para guardar no stash.".to_string());
+    }
+
+    let mut args = vec![
+        "stash".to_string(),
+        "push".to_string(),
+        "--include-untracked".to_string(),
+    ];
+    if let Some(message) = message.filter(|value| !value.trim().is_empty()) {
+        args.push("--message".to_string());
+        args.push(message);
+    }
+
+    run_git_strings(&path, &args).map(|_| ())
+}
+
+#[tauri::command]
+pub fn apply_stash(path: String, stash_ref: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+    run_git_with_timeout(
+        &path,
+        &["stash", "apply", "--index", &stash_ref],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn drop_stash(path: String, stash_ref: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+    run_git_with_timeout(
+        &path,
+        &["stash", "drop", "--quiet", &stash_ref],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
 fn summarize_changed_areas(changed_files: &str) -> String {
     const GENERIC_DIRECTORIES: [&str; 18] = [
         "src",
@@ -623,6 +669,20 @@ fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn validate_stash_reference(path: &str, stash_ref: &str) -> Result<(), String> {
+    if !stash_ref.starts_with("stash@{") || !stash_ref.ends_with('}') {
+        return Err("A referência do stash selecionado não é válida.".to_string());
+    }
+
+    let commit_reference = format!("{stash_ref}^{{commit}}");
+    run_git(
+        path,
+        &["rev-parse", "--verify", "--quiet", &commit_reference],
+    )
+    .map(|_| ())
+    .map_err(|_| "O stash selecionado não está mais disponível.".to_string())
 }
 
 fn validate_start_point(path: &str, start_point: &str) -> Result<(), String> {
