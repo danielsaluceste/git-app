@@ -1,11 +1,21 @@
-import { Component, computed, inject, Input, OnInit, signal } from "@angular/core";
+import { Component, computed, HostListener, inject, Input, OnInit, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { Router, RouterLink, RouterLinkActive } from "@angular/router";
 import { LayoutService } from "../../core/services/layout.service";
 import { Repository, RepositoryReferences } from "../../core/models/repository.model";
 import { RepositoryService } from "../../core/services/repository.service";
 import { ToastService } from "../../core/services/toast.service";
+import { ConfirmDialogComponent } from "../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 
 type ReferenceSection = "local" | "remote" | "tags" | "stashes";
+type BranchReferenceType = "local" | "remote";
+
+interface BranchContextMenu {
+  branch: string;
+  type: BranchReferenceType;
+  x: number;
+  y: number;
+}
 
 const EMPTY_REFERENCES: RepositoryReferences = {
   localBranches: [],
@@ -16,7 +26,7 @@ const EMPTY_REFERENCES: RepositoryReferences = {
 
 @Component({
   selector: "app-repository-sidebar",
-  imports: [RouterLink, RouterLinkActive],
+  imports: [ConfirmDialogComponent, FormsModule, RouterLink, RouterLinkActive],
   templateUrl: "./repository-sidebar.component.html",
   styleUrl: "./repository-sidebar.component.css",
 })
@@ -33,6 +43,16 @@ export class RepositorySidebarComponent implements OnInit {
   readonly changesCount = computed(() => this.repositoryService.repositoryStatus()?.files.length ?? 0);
   readonly aheadCount = computed(() => this.repositoryService.repositoryStatus()?.aheadCount ?? 0);
   readonly behindCount = computed(() => this.repositoryService.repositoryStatus()?.behindCount ?? 0);
+  readonly isDirty = computed(() => this.repositoryService.repositoryStatus()?.isDirty ?? false);
+  readonly isBranchActionRunning = signal(false);
+  readonly showCreateBranch = signal(false);
+  readonly newBranchName = signal("");
+  readonly createBranchStartPoint = signal<string | undefined>(undefined);
+  readonly contextMenu = signal<BranchContextMenu | undefined>(undefined);
+  readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
+  readonly pendingCreateBranch = signal<
+    { name: string; startPoint?: string } | undefined
+  >(undefined);
   expandedSections: Record<ReferenceSection, boolean> = {
     local: true,
     remote: false,
@@ -60,6 +80,132 @@ export class RepositorySidebarComponent implements OnInit {
     this.expandedSections[section] = !this.expandedSections[section];
   }
 
+  async refreshRemoteReferences(): Promise<void> {
+    if (this.isBranchActionRunning()) {
+      return;
+    }
+
+    this.isBranchActionRunning.set(true);
+    try {
+      await this.repositoryService.fetch(this.repository.path);
+      await this.refreshRepositoryData();
+      this.toastService.success("As referências remotas foram atualizadas.", "Fetch concluído");
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Fetch");
+    } finally {
+      this.isBranchActionRunning.set(false);
+    }
+  }
+
+  requestCheckout(branch: string): void {
+    if (branch === this.references().currentBranch || this.isBranchActionRunning()) {
+      return;
+    }
+
+    if (this.isDirty()) {
+      this.pendingCheckoutBranch.set(branch);
+      return;
+    }
+
+    void this.checkoutBranch(branch);
+  }
+
+  cancelCheckout(): void {
+    this.pendingCheckoutBranch.set(undefined);
+  }
+
+  async confirmCheckout(): Promise<void> {
+    const branch = this.pendingCheckoutBranch();
+    this.pendingCheckoutBranch.set(undefined);
+    if (branch) {
+      await this.checkoutBranch(branch);
+    }
+  }
+
+  openCreateBranch(startPoint?: string): void {
+    this.newBranchName.set("");
+    this.createBranchStartPoint.set(startPoint);
+    this.showCreateBranch.set(true);
+  }
+
+  closeCreateBranch(): void {
+    this.newBranchName.set("");
+    this.createBranchStartPoint.set(undefined);
+    this.showCreateBranch.set(false);
+  }
+
+  submitCreateBranch(): void {
+    this.requestCreateBranch(this.newBranchName().trim(), this.createBranchStartPoint());
+  }
+
+  requestCreateRemoteBranch(remoteBranch: string, event?: Event): void {
+    event?.stopPropagation();
+    const localBranch = this.localBranchName(remoteBranch);
+    this.requestCreateBranch(localBranch, remoteBranch);
+  }
+
+  openBranchContextMenu(event: MouseEvent, branch: string, type: BranchReferenceType): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.isBranchActionRunning()) {
+      return;
+    }
+
+    const menuWidth = 248;
+    const menuHeight = type === "remote" ? 132 : 92;
+    this.contextMenu.set({
+      branch,
+      type,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+    });
+  }
+
+  closeBranchContextMenu(): void {
+    this.contextMenu.set(undefined);
+  }
+
+  bringContextBranchToLocal(): void {
+    const menu = this.contextMenu();
+    this.closeBranchContextMenu();
+
+    if (menu?.type === "remote") {
+      this.requestCreateRemoteBranch(menu.branch);
+    }
+  }
+
+  createBranchFromContext(): void {
+    const menu = this.contextMenu();
+    this.closeBranchContextMenu();
+
+    if (menu) {
+      this.openCreateBranch(menu.branch);
+    }
+  }
+
+  @HostListener("document:click")
+  handleDocumentClick(): void {
+    this.closeBranchContextMenu();
+  }
+
+  @HostListener("document:keydown.escape")
+  handleEscape(): void {
+    this.closeBranchContextMenu();
+  }
+
+  cancelCreateBranch(): void {
+    this.pendingCreateBranch.set(undefined);
+  }
+
+  async confirmCreateBranch(): Promise<void> {
+    const request = this.pendingCreateBranch();
+    this.pendingCreateBranch.set(undefined);
+    if (request) {
+      await this.createBranch(request.name, request.startPoint);
+    }
+  }
+
   syncPendingLabel(): string {
     const pending: string[] = [];
     if (this.aheadCount() > 0) {
@@ -76,5 +222,76 @@ export class RepositorySidebarComponent implements OnInit {
     this.repositoryService.setActive(undefined);
     this.layoutService.openMainSidebar();
     void this.router.navigate(["/repositories"]);
+  }
+
+  private requestCreateBranch(name: string, startPoint?: string): void {
+    if (!name) {
+      this.toastService.warning("Informe um nome para a nova branch.", "Nova branch");
+      this.showCreateBranch.set(true);
+      return;
+    }
+
+    if (this.isDirty()) {
+      this.pendingCreateBranch.set({ name, startPoint });
+      return;
+    }
+
+    void this.createBranch(name, startPoint);
+  }
+
+  private async checkoutBranch(branch: string): Promise<void> {
+    this.isBranchActionRunning.set(true);
+    try {
+      await this.repositoryService.checkoutBranch(this.repository.path, branch);
+      await this.refreshRepositoryData();
+      this.toastService.success(`Branch "${branch}" ativada.`, "Branch atualizada");
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Troca de branch");
+    } finally {
+      this.isBranchActionRunning.set(false);
+    }
+  }
+
+  private async createBranch(name: string, startPoint?: string): Promise<void> {
+    this.isBranchActionRunning.set(true);
+    try {
+      await this.repositoryService.createBranch(this.repository.path, name, startPoint);
+      await this.refreshRepositoryData();
+      this.closeCreateBranch();
+      this.toastService.success(
+        startPoint
+          ? `Branch "${name}" criada a partir de "${startPoint}".`
+          : `Branch "${name}" criada e ativada.`,
+        "Nova branch",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Nova branch");
+    } finally {
+      this.isBranchActionRunning.set(false);
+    }
+  }
+
+  private async refreshRepositoryData(): Promise<void> {
+    await Promise.all([
+      this.repositoryService.getReferences(this.repository.path),
+      this.repositoryService.getStatus(this.repository.path),
+    ]);
+  }
+
+  private localBranchName(remoteBranch: string): string {
+    const separatorIndex = remoteBranch.indexOf("/");
+    return separatorIndex >= 0 ? remoteBranch.slice(separatorIndex + 1) : remoteBranch;
+  }
+
+  private getGitErrorMessage(error: unknown): string {
+    if (typeof error === "string" && error.trim()) {
+      return error.trim();
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return "Não foi possível executar a operação na branch.";
   }
 }

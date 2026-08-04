@@ -50,7 +50,19 @@
   </nav>
 
   <section class="reference-section">
-    <div class="section-heading">REFERÊNCIAS</div>
+    <div class="section-heading-row">
+      <div class="section-heading">REFERÊNCIAS</div>
+      <button
+        type="button"
+        class="reference-sync-button"
+        [disabled]="isBranchActionRunning()"
+        title="Atualizar referências remotas"
+        aria-label="Atualizar referências remotas"
+        (click)="refreshRemoteReferences()"
+      >
+        ↻
+      </button>
+    </div>
 
     @if (isLoadingReferences()) {
       <div class="reference-status">Carregando referências...</div>
@@ -70,7 +82,15 @@
       <div class="reference-items">
         @if (references().localBranches.length > 0) {
           @for (branch of references().localBranches; track branch) {
-            <button type="button" class="reference-item" [class.current]="branch === references().currentBranch">
+            <button
+              type="button"
+              class="reference-item"
+              [class.current]="branch === references().currentBranch"
+              [disabled]="isBranchActionRunning()"
+              [title]="branch === references().currentBranch ? 'Branch atual' : 'Trocar para ' + branch"
+              (click)="requestCheckout(branch)"
+              (contextmenu)="openBranchContextMenu($event, branch, 'local')"
+            >
               <span class="branch-dot" aria-hidden="true"></span>
               <span>{{ branch }}</span>
             </button>
@@ -79,6 +99,34 @@
           <span class="reference-empty">Nenhuma branch local</span>
         }
       </div>
+    }
+    @if (showCreateBranch()) {
+      <form class="sidebar-branch-form" (ngSubmit)="submitCreateBranch()">
+        <div class="sidebar-branch-form-heading">
+          <strong>{{ createBranchStartPoint() ? "Criar branch a partir desta" : "Nova branch" }}</strong>
+          @if (createBranchStartPoint(); as startPoint) {
+            <span [title]="startPoint">Base: {{ startPoint }}</span>
+          }
+        </div>
+        <label for="sidebar-new-branch">Nome da branch</label>
+        <input
+          id="sidebar-new-branch"
+          [ngModel]="newBranchName()"
+          (ngModelChange)="newBranchName.set($event)"
+          name="sidebarBranchName"
+          placeholder="feature/minha-alteracao"
+          autocomplete="off"
+          [disabled]="isBranchActionRunning()"
+        />
+        <div class="sidebar-branch-actions">
+          <button type="button" class="sidebar-cancel-button" [disabled]="isBranchActionRunning()" (click)="closeCreateBranch()">
+            Cancelar
+          </button>
+          <button type="submit" class="sidebar-confirm-button" [disabled]="isBranchActionRunning()">
+            Criar
+          </button>
+        </div>
+      </form>
     }
 
     <button
@@ -95,10 +143,15 @@
       <div class="reference-items">
         @if (references().remoteBranches.length > 0) {
           @for (branch of references().remoteBranches; track branch) {
-            <button type="button" class="reference-item">
+            <div
+              class="reference-item remote-reference"
+              [title]="'Clique duas vezes para trazer ' + branch + ' para o local'"
+              (dblclick)="requestCreateRemoteBranch(branch)"
+              (contextmenu)="openBranchContextMenu($event, branch, 'remote')"
+            >
               <span class="remote-dot" aria-hidden="true"></span>
-              <span>{{ branch }}</span>
-            </button>
+              <span class="remote-branch-name" [title]="branch">{{ branch }}</span>
+            </div>
           }
         } @else {
           <span class="reference-empty">Nenhuma branch remota</span>
@@ -157,3 +210,56 @@
     }
   </section>
 </aside>
+
+@if (contextMenu(); as menu) {
+  <div
+    class="branch-context-menu"
+    role="menu"
+    [style.left.px]="menu.x"
+    [style.top.px]="menu.y"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="branch-context-heading">
+      <span class="branch-context-kicker">BRANCH</span>
+      <strong [title]="menu.branch">{{ menu.branch }}</strong>
+    </div>
+    @if (menu.type === "remote") {
+      <button type="button" role="menuitem" (click)="bringContextBranchToLocal()">
+        <span class="context-menu-icon" aria-hidden="true">↓</span>
+        <span>
+          <strong>Trazer para o local</strong>
+          <small>Criar uma branch local conectada</small>
+        </span>
+      </button>
+    }
+    <button type="button" role="menuitem" (click)="createBranchFromContext()">
+      <span class="context-menu-icon" aria-hidden="true">＋</span>
+      <span>
+        <strong>Criar uma branch a partir desta</strong>
+        <small>Usar esta referência como ponto inicial</small>
+      </span>
+    </button>
+  </div>
+}
+
+@if (pendingCheckoutBranch(); as branch) {
+  <app-confirm-dialog
+    title="Trocar de branch?"
+    [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao trocar para a branch ' + branch + '. Deseja continuar?'"
+    confirmLabel="Trocar branch"
+    cancelLabel="Continuar aqui"
+    (confirmed)="confirmCheckout()"
+    (cancelled)="cancelCheckout()"
+  />
+}
+
+@if (pendingCreateBranch(); as request) {
+  <app-confirm-dialog
+    title="Criar branch com alterações pendentes?"
+    [message]="request.startPoint ? 'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + ' a partir de ' + request.startPoint + '. Deseja continuar?' : 'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + '. Deseja continuar?'"
+    confirmLabel="Criar e ativar"
+    cancelLabel="Cancelar"
+    (confirmed)="confirmCreateBranch()"
+    (cancelled)="cancelCreateBranch()"
+  />
+}

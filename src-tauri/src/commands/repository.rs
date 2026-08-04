@@ -508,9 +508,25 @@ pub fn create_branch(
     ensure_repository(&path)?;
     validate_branch_name(&path, &branch)?;
 
-    let mut args = vec!["checkout".to_string(), "-b".to_string(), branch];
-    if let Some(start_point) = start_point.filter(|value| !value.trim().is_empty()) {
-        validate_commit_hash(&start_point)?;
+    let start_point = start_point.filter(|value| !value.trim().is_empty());
+    let is_remote_branch = start_point.as_ref().is_some_and(|value| {
+        let remote_reference = format!("refs/remotes/{value}");
+        run_git(
+            &path,
+            &["show-ref", "--verify", "--quiet", &remote_reference],
+        )
+        .is_ok()
+    });
+
+    let mut args = vec!["checkout".to_string()];
+    if is_remote_branch {
+        args.push("--track".to_string());
+    }
+    args.push("-b".to_string());
+    args.push(branch);
+
+    if let Some(start_point) = start_point {
+        validate_start_point(&path, &start_point)?;
         args.push(start_point);
     }
 
@@ -558,6 +574,29 @@ fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn validate_start_point(path: &str, start_point: &str) -> Result<(), String> {
+    if start_point.trim().is_empty() {
+        return Err("O ponto inicial da branch não pode ficar vazio.".to_string());
+    }
+
+    if start_point.len() >= 7
+        && start_point.len() <= 64
+        && start_point
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+    {
+        return validate_commit_hash(start_point);
+    }
+
+    let commit_reference = format!("{start_point}^{{commit}}");
+    run_git(
+        path,
+        &["rev-parse", "--verify", "--quiet", &commit_reference],
+    )
+    .map(|_| ())
+    .map_err(|_| format!("A referência '{start_point}' não aponta para um commit válido."))
 }
 
 fn validate_branch_name(path: &str, branch: &str) -> Result<(), String> {
