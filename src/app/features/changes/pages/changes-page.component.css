@@ -12,6 +12,12 @@
   gap: 1rem;
 }
 
+.page-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   color: #f97316;
@@ -75,6 +81,26 @@ h3 {
   font-size: 0.82rem;
 }
 
+.stash-header-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #7c4a1d;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  background: #332313;
+  color: #fed7aa;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.stash-header-button:hover:not(:disabled) {
+  border-color: #fb923c;
+  background: #4a2d14;
+}
+
 .refresh-button:hover:not(:disabled) {
   border-color: #4b5563;
   background: #263244;
@@ -123,11 +149,6 @@ h3 {
   padding: 1.15rem;
 }
 
-.stash-panel {
-  display: grid;
-  gap: 0.75rem;
-}
-
 .stash-form {
   display: grid;
   gap: 0.65rem;
@@ -166,8 +187,7 @@ h3 {
   box-shadow: 0 0 0 2px rgb(249 115 22 / 14%);
 }
 
-.stash-form-actions,
-.stash-actions {
+.stash-form-actions {
   display: flex;
   align-items: center;
   justify-content: end;
@@ -175,9 +195,7 @@ h3 {
 }
 
 .stash-cancel-button,
-.stash-save-button,
-.stash-apply-button,
-.stash-drop-button {
+.stash-save-button {
   border: 1px solid #374151;
   border-radius: 0.4rem;
   padding: 0.45rem 0.65rem;
@@ -189,7 +207,7 @@ h3 {
 }
 
 .stash-cancel-button,
-.stash-apply-button {
+.stash-save-button {
   background: transparent;
   color: #9ca3af;
 }
@@ -200,14 +218,7 @@ h3 {
   color: #fed7aa;
 }
 
-.stash-drop-button {
-  border-color: #7f1d1d;
-  background: #450a0a;
-  color: #fca5a5;
-}
-
-.stash-cancel-button:hover:not(:disabled),
-.stash-apply-button:hover:not(:disabled) {
+.stash-cancel-button:hover:not(:disabled) {
   background: #1f2937;
   color: #f9fafb;
   transform: translateY(-1px);
@@ -219,70 +230,10 @@ h3 {
   transform: translateY(-1px);
 }
 
-.stash-drop-button:hover:not(:disabled) {
-  border-color: #ef4444;
-  background: #7f1d1d;
-  color: #fee2e2;
-  transform: translateY(-1px);
-}
-
 .stash-cancel-button:disabled,
-.stash-save-button:disabled,
-.stash-apply-button:disabled,
-.stash-drop-button:disabled {
+.stash-save-button:disabled {
   cursor: wait;
   opacity: 0.55;
-}
-
-.stash-list {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.stash-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid #263244;
-  border-radius: 0.5rem;
-  padding: 0.65rem 0.7rem;
-  background: #111827;
-  transition: border-color 140ms ease, background 140ms ease;
-}
-
-.stash-row:hover {
-  border-color: #374151;
-  background: #1f2937;
-}
-
-.stash-info {
-  display: grid;
-  min-width: 0;
-  gap: 0.2rem;
-}
-
-.stash-info strong,
-.stash-info span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stash-info strong {
-  color: #fbbf24;
-  font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 0.75rem;
-}
-
-.stash-info span {
-  color: #9ca3af;
-  font-size: 0.74rem;
-}
-
-.empty-stashes {
-  color: #6b7280;
-  font-size: 0.78rem;
 }
 
 .loading-state,
@@ -395,6 +346,7 @@ h3 {
 
 .text-button:disabled,
 .refresh-button:disabled,
+.stash-header-button:disabled,
 .commit-button:disabled,
 .file-details-button:disabled,
 .file-action-button:disabled {

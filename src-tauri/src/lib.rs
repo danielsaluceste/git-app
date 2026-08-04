@@ -20,6 +20,8 @@ pub fn run() {
             commands::repository::stash_repository,
             commands::repository::apply_stash,
             commands::repository::drop_stash,
+            commands::repository::get_stash_files,
+            commands::repository::get_stash_file_diff,
             commands::repository::get_repository_commits,
             commands::repository::get_commit_files,
             commands::repository::get_commit_file_diff,

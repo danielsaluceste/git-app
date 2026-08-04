@@ -22,6 +22,13 @@ interface BranchDeletionRequest {
   type: BranchReferenceType;
 }
 
+interface StashContextMenu {
+  stashRef: string;
+  label: string;
+  x: number;
+  y: number;
+}
+
 const EMPTY_REFERENCES: RepositoryReferences = {
   localBranches: [],
   remoteBranches: [],
@@ -54,7 +61,9 @@ export class RepositorySidebarComponent implements OnInit {
   readonly newBranchName = signal("");
   readonly createBranchStartPoint = signal<string | undefined>(undefined);
   readonly contextMenu = signal<BranchContextMenu | undefined>(undefined);
+  readonly stashContextMenu = signal<StashContextMenu | undefined>(undefined);
   readonly pendingDeleteBranch = signal<BranchDeletionRequest | undefined>(undefined);
+  readonly pendingDeleteStash = signal<string | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingCreateBranch = signal<
     { name: string; startPoint?: string } | undefined
@@ -158,6 +167,7 @@ export class RepositorySidebarComponent implements OnInit {
       return;
     }
 
+    this.stashContextMenu.set(undefined);
     const menuWidth = 248;
     const menuHeight = 190;
     this.contextMenu.set({
@@ -170,6 +180,29 @@ export class RepositorySidebarComponent implements OnInit {
 
   closeBranchContextMenu(): void {
     this.contextMenu.set(undefined);
+  }
+
+  openStashContextMenu(event: MouseEvent, stash: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.isBranchActionRunning()) {
+      return;
+    }
+
+    this.contextMenu.set(undefined);
+    const menuWidth = 248;
+    const menuHeight = 118;
+    this.stashContextMenu.set({
+      stashRef: this.stashReference(stash),
+      label: this.stashLabel(stash),
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+    });
+  }
+
+  closeStashContextMenu(): void {
+    this.stashContextMenu.set(undefined);
   }
 
   bringContextBranchToLocal(): void {
@@ -225,6 +258,37 @@ export class RepositorySidebarComponent implements OnInit {
     }
   }
 
+  requestDeleteStash(): void {
+    const menu = this.stashContextMenu();
+    this.closeStashContextMenu();
+    if (menu) {
+      this.pendingDeleteStash.set(menu.stashRef);
+    }
+  }
+
+  cancelDeleteStash(): void {
+    this.pendingDeleteStash.set(undefined);
+  }
+
+  async confirmDeleteStash(): Promise<void> {
+    const stashRef = this.pendingDeleteStash();
+    this.pendingDeleteStash.set(undefined);
+    if (!stashRef) {
+      return;
+    }
+
+    this.isBranchActionRunning.set(true);
+    try {
+      await this.repositoryService.dropStash(this.repository.path, stashRef);
+      await this.refreshRepositoryData();
+      this.toastService.success(`O stash "${stashRef}" foi excluído.`, "Stash excluído");
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Exclusão de stash");
+    } finally {
+      this.isBranchActionRunning.set(false);
+    }
+  }
+
   createBranchFromContext(): void {
     const menu = this.contextMenu();
     this.closeBranchContextMenu();
@@ -237,11 +301,13 @@ export class RepositorySidebarComponent implements OnInit {
   @HostListener("document:click")
   handleDocumentClick(): void {
     this.closeBranchContextMenu();
+    this.closeStashContextMenu();
   }
 
   @HostListener("document:keydown.escape")
   handleEscape(): void {
     this.closeBranchContextMenu();
+    this.closeStashContextMenu();
   }
 
   cancelCreateBranch(): void {
@@ -349,6 +415,14 @@ export class RepositorySidebarComponent implements OnInit {
       .replace(/^(?:On|WIP on|index on)\s+/i, "");
 
     return branch ? `${message}: ${branch}` : message;
+  }
+
+  stashReference(stash: string): string {
+    return stash.split("|")[0] ?? stash;
+  }
+
+  openStash(stash: string): void {
+    void this.router.navigate(["/stashes"], { queryParams: { stash: this.stashReference(stash) } });
   }
 
   private getGitErrorMessage(error: unknown): string {

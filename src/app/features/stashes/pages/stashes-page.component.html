@@ -1,0 +1,102 @@
+<section class="page">
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Histórico temporário</p>
+        <h2>Stashes</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <button type="button" class="refresh-button" [disabled]="isLoading() || isApplying()" (click)="loadReferences()">
+        <span aria-hidden="true">↻</span>
+        Atualizar
+      </button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="panel state-panel">Lendo os stashes do Git...</div>
+    } @else {
+      <div class="stash-workspace">
+        <section class="panel stash-detail-panel">
+          @if (selectedStash(); as stashRef) {
+            <div class="detail-heading">
+              <div>
+                <div class="panel-title-row">
+                  <h3>{{ stashDescriptionByReference(stashRef) }}</h3>
+                  <span class="branch-badge">{{ stashBranchByReference(stashRef) }}</span>
+                </div>
+                <p>Arquivos salvos neste stash e alterações de cada arquivo.</p>
+              </div>
+              <div class="detail-actions">
+                <button type="button" class="apply-button" [disabled]="isApplying()" (click)="applyStash(stashRef)">
+                  Aplicar
+                </button>
+                <button type="button" class="delete-button" [disabled]="isApplying()" (click)="requestDeleteStash()">
+                  Excluir stash
+                </button>
+                <button type="button" class="text-button" (click)="closeDetails()">Fechar</button>
+              </div>
+            </div>
+
+            @if (stashLoading()) {
+              <div class="state-panel">Lendo os arquivos do stash...</div>
+            } @else if (stashFiles().length > 0) {
+              <div class="detail-layout">
+                <div class="file-list-panel">
+                  <div class="list-heading">ARQUIVOS <span>{{ stashFiles().length }}</span></div>
+                  @for (file of stashFiles(); track file.path) {
+                    <button
+                      type="button"
+                      class="stash-file-button"
+                      [class.selected]="selectedFile()?.path === file.path"
+                      (click)="openStashFile(file)"
+                    >
+                      <span class="file-status" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-untracked]="file.status === 'untracked'" [class.status-renamed]="file.status === 'renamed'">{{ statusCode(file.status) }}</span>
+                      <span class="file-path" [title]="file.path">{{ file.path }}</span>
+                    </button>
+                  }
+                </div>
+
+                <div class="diff-panel">
+                  @if (fileDiffLoading()) {
+                    <div class="state-panel">Lendo as alterações do arquivo...</div>
+                  } @else if (fileDiffError()) {
+                    <div class="state-panel error-state">{{ fileDiffError() }}</div>
+                  } @else if (fileDiff().trim()) {
+                    <pre class="diff-code">@for (line of diffLines(); track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}</pre>
+                  } @else {
+                    <div class="state-panel">Não há um diff textual disponível para este arquivo.</div>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="state-panel">Nenhum arquivo foi encontrado neste stash.</div>
+            }
+          } @else {
+            <div class="empty-detail">
+              <span class="empty-detail-icon" aria-hidden="true">⌁</span>
+              <strong>Selecione um stash</strong>
+              <p>Os arquivos e o diff aparecerão aqui.</p>
+            </div>
+          }
+        </section>
+      </div>
+    }
+  } @else {
+    <p class="eyebrow">Histórico temporário</p>
+    <h2>Stashes</h2>
+    <div class="panel state-panel">Nenhum repositório selecionado.</div>
+  }
+
+  @if (pendingDeleteStash(); as stash) {
+    <app-confirm-dialog
+      title="Excluir stash?"
+      [message]="'O stash ' + stash + ' será removido permanentemente deste repositório. Deseja continuar?'"
+      [messageHighlight]="stash"
+      confirmLabel="Excluir stash"
+      cancelLabel="Manter stash"
+      [destructive]="true"
+      (confirmed)="confirmDeleteStash()"
+      (cancelled)="cancelDeleteStash()"
+    />
+  }
+</section>

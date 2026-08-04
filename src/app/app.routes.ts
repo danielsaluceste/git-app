@@ -16,6 +16,13 @@ export const routes: Routes = [
       { path: "repositories", component: RepositoriesPageComponent },
       { path: "integrations", component: IntegrationsPageComponent },
       { path: "changes", component: ChangesPageComponent },
+      {
+        path: "stashes",
+        loadComponent: () =>
+          import("./features/stashes/pages/stashes-page.component").then(
+            (module) => module.StashesPageComponent,
+          ),
+      },
       { path: "overview", component: HistoryPageComponent },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },

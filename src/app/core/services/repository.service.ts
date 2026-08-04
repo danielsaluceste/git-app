@@ -71,6 +71,14 @@ export class RepositoryService {
     await invoke("drop_stash", { path, stashRef });
   }
 
+  async getStashFiles(path: string, stashRef: string): Promise<CommitFile[]> {
+    return invoke<CommitFile[]>("get_stash_files", { path, stashRef });
+  }
+
+  async getStashFileDiff(path: string, stashRef: string, filePath: string): Promise<string> {
+    return invoke<string>("get_stash_file_diff", { path, stashRef, filePath });
+  }
+
   async getCommits(path: string): Promise<Commit[]> {
     return invoke<Commit[]>("get_repository_commits", { path });
   }

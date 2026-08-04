@@ -343,6 +343,117 @@ pub fn drop_stash(path: String, stash_ref: String) -> Result<(), String> {
     .map(|_| ())
 }
 
+#[tauri::command]
+pub fn get_stash_files(path: String, stash_ref: String) -> Result<Vec<CommitFile>, String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+
+    let base_commit = format!("{stash_ref}^1");
+    let tracked_output = run_git(
+        &path,
+        &[
+            "diff",
+            "--name-status",
+            "--find-renames",
+            &base_commit,
+            &stash_ref,
+        ],
+    )?;
+    let untracked_parent = format!("{stash_ref}^3");
+    let untracked_output = run_git(
+        &path,
+        &[
+            "diff",
+            "--name-status",
+            "--find-renames",
+            &untracked_parent,
+            &stash_ref,
+        ],
+    )
+    .unwrap_or_default();
+    let output = format!("{tracked_output}\n{untracked_output}");
+
+    let files = output
+        .lines()
+        .filter_map(|line| {
+            let (status_code, path) = line.split_once('\t')?;
+            if path.trim().is_empty() {
+                return None;
+            }
+
+            let status = match status_code.trim().chars().next()? {
+                'A' => "added",
+                'D' => "deleted",
+                'R' => "renamed",
+                '?' => "untracked",
+                _ => "modified",
+            };
+
+            Some(CommitFile {
+                path: path.trim().to_string(),
+                status: status.to_string(),
+            })
+        })
+        .collect();
+
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn get_stash_file_diff(
+    path: String,
+    stash_ref: String,
+    file_path: String,
+) -> Result<String, String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+
+    if file_path.trim().is_empty() {
+        return Err("O arquivo selecionado não é válido.".to_string());
+    }
+
+    let stash_commit = stash_ref.clone();
+    let base_commit = format!("{stash_ref}^1");
+    let tracked_args = vec![
+        "diff".to_string(),
+        "--patch".to_string(),
+        "--no-ext-diff".to_string(),
+        "--no-textconv".to_string(),
+        "--unified=3".to_string(),
+        base_commit,
+        stash_commit.clone(),
+        "--".to_string(),
+        file_path.clone(),
+    ];
+    let mut diff = run_git_strings(&path, &tracked_args)?;
+
+    if diff.trim().is_empty() {
+        let untracked_parent = format!("{stash_ref}^3");
+        let untracked_args = vec![
+            "diff".to_string(),
+            "--patch".to_string(),
+            "--no-ext-diff".to_string(),
+            "--no-textconv".to_string(),
+            "--unified=3".to_string(),
+            untracked_parent,
+            stash_commit,
+            "--".to_string(),
+            file_path,
+        ];
+        diff = run_git_strings(&path, &untracked_args).unwrap_or_default();
+    }
+
+    let max_chars = 30_000;
+
+    if diff.chars().count() <= max_chars {
+        return Ok(diff);
+    }
+
+    let mut truncated: String = diff.chars().take(max_chars).collect();
+    truncated.push_str("\n\n[Diff truncado para visualização]");
+    Ok(truncated)
+}
+
 fn summarize_changed_areas(changed_files: &str) -> String {
     const GENERIC_DIRECTORIES: [&str; 18] = [
         "src",

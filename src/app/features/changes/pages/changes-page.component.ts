@@ -1,8 +1,8 @@
-import { Component, computed, inject, OnInit, signal } from "@angular/core";
+import { Component, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
-import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
+import { RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { SettingsService } from "../../../core/services/settings.service";
@@ -25,14 +25,11 @@ export class ChangesPageComponent implements OnInit {
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
-  readonly references = signal<RepositoryReferences | undefined>(undefined);
-  readonly stashes = computed(() => this.references()?.stashes ?? []);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly commitMessage = signal("");
   readonly showStashForm = signal(false);
   readonly stashMessage = signal("");
-  readonly pendingDropStash = signal<string | undefined>(undefined);
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiSupported = this.commitAiService.isSupported;
   readonly aiLoadingModel = this.commitAiService.isLoadingModel;
@@ -56,18 +53,12 @@ export class ChangesPageComponent implements OnInit {
     if (!repository) {
       this.isLoading.set(false);
       this.status.set(undefined);
-      this.references.set(undefined);
       return false;
     }
 
     this.isLoading.set(true);
     try {
-      const [status, references] = await Promise.all([
-        this.repositoryService.getStatus(repository.path),
-        this.repositoryService.getReferences(repository.path),
-      ]);
-      this.status.set(status);
-      this.references.set(references);
+      this.status.set(await this.repositoryService.getStatus(repository.path));
       return true;
     } catch {
       this.toastService.error("Não foi possível carregar o status deste repositório.", "Status do Git");
@@ -239,60 +230,9 @@ export class ChangesPageComponent implements OnInit {
       "Alterações guardadas no stash.",
     );
     if (saved) {
+      await this.repositoryService.getReferences(repository.path);
       this.closeStashForm();
     }
-  }
-
-  stashReference(stash: string): string {
-    return stash.split("|", 1)[0] ?? stash;
-  }
-
-  stashDescription(stash: string): string {
-    const description = this.rawStashDescription(stash);
-    const separatorIndex = description.indexOf(":");
-    const message = separatorIndex >= 0 ? description.slice(separatorIndex + 1).trim() : description;
-    return message || "Sem mensagem";
-  }
-
-  stashBranch(stash: string): string {
-    const description = this.rawStashDescription(stash);
-    const separatorIndex = description.indexOf(":");
-    return separatorIndex >= 0 ? description.slice(0, separatorIndex).trim() : "Branch desconhecida";
-  }
-
-  async applyStash(stash: string): Promise<void> {
-    await this.runGitAction(
-      (repository) => this.repositoryService.applyStash(repository.path, stash),
-      "Stash aplicado às alterações atuais.",
-    );
-  }
-
-  requestDropStash(stash: string): void {
-    if (!this.isSaving()) {
-      this.pendingDropStash.set(stash);
-    }
-  }
-
-  cancelDropStash(): void {
-    this.pendingDropStash.set(undefined);
-  }
-
-  async confirmDropStash(): Promise<void> {
-    const stash = this.pendingDropStash();
-    this.pendingDropStash.set(undefined);
-    if (!stash) {
-      return;
-    }
-
-    await this.runGitAction(
-      (repository) => this.repositoryService.dropStash(repository.path, stash),
-      "Stash excluído.",
-    );
-  }
-
-  private rawStashDescription(stash: string): string {
-    const [, ...parts] = stash.split("|");
-    return parts.join("|").trim();
   }
 
   statusLabel(status: GitFileStatus): string {

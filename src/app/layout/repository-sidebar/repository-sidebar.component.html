@@ -173,7 +173,10 @@
       <div class="reference-items">
         @if (references().tags.length > 0) {
           @for (tag of references().tags; track tag) {
-            <button type="button" class="reference-item">
+            <button
+              type="button"
+              class="reference-item"
+            >
               <span class="tag-dot" aria-hidden="true">◆</span>
               <span>{{ tag }}</span>
             </button>
@@ -198,7 +201,13 @@
       <div class="reference-items">
         @if (references().stashes.length > 0) {
           @for (stash of references().stashes; track stash) {
-            <button type="button" class="reference-item">
+            <button
+              type="button"
+              class="reference-item"
+              [title]="'Abrir detalhes do stash ' + stashLabel(stash)"
+              (click)="openStash(stash)"
+              (contextmenu)="openStashContextMenu($event, stash)"
+            >
               <span class="stash-dot" aria-hidden="true">◆</span>
               <span [title]="stash">{{ stashLabel(stash) }}</span>
             </button>
@@ -264,6 +273,28 @@
   </div>
 }
 
+@if (stashContextMenu(); as menu) {
+  <div
+    class="branch-context-menu stash-context-menu"
+    role="menu"
+    [style.left.px]="menu.x"
+    [style.top.px]="menu.y"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="branch-context-heading">
+      <span class="branch-context-kicker">STASH</span>
+      <strong [title]="menu.label">{{ menu.label }}</strong>
+    </div>
+    <button type="button" role="menuitem" (click)="requestDeleteStash()">
+      <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
+      <span>
+        <strong>Excluir stash</strong>
+        <small>Remover este stash do repositório</small>
+      </span>
+    </button>
+  </div>
+}
+
 @if (pendingCheckoutBranch(); as branch) {
   <app-confirm-dialog
     title="Trocar de branch?"
@@ -296,5 +327,18 @@
     [destructive]="true"
     (confirmed)="confirmDeleteBranch()"
     (cancelled)="cancelDeleteBranch()"
+  />
+}
+
+@if (pendingDeleteStash(); as stash) {
+  <app-confirm-dialog
+    title="Excluir stash?"
+    [message]="'O stash ' + stash + ' será removido permanentemente deste repositório. Deseja continuar?'"
+    [messageHighlight]="stash"
+    confirmLabel="Excluir stash"
+    cancelLabel="Manter stash"
+    [destructive]="true"
+    (confirmed)="confirmDeleteStash()"
+    (cancelled)="cancelDeleteStash()"
   />
 }
