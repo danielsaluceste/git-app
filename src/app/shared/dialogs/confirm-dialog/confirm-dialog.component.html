@@ -11,7 +11,13 @@
 
     <div class="dialog-content">
       <h2 id="dialog-title">{{ title }}</h2>
-      <p>{{ message }}</p>
+      @if (messageHighlight && message.includes(messageHighlight)) {
+        <p>
+          {{ messageBeforeHighlight }}<strong class="dialog-highlight">{{ messageHighlight }}</strong>{{ messageAfterHighlight }}
+        </p>
+      } @else {
+        <p>{{ message }}</p>
+      }
     </div>
 
     <div class="dialog-actions">

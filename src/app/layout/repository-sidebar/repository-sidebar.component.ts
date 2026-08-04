@@ -17,6 +17,11 @@ interface BranchContextMenu {
   y: number;
 }
 
+interface BranchDeletionRequest {
+  branch: string;
+  type: BranchReferenceType;
+}
+
 const EMPTY_REFERENCES: RepositoryReferences = {
   localBranches: [],
   remoteBranches: [],
@@ -49,6 +54,7 @@ export class RepositorySidebarComponent implements OnInit {
   readonly newBranchName = signal("");
   readonly createBranchStartPoint = signal<string | undefined>(undefined);
   readonly contextMenu = signal<BranchContextMenu | undefined>(undefined);
+  readonly pendingDeleteBranch = signal<BranchDeletionRequest | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingCreateBranch = signal<
     { name: string; startPoint?: string } | undefined
@@ -153,7 +159,7 @@ export class RepositorySidebarComponent implements OnInit {
     }
 
     const menuWidth = 248;
-    const menuHeight = type === "remote" ? 132 : 92;
+    const menuHeight = 190;
     this.contextMenu.set({
       branch,
       type,
@@ -172,6 +178,50 @@ export class RepositorySidebarComponent implements OnInit {
 
     if (menu?.type === "remote") {
       this.requestCreateRemoteBranch(menu.branch);
+    }
+  }
+
+  requestDeleteBranch(branch: string, type: BranchReferenceType): void {
+    this.closeBranchContextMenu();
+
+    if (type === "local" && branch === this.references().currentBranch) {
+      return;
+    }
+
+    this.pendingDeleteBranch.set({ branch, type });
+  }
+
+  cancelDeleteBranch(): void {
+    this.pendingDeleteBranch.set(undefined);
+  }
+
+  async confirmDeleteBranch(): Promise<void> {
+    const request = this.pendingDeleteBranch();
+    this.pendingDeleteBranch.set(undefined);
+
+    if (!request) {
+      return;
+    }
+
+    this.isBranchActionRunning.set(true);
+    try {
+      if (request.type === "remote") {
+        await this.repositoryService.deleteRemoteBranch(this.repository.path, request.branch);
+      } else {
+        await this.repositoryService.deleteBranch(this.repository.path, request.branch);
+      }
+
+      await this.refreshRepositoryData();
+      this.toastService.success(
+        request.type === "remote"
+          ? `A branch remota "${request.branch}" foi excluída.`
+          : `A branch local "${request.branch}" foi excluída.`,
+        "Branch excluída",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Exclusão de branch");
+    } finally {
+      this.isBranchActionRunning.set(false);
     }
   }
 

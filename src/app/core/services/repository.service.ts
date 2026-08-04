@@ -99,6 +99,10 @@ export class RepositoryService {
     await invoke("delete_branch", { path, branch });
   }
 
+  async deleteRemoteBranch(path: string, remoteBranch: string): Promise<void> {
+    await invoke("delete_remote_branch", { path, remoteBranch });
+  }
+
   add(repository: Repository): boolean {
     const alreadyAdded = this.repositoriesState().some(
       (item) =>

@@ -10,6 +10,7 @@ export class ConfirmDialogComponent implements AfterViewInit {
 
   @Input() title = "Confirmar ação";
   @Input() message = "Tem certeza que deseja continuar?";
+  @Input() messageHighlight = "";
   @Input() confirmLabel = "Confirmar";
   @Input() cancelLabel = "Cancelar";
   @Input() destructive = false;
@@ -19,6 +20,26 @@ export class ConfirmDialogComponent implements AfterViewInit {
 
   ngAfterViewInit(): void {
     this.dialog.nativeElement.showModal();
+  }
+
+  get messageBeforeHighlight(): string {
+    if (!this.messageHighlight) {
+      return "";
+    }
+
+    const highlightIndex = this.message.indexOf(this.messageHighlight);
+    return highlightIndex >= 0 ? this.message.slice(0, highlightIndex) : this.message;
+  }
+
+  get messageAfterHighlight(): string {
+    if (!this.messageHighlight) {
+      return "";
+    }
+
+    const highlightIndex = this.message.indexOf(this.messageHighlight);
+    return highlightIndex >= 0
+      ? this.message.slice(highlightIndex + this.messageHighlight.length)
+      : "";
   }
 
   onCancel(event: Event): void {

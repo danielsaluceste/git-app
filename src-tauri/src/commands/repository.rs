@@ -578,6 +578,30 @@ pub fn delete_branch(path: String, branch: String) -> Result<(), String> {
     run_git_with_timeout(&path, &["branch", "--delete", &branch], GIT_COMMAND_TIMEOUT).map(|_| ())
 }
 
+#[tauri::command]
+pub fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let (remote, branch) = remote_branch.split_once('/').ok_or_else(|| {
+        "A referência remota selecionada não possui um remoto válido.".to_string()
+    })?;
+
+    if remote.trim().is_empty() || branch.trim().is_empty() {
+        return Err("A referência remota selecionada não é válida.".to_string());
+    }
+
+    validate_branch_name(&path, branch)?;
+    run_git(&path, &["remote", "get-url", remote])
+        .map_err(|_| format!("O remoto '{remote}' não está configurado neste repositório."))?;
+
+    run_git_with_timeout(
+        &path,
+        &["push", remote, "--delete", branch],
+        GIT_NETWORK_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
 fn ensure_repository(path: &str) -> Result<(), String> {
     let repository_path = PathBuf::from(path);
 

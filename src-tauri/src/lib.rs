@@ -27,6 +27,7 @@ pub fn run() {
             commands::repository::create_branch,
             commands::repository::rename_branch,
             commands::repository::delete_branch,
+            commands::repository::delete_remote_branch,
             commands::system::ping
         ])
         .run(tauri::generate_context!())

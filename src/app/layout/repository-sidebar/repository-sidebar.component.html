@@ -239,6 +239,28 @@
         <small>Usar esta referência como ponto inicial</small>
       </span>
     </button>
+    @if (menu.type === "local") {
+      <button
+        type="button"
+        role="menuitem"
+        [disabled]="menu.branch === references().currentBranch"
+        (click)="requestDeleteBranch(menu.branch, 'local')"
+      >
+        <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
+        <span>
+          <strong>Excluir branch local</strong>
+          <small>{{ menu.branch === references().currentBranch ? "A branch atual não pode ser excluída" : "Remover apenas deste computador" }}</small>
+        </span>
+      </button>
+    } @else {
+      <button type="button" role="menuitem" (click)="requestDeleteBranch(menu.branch, 'remote')">
+        <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
+        <span>
+          <strong>Excluir branch remota</strong>
+          <small>Remover esta branch da origem</small>
+        </span>
+      </button>
+    }
   </div>
 }
 
@@ -261,5 +283,18 @@
     cancelLabel="Cancelar"
     (confirmed)="confirmCreateBranch()"
     (cancelled)="cancelCreateBranch()"
+  />
+}
+
+@if (pendingDeleteBranch(); as request) {
+  <app-confirm-dialog
+    [title]="request.type === 'remote' ? 'Excluir branch remota?' : 'Excluir branch local?'"
+    [message]="request.type === 'remote' ? 'A branch ' + request.branch + ' será excluída da origem. A branch local não será apagada. Deseja continuar?' : 'A branch local ' + request.branch + ' será removida deste computador. Os commits não serão apagados imediatamente. Deseja continuar?'"
+    [messageHighlight]="request.branch"
+    confirmLabel="Excluir branch"
+    cancelLabel="Manter branch"
+    [destructive]="true"
+    (confirmed)="confirmDeleteBranch()"
+    (cancelled)="cancelDeleteBranch()"
   />
 }

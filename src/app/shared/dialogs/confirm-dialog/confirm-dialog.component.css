@@ -84,6 +84,18 @@ p {
   line-height: 1.5;
 }
 
+.dialog-highlight {
+  display: inline-block;
+  margin: 0 0.15rem;
+  border: 1px solid #ef4444;
+  border-radius: 0.35rem;
+  padding: 0.08rem 0.35rem;
+  background: #450a0a;
+  color: #fecaca;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: end;

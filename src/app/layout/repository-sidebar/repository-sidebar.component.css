@@ -315,7 +315,7 @@ a.active,
 .sidebar-cancel-button:disabled,
 .sidebar-confirm-button:disabled,
 .branch-context-menu button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.5;
 }
 
@@ -503,6 +503,12 @@ a.active,
   border-color: #9a5b18;
   background: #4a2d14;
   color: #fdba74;
+}
+
+.branch-context-menu .delete-context-icon {
+  border-color: #991b1b;
+  background: #450a0a;
+  color: #fca5a5;
 }
 
 .branch-context-menu button > span:last-child {
