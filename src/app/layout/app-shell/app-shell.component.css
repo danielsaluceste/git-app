@@ -5,7 +5,9 @@
 
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   background: #111827;
   color: #e5e7eb;
 }
@@ -13,12 +15,39 @@
 .workspace {
   display: flex;
   flex: 1;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
   flex-direction: column;
 }
 
 .content {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 2rem;
+  scrollbar-color: #374151 transparent;
+  scrollbar-width: thin;
+}
+
+.content::-webkit-scrollbar {
+  width: 0.7rem;
+}
+
+.content::-webkit-scrollbar-track {
+  margin: 0.45rem 0;
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  border: 0.2rem solid transparent;
+  border-radius: 999px;
+  background: #374151;
+  background-clip: content-box;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+  background-clip: content-box;
 }

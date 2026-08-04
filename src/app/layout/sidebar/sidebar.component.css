@@ -5,7 +5,9 @@
 
 .sidebar {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   box-sizing: border-box;
   flex-direction: column;
   gap: 2rem;

@@ -1,8 +1,96 @@
 <section class="page">
-  <p class="eyebrow">Application</p>
-  <h2>Configurações</h2>
-  <div class="panel">
-    <h3>Configurações do aplicativo</h3>
-    <p>Preferências de aparência, Git, terminal e integrações serão adicionadas aqui.</p>
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Aplicativo</p>
+      <h2>Configurações</h2>
+      <p class="description">Controle os recursos inteligentes do Git App.</p>
+    </div>
   </div>
+
+  <section class="settings-card" aria-labelledby="ai-settings-title">
+    <div class="settings-card-heading">
+      <div class="ai-icon" aria-hidden="true">✦</div>
+      <div>
+        <h3 id="ai-settings-title">Inteligência artificial</h3>
+        <p>Ative ou desative os recursos de IA do aplicativo.</p>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-copy">
+        <strong>Habilitar recursos de IA</strong>
+        <span>Usar IA para sugerir títulos de commit e ajudar a resolver conflitos.</span>
+      </div>
+
+      <label class="switch" aria-label="Habilitar recursos de IA">
+        <input
+          type="checkbox"
+          [checked]="aiEnabled()"
+          (change)="toggleAi($event)"
+        />
+        <span class="slider" aria-hidden="true"></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="notification-settings-title">
+    <div class="settings-card-heading">
+      <div class="settings-icon" aria-hidden="true">♢</div>
+      <div>
+        <h3 id="notification-settings-title">Notificações</h3>
+        <p>Escolha como o Git App deve avisar sobre as operações.</p>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-copy">
+        <strong>Avisar quando um comando Git terminar</strong>
+        <span>Mostra um aviso quando uma operação for concluída.</span>
+      </div>
+
+      <label class="switch" aria-label="Avisar quando um comando Git terminar">
+        <input
+          type="checkbox"
+          [checked]="gitCommandNotifications()"
+          (change)="toggleGitCommandNotifications($event)"
+        />
+        <span class="slider" aria-hidden="true"></span>
+      </label>
+    </div>
+
+    <div class="setting-row setting-row-bordered">
+      <div class="setting-copy">
+        <strong>Ativar sons</strong>
+        <span>Reproduz um som junto com as notificações.</span>
+      </div>
+
+      <label class="switch" aria-label="Ativar sons">
+        <input
+          type="checkbox"
+          [checked]="notificationSounds()"
+          (change)="toggleNotificationSounds($event)"
+        />
+        <span class="slider" aria-hidden="true"></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="language-settings-title">
+    <div class="settings-card-heading">
+      <div class="settings-icon" aria-hidden="true">文</div>
+      <div>
+        <h3 id="language-settings-title">Idioma</h3>
+        <p>Mais idiomas poderão ser adicionados futuramente.</p>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-copy">
+        <strong>Idioma da aplicação</strong>
+        <span>Por enquanto, o Git App está disponível somente em português.</span>
+      </div>
+
+      <span class="language-value">Português (Brasil)</span>
+    </div>
+  </section>
 </section>

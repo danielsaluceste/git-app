@@ -73,6 +73,7 @@
   background: transparent;
   color: #9ca3af;
   cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
 
 .window-control:hover {

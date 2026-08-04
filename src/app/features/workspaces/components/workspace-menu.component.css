@@ -18,11 +18,13 @@
   cursor: pointer;
   font: inherit;
   text-align: center;
+  transition: background 160ms ease, transform 160ms ease;
 }
 
 .workspace-switcher:hover {
   border-radius: 0.45rem;
   background: #1f2937;
+  transform: translateY(-1px);
 }
 
 .workspace-label {
@@ -72,6 +74,20 @@
   border-radius: 0.75rem;
   background: #111827;
   box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 35%);
+  transform-origin: top center;
+  animation: workspace-menu-enter 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes workspace-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-0.35rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 .menu-heading {
@@ -135,11 +151,16 @@
   align-items: center;
   gap: 0.2rem;
   border-radius: 0.5rem;
+  transition: background 140ms ease, transform 140ms ease;
 }
 
 .workspace-item.active,
 .workspace-item:hover {
   background: #1f2937;
+}
+
+.workspace-item:hover {
+  transform: translateX(0.1rem);
 }
 
 .workspace-select {
@@ -194,10 +215,12 @@
   margin-right: 0.3rem;
   padding: 0;
   border-radius: 0.35rem;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .item-action:hover {
   background: #374151;
+  transform: scale(1.04);
 }
 
 .item-action.danger:hover {
@@ -310,10 +333,12 @@ input:focus {
   background: #1f2937;
   color: #f9fafb;
   text-align: left;
+  transition: background 140ms ease, transform 140ms ease;
 }
 
 .new-workspace-button:hover {
   background: #374151;
+  transform: translateY(-1px);
 }
 
 .form-error {

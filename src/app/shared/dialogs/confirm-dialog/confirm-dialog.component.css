@@ -12,6 +12,7 @@
   padding: 1.25rem;
   background: rgb(3 7 18 / 68%);
   backdrop-filter: blur(0.2rem);
+  animation: dialog-backdrop-enter 160ms ease-out both;
 }
 
 .dialog {
@@ -24,6 +25,29 @@
   background: #172033;
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
   color: #e5e7eb;
+  animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes dialog-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .dialog-icon {
@@ -77,6 +101,7 @@ button {
   cursor: pointer;
   font: inherit;
   font-weight: 700;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .cancel-button {
@@ -86,6 +111,7 @@ button {
 
 .cancel-button:hover {
   background: #4b5563;
+  transform: translateY(-1px);
 }
 
 .confirm-button {
@@ -95,6 +121,7 @@ button {
 
 .confirm-button:hover {
   background: #38bdf8;
+  transform: translateY(-1px);
 }
 
 .confirm-button.danger {
@@ -104,4 +131,5 @@ button {
 
 .confirm-button.danger:hover {
   background: #ef4444;
+  transform: translateY(-1px);
 }

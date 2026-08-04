@@ -1,17 +1,49 @@
 <section class="page">
   <div class="page-heading">
     <div>
-      <p class="eyebrow">Workspace</p>
+      <p class="eyebrow">Workspace · {{ activeWorkspace().name }}</p>
       <h2>Repositórios</h2>
-      <p class="description">Abra um repositório local para começar a trabalhar.</p>
+      <p class="description">Adicione repositórios Git que já estão no seu computador.</p>
     </div>
 
-    <button type="button" class="primary-button">Abrir repositório</button>
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="isLoading"
+      (click)="addLocalRepository()"
+    >
+      {{ isLoading ? "Verificando..." : "Adicionar repositório local" }}
+    </button>
   </div>
 
-  <div class="empty-state">
-    <div class="empty-icon">▣</div>
-    <h3>Nenhum repositório aberto</h3>
-    <p>Os repositórios conectados aparecerão aqui.</p>
-  </div>
+  @if (errorMessage) {
+    <div class="error-message" role="alert">
+      <span aria-hidden="true">!</span>
+      {{ errorMessage }}
+    </div>
+  }
+
+  @if (repositories().length > 0) {
+    <div class="repository-list">
+      @for (repository of repositories(); track trackRepository($index, repository)) {
+        <article class="repository-card">
+          <div class="repository-icon" aria-hidden="true">▣</div>
+          <div class="repository-info">
+            <h3>{{ repository.name }}</h3>
+            <p>{{ repository.path }}</p>
+          </div>
+          <span class="local-badge">Local</span>
+        </article>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon">▣</div>
+      <h3>Nenhum repositório neste workspace</h3>
+      <p>Adicione uma pasta Git local para começar a trabalhar.</p>
+      <button type="button" class="secondary-button" [disabled]="isLoading" (click)="addLocalRepository()">
+        Adicionar repositório local
+      </button>
+    </div>
+  }
 </section>
