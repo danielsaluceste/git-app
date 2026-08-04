@@ -1,0 +1,62 @@
+:host {
+  display: block;
+  flex: 0 0 240px;
+}
+
+.sidebar {
+  display: flex;
+  min-height: 100vh;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid #263244;
+  background: #0b1220;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  color: #f9fafb;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: #f97316;
+  color: #111827;
+}
+
+nav,
+.sidebar-footer {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  color: #9ca3af;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+a:hover,
+a.active {
+  background: #1f2937;
+  color: #f9fafb;
+}

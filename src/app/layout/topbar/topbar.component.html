@@ -1,0 +1,46 @@
+<header class="topbar" (mousedown)="startDragging($event)">
+  <div class="window-title" data-tauri-drag-region>
+    <span class="brand-mark" data-tauri-drag-region>G</span>
+    <span class="brand-name" data-tauri-drag-region>Git App</span>
+  </div>
+
+  <div class="workspace-context" data-tauri-drag-region>
+    <p class="eyebrow" data-tauri-drag-region>Workspace</p>
+    <h1 data-tauri-drag-region>Git App</h1>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="window-controls" aria-label="Controles da janela">
+      <button
+        type="button"
+        class="window-control minimize"
+        aria-label="Minimizar"
+        title="Minimizar"
+        (mousedown)="$event.stopPropagation()"
+        (click)="minimize()"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      <button
+        type="button"
+        class="window-control maximize"
+        aria-label="Maximizar ou restaurar"
+        title="Maximizar ou restaurar"
+        (mousedown)="$event.stopPropagation()"
+        (click)="toggleMaximize()"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      <button
+        type="button"
+        class="window-control close"
+        aria-label="Fechar"
+        title="Fechar"
+        (mousedown)="$event.stopPropagation()"
+        (click)="close()"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,1 @@
+//! Configurações persistentes do aplicativo.

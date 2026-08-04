@@ -1,0 +1,9 @@
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 2rem;
+  border-top: 1px solid #263244;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}

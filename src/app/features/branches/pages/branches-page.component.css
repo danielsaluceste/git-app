@@ -1,0 +1,37 @@
+.page {
+  display: grid;
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #f97316;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2,
+h3 {
+  margin: 0;
+  color: #f9fafb;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+.panel {
+  border: 1px solid #263244;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  background: #172033;
+}
+
+.panel p {
+  margin-bottom: 0;
+  color: #9ca3af;
+}

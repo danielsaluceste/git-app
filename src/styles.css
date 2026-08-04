@@ -1,0 +1,26 @@
+/* Tipografia local e consistente para o aplicativo desktop. */
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #111827;
+  color: #e5e7eb;
+  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+* {
+  box-sizing: border-box;
+}
