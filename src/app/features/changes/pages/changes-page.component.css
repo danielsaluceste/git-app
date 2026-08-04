@@ -190,6 +190,34 @@ h3 {
   border-bottom: 1px solid #263244;
 }
 
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-count {
+  display: inline-grid;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  box-sizing: border-box;
+  place-items: center;
+  border: 1px solid #7c4a1d;
+  border-radius: 999px;
+  padding: 0 0.35rem;
+  background: #332313;
+  color: #fdba74;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.file-count.staged-count {
+  border-color: #286047;
+  background: #123b2e;
+  color: #6ee7b7;
+}
+
 .text-button {
   flex: 0 0 auto;
   padding: 0.2rem 0;
@@ -223,7 +251,8 @@ h3 {
   min-width: 0;
   border: 0;
   border-bottom: 1px solid #202b3d;
-  padding: 0.7rem 0.15rem;
+  border-radius: 0.45rem;
+  padding: 0.7rem 0.55rem;
   background: transparent;
   color: #e5e7eb;
   cursor: pointer;

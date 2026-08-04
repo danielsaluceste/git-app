@@ -1,0 +1,47 @@
+<dialog
+  #dialog
+  class="diff-dialog"
+  (cancel)="onCancel($event)"
+  (click)="onBackdropClick($event)"
+  aria-labelledby="file-diff-title"
+>
+  <header class="diff-header">
+    <div class="diff-heading">
+      <span class="diff-icon" aria-hidden="true">&lt;/&gt;</span>
+      <div>
+        <p class="eyebrow">Visualização do arquivo</p>
+        <h2 id="file-diff-title" [title]="file.path">{{ file.path }}</h2>
+      </div>
+    </div>
+    <button type="button" class="close-button" aria-label="Fechar visualização" (click)="closed.emit()">×</button>
+  </header>
+
+  <div class="diff-meta">
+    <span class="status-badge" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-untracked]="file.status === 'untracked'" [class.status-renamed]="file.status === 'renamed'">
+      {{ statusLabel(file.status) }}
+    </span>
+    <span>{{ contextLabel || (file.isStaged ? "Preparado para commit" : "Ainda não preparado") }}</span>
+  </div>
+
+  <div class="diff-content">
+    @if (loading) {
+      <div class="diff-state">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        Lendo as alterações do arquivo...
+      </div>
+    } @else if (error) {
+      <div class="diff-state error-state">{{ error }}</div>
+    } @else if (diff.trim()) {
+      <pre class="diff-code">@for (line of diffLines(); track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}</pre>
+    } @else {
+      <div class="diff-state">
+        Não há um diff textual disponível para este arquivo. Arquivos não rastreados aparecem aqui depois de serem adicionados ao stage.
+      </div>
+    }
+  </div>
+
+  <footer class="diff-footer">
+    <span>O clique no nome apenas visualiza o arquivo.</span>
+    <button type="button" class="close-action" (click)="closed.emit()">Fechar</button>
+  </footer>
+</dialog>

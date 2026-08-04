@@ -16,13 +16,6 @@
     </button>
   </div>
 
-  @if (errorMessage) {
-    <div class="error-message" role="alert">
-      <span aria-hidden="true">!</span>
-      {{ errorMessage }}
-    </div>
-  }
-
   @if (repositories().length > 0) {
     <div class="repository-list">
       @for (repository of repositories(); track trackRepository($index, repository)) {

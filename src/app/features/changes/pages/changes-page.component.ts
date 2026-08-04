@@ -5,11 +5,13 @@ import { RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { SettingsService } from "../../../core/services/settings.service";
+import { ToastService } from "../../../core/services/toast.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
 
 @Component({
   selector: "app-changes-page",
-  imports: [ConfirmDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FormsModule],
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
@@ -17,13 +19,12 @@ export class ChangesPageComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly settingsService = inject(SettingsService);
   private readonly commitAiService = inject(CommitAiService);
+  private readonly toastService = inject(ToastService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
-  readonly errorMessage = signal("");
-  readonly successMessage = signal("");
   readonly commitMessage = signal("");
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiSupported = this.commitAiService.isSupported;
@@ -33,6 +34,10 @@ export class ChangesPageComponent implements OnInit {
   readonly aiProgressText = this.commitAiService.progressText;
   readonly showAiDownloadConfirm = signal(false);
   readonly aiModelSize = this.commitAiService.modelSizeLabel;
+  readonly selectedFile = signal<GitFile | undefined>(undefined);
+  readonly fileDiff = signal("");
+  readonly fileDiffLoading = signal(false);
+  readonly fileDiffError = signal("");
   private pendingAiDiff = "";
 
   ngOnInit(): void {
@@ -47,13 +52,11 @@ export class ChangesPageComponent implements OnInit {
     }
 
     this.isLoading.set(true);
-    this.errorMessage.set("");
-
     try {
       this.status.set(await this.repositoryService.getStatus(repository.path));
       return true;
     } catch {
-      this.errorMessage.set("Não foi possível carregar o status deste repositório.");
+      this.toastService.error("Não foi possível carregar o status deste repositório.", "Status do Git");
       return false;
     } finally {
       this.isLoading.set(false);
@@ -66,6 +69,34 @@ export class ChangesPageComponent implements OnInit {
 
   unstagedFiles(files: GitFile[]): GitFile[] {
     return files.filter((file) => !file.isStaged);
+  }
+
+  async openFileDiff(file: GitFile): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.selectedFile.set(file);
+    this.fileDiff.set("");
+    this.fileDiffError.set("");
+    this.fileDiffLoading.set(true);
+
+    try {
+      const diff = await this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged);
+      this.fileDiff.set(diff);
+    } catch (error: unknown) {
+      this.fileDiffError.set(this.getGitErrorMessage(error));
+    } finally {
+      this.fileDiffLoading.set(false);
+    }
+  }
+
+  closeFileDiff(): void {
+    this.selectedFile.set(undefined);
+    this.fileDiff.set("");
+    this.fileDiffError.set("");
+    this.fileDiffLoading.set(false);
   }
 
   async stageFile(file: GitFile): Promise<void> {
@@ -114,11 +145,11 @@ export class ChangesPageComponent implements OnInit {
       return;
     }
     if (!message) {
-      this.errorMessage.set("Digite uma mensagem para o commit.");
+      this.toastService.warning("Digite uma mensagem para o commit.");
       return;
     }
     if (this.stagedFiles(files).length === 0) {
-      this.errorMessage.set("Prepare pelo menos um arquivo antes de criar o commit.");
+      this.toastService.warning("Prepare pelo menos um arquivo antes de criar o commit.");
       return;
     }
 
@@ -134,17 +165,14 @@ export class ChangesPageComponent implements OnInit {
   async generateCommitWithAi(files: GitFile[]): Promise<void> {
     const repository = this.activeRepository();
     if (!repository || this.stagedFiles(files).length === 0) {
-      this.errorMessage.set("Prepare pelo menos um arquivo antes de usar a IA.");
+      this.toastService.warning("Prepare pelo menos um arquivo antes de usar a IA.");
       return;
     }
-
-    this.errorMessage.set("");
-    this.successMessage.set("");
 
     try {
       const diff = await this.repositoryService.getStagedDiff(repository.path);
       if (!diff.trim()) {
-        this.errorMessage.set("Não há conteúdo staged suficiente para a IA analisar.");
+        this.toastService.warning("Não há conteúdo staged suficiente para a IA analisar.");
         return;
       }
 
@@ -156,7 +184,7 @@ export class ChangesPageComponent implements OnInit {
 
       await this.generateFromDiff(diff);
     } catch (error: unknown) {
-      this.errorMessage.set(this.getAiErrorMessage(error));
+      this.toastService.error(this.getAiErrorMessage(error), "IA local");
     }
   }
 
@@ -208,9 +236,9 @@ export class ChangesPageComponent implements OnInit {
     try {
       const generatedMessage = await this.commitAiService.generateCommitMessage(diff);
       this.commitMessage.set(generatedMessage);
-      this.successMessage.set("Mensagem sugerida pela IA local. Revise antes de criar o commit.");
+      this.toastService.success("Mensagem sugerida pela IA local. Revise antes de criar o commit.", "IA local");
     } catch (error: unknown) {
-      this.errorMessage.set(this.getAiErrorMessage(error));
+      this.toastService.error(this.getAiErrorMessage(error), "IA local");
     }
   }
 
@@ -233,6 +261,18 @@ export class ChangesPageComponent implements OnInit {
     return "Não foi possível gerar a mensagem com a IA local.";
   }
 
+  private getGitErrorMessage(error: unknown): string {
+    if (typeof error === "string" && error.trim()) {
+      return error.trim();
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return "Não foi possível carregar as alterações deste arquivo.";
+  }
+
   private async runGitAction(
     action: (repository: NonNullable<ReturnType<typeof this.activeRepository>>) => Promise<void>,
     successMessage: string,
@@ -243,16 +283,17 @@ export class ChangesPageComponent implements OnInit {
     }
 
     this.isSaving.set(true);
-    this.errorMessage.set("");
-    this.successMessage.set("");
 
     try {
       await action(repository);
       await this.loadStatus();
-      this.successMessage.set(successMessage);
+      this.toastService.success(successMessage);
       return true;
     } catch (error: unknown) {
-      this.errorMessage.set(typeof error === "string" ? error : "Não foi possível executar a ação do Git.");
+      this.toastService.error(
+        typeof error === "string" ? error : "Não foi possível executar a ação do Git.",
+        "Operação do Git",
+      );
       return false;
     } finally {
       this.isSaving.set(false);

@@ -27,5 +27,7 @@ export interface RepositoryStatus {
   stagedCount: number;
   unstagedCount: number;
   untrackedCount: number;
+  aheadCount: number;
+  behindCount: number;
   files: GitFile[];
 }

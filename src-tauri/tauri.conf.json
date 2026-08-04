@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "git-app",
-        "width": 1100,
-        "height": 700,
+        "width": 1600,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 600,
+        "center": true,
         "decorations": false,
         "resizable": true
       }

@@ -1,5 +1,6 @@
 use crate::models::repository::{
-    LocalRepositoryInfo, RepositoryCommit, RepositoryFile, RepositoryReferences, RepositoryStatus,
+    CommitFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile, RepositoryReferences,
+    RepositoryStatus,
 };
 use std::io::Read;
 use std::path::PathBuf;
@@ -9,6 +10,7 @@ use std::time::{Duration, Instant};
 
 const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(45);
+const GIT_NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[tauri::command]
 pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
@@ -81,6 +83,7 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
     }
 
     let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok();
+    let (behind_count, ahead_count) = get_ahead_behind(&path);
     let status_output = run_git(&path, &["status", "--porcelain=v1", "--untracked-files=no"])?;
     let mut files = Vec::new();
     let mut staged_count = 0;
@@ -154,6 +157,8 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
         staged_count,
         unstaged_count,
         untracked_count,
+        ahead_count,
+        behind_count,
         files,
     })
 }
@@ -253,6 +258,42 @@ pub fn get_repository_staged_diff(path: String) -> Result<String, String> {
 
     let mut truncated: String = context.chars().take(max_chars).collect();
     truncated.push_str("\n\n[Diff truncado para gerar a mensagem do commit]");
+    Ok(truncated)
+}
+
+#[tauri::command]
+pub fn get_repository_file_diff(
+    path: String,
+    file_path: String,
+    staged: bool,
+) -> Result<String, String> {
+    ensure_repository(&path)?;
+
+    if file_path.trim().is_empty() {
+        return Err("O arquivo selecionado não é válido.".to_string());
+    }
+
+    let mut args = vec!["diff".to_string()];
+    if staged {
+        args.push("--cached".to_string());
+    }
+    args.extend([
+        "--no-ext-diff".to_string(),
+        "--no-textconv".to_string(),
+        "--unified=3".to_string(),
+        "--".to_string(),
+        file_path,
+    ]);
+
+    let diff = run_git_with_timeout(&path, &args, GIT_DIFF_TIMEOUT)?;
+    let max_chars = 30_000;
+
+    if diff.chars().count() <= max_chars {
+        return Ok(diff);
+    }
+
+    let mut truncated: String = diff.chars().take(max_chars).collect();
+    truncated.push_str("\n\n[Diff truncado para visualização]");
     Ok(truncated)
 }
 
@@ -356,6 +397,146 @@ pub fn get_repository_commits(path: String) -> Result<Vec<RepositoryCommit>, Str
     Ok(commits)
 }
 
+#[tauri::command]
+pub fn get_commit_files(path: String, commit_hash: String) -> Result<Vec<CommitFile>, String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&commit_hash)?;
+
+    let output = run_git_with_timeout(
+        &path,
+        &[
+            "show",
+            "--format=",
+            "--name-status",
+            "--find-renames",
+            &commit_hash,
+        ],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+
+    let files = output
+        .lines()
+        .filter_map(|line| {
+            let (status_code, path) = line.split_once('\t')?;
+            if path.trim().is_empty() {
+                return None;
+            }
+
+            let status = match status_code.chars().next()? {
+                'A' => "added",
+                'D' => "deleted",
+                'R' => "renamed",
+                _ => "modified",
+            };
+
+            Some(CommitFile {
+                path: path.trim().to_string(),
+                status: status.to_string(),
+            })
+        })
+        .collect();
+
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn get_commit_file_diff(
+    path: String,
+    commit_hash: String,
+    file_path: String,
+) -> Result<String, String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&commit_hash)?;
+
+    if file_path.trim().is_empty() {
+        return Err("O arquivo selecionado não é válido.".to_string());
+    }
+
+    let args = vec![
+        "show".to_string(),
+        "--format=".to_string(),
+        "--no-ext-diff".to_string(),
+        "--no-textconv".to_string(),
+        "--unified=3".to_string(),
+        commit_hash,
+        "--".to_string(),
+        file_path,
+    ];
+    let diff = run_git_with_timeout(&path, &args, GIT_DIFF_TIMEOUT)?;
+    let max_chars = 30_000;
+
+    if diff.chars().count() <= max_chars {
+        return Ok(diff);
+    }
+
+    let mut truncated: String = diff.chars().take(max_chars).collect();
+    truncated.push_str("\n\n[Diff truncado para visualização]");
+    Ok(truncated)
+}
+
+#[tauri::command]
+pub fn fetch_repository(path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    run_git_with_timeout(&path, &["fetch", "--all", "--prune"], GIT_NETWORK_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn pull_repository(path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    run_git_with_timeout(&path, &["pull", "--ff-only"], GIT_NETWORK_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn push_repository(path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    run_git_with_timeout(&path, &["push"], GIT_NETWORK_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &branch)?;
+    run_git_with_timeout(&path, &["checkout", &branch], GIT_COMMAND_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn create_branch(
+    path: String,
+    branch: String,
+    start_point: Option<String>,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &branch)?;
+
+    let mut args = vec!["checkout".to_string(), "-b".to_string(), branch];
+    if let Some(start_point) = start_point.filter(|value| !value.trim().is_empty()) {
+        validate_commit_hash(&start_point)?;
+        args.push(start_point);
+    }
+
+    run_git_with_timeout(&path, &args, GIT_COMMAND_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn rename_branch(path: String, current_name: String, new_name: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &current_name)?;
+    validate_branch_name(&path, &new_name)?;
+    run_git_with_timeout(
+        &path,
+        &["branch", "--move", &current_name, &new_name],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn delete_branch(path: String, branch: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &branch)?;
+    run_git_with_timeout(&path, &["branch", "--delete", &branch], GIT_COMMAND_TIMEOUT).map(|_| ())
+}
+
 fn ensure_repository(path: &str) -> Result<(), String> {
     let repository_path = PathBuf::from(path);
 
@@ -364,6 +545,47 @@ fn ensure_repository(path: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
+    let valid_length = (7..=64).contains(&commit_hash.len());
+    let valid_characters = commit_hash
+        .chars()
+        .all(|character| character.is_ascii_hexdigit());
+
+    if !valid_length || !valid_characters {
+        return Err("O commit selecionado não é válido.".to_string());
+    }
+
+    Ok(())
+}
+
+fn validate_branch_name(path: &str, branch: &str) -> Result<(), String> {
+    if branch.trim().is_empty() {
+        return Err("Informe um nome para a branch.".to_string());
+    }
+
+    run_git_with_timeout(
+        path,
+        &["check-ref-format", "--branch", branch],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+    .map_err(|error| format!("Nome de branch inválido: {error}"))
+}
+
+fn get_ahead_behind(path: &str) -> (usize, usize) {
+    let output = run_git_with_timeout(
+        path,
+        &["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .unwrap_or_default();
+    let mut counts = output
+        .split_whitespace()
+        .filter_map(|value| value.parse::<usize>().ok());
+
+    (counts.next().unwrap_or(0), counts.next().unwrap_or(0))
 }
 
 fn run_git(path: &str, args: &[&str]) -> Result<String, String> {

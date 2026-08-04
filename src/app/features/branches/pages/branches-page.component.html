@@ -6,16 +6,66 @@
         <h2>Branches</h2>
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
-      <button type="button" class="refresh-button" [disabled]="isLoading()" (click)="loadReferences()">
-        <span aria-hidden="true">↻</span>
-        Atualizar
-      </button>
+      <div class="heading-actions">
+        <button type="button" class="create-button" [disabled]="isSaving()" (click)="openCreateBranch()">
+          <span aria-hidden="true">+</span>
+          Nova branch
+        </button>
+        <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="loadReferences()">
+          <span aria-hidden="true">↻</span>
+          Atualizar
+        </button>
+      </div>
     </header>
+
+    @if (showBranchForm()) {
+      <section class="panel branch-form-panel">
+        <div class="form-heading">
+          <div>
+            <p class="eyebrow">{{ branchFormMode() === "create" ? "Nova referência" : "Editar referência" }}</p>
+            <h3>{{ branchFormMode() === "create" ? "Criar branch" : "Renomear branch" }}</h3>
+          </div>
+          <button type="button" class="icon-button" aria-label="Fechar formulário" (click)="closeBranchForm()">×</button>
+        </div>
+
+        @if (createFromCommit(); as commitHash) {
+          <div class="origin-chip">
+            <span aria-hidden="true">●</span>
+            Criando a partir do commit <code>{{ commitHash.slice(0, 10) }}</code>
+          </div>
+        }
+
+        <label class="field-label" for="branch-name">Nome da branch</label>
+        <input
+          id="branch-name"
+          class="branch-input"
+          [ngModel]="branchName()"
+          (ngModelChange)="branchName.set($event)"
+          [disabled]="isSaving()"
+          placeholder="ex.: feature/minha-alteracao"
+          autocomplete="off"
+          (keyup.enter)="submitBranch()"
+        />
+        @if (branchFormError()) {
+          <p class="form-error">{{ branchFormError() }}</p>
+        }
+        <div class="form-actions">
+          <button type="button" class="cancel-button" [disabled]="isSaving()" (click)="closeBranchForm()">Cancelar</button>
+          <button type="button" class="confirm-button" [disabled]="isSaving() || !branchName().trim()" (click)="submitBranch()">
+            @if (isSaving()) {
+              Salvando...
+            } @else if (branchFormMode() === "create") {
+              Criar e ativar
+            } @else {
+              Renomear branch
+            }
+          </button>
+        </div>
+      </section>
+    }
 
     @if (isLoading()) {
       <div class="panel loading-state">Lendo as referências do Git...</div>
-    } @else if (errorMessage()) {
-      <div class="panel error-state">{{ errorMessage() }}</div>
     } @else if (references(); as repositoryReferences) {
       <div class="branch-summary">
         <span class="branch-icon" aria-hidden="true">⑂</span>
@@ -23,23 +73,35 @@
           <span>Branch atual</span>
           <strong>{{ repositoryReferences.currentBranch || "HEAD destacado" }}</strong>
         </div>
+        @if (repositoryStatus()?.isDirty) {
+          <span class="dirty-badge">Alterações não commitadas</span>
+        }
       </div>
 
       <div class="reference-grid">
-        <section class="panel reference-panel">
+        <section class="panel reference-panel local-panel">
           <div class="panel-heading">
-            <h3>Branches locais</h3>
+            <div>
+              <h3>Branches locais</h3>
+              <p>Selecione, renomeie ou exclua uma branch</p>
+            </div>
             <span>{{ repositoryReferences.localBranches.length }}</span>
           </div>
           @if (repositoryReferences.localBranches.length > 0) {
             <div class="reference-list">
               @for (branch of repositoryReferences.localBranches; track branch) {
                 <div class="reference-item" [class.current]="branch === repositoryReferences.currentBranch">
-                  <span class="branch-dot" aria-hidden="true"></span>
-                  <span>{{ branch }}</span>
-                  @if (branch === repositoryReferences.currentBranch) {
-                    <small>atual</small>
-                  }
+                  <button type="button" class="branch-main" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestCheckout(branch)" [title]="branch === repositoryReferences.currentBranch ? 'Branch atual' : 'Trocar para ' + branch">
+                    <span class="branch-dot" aria-hidden="true"></span>
+                    <span class="branch-name">{{ branch }}</span>
+                    @if (branch === repositoryReferences.currentBranch) {
+                      <small>atual</small>
+                    }
+                  </button>
+                  <div class="branch-actions">
+                    <button type="button" class="branch-action" [disabled]="isSaving()" (click)="openRenameBranch(branch, $event)" [attr.aria-label]="'Renomear ' + branch" title="Renomear branch">✎</button>
+                    <button type="button" class="branch-action delete-action" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestDeleteBranch(branch, $event)" [attr.aria-label]="'Excluir ' + branch" title="Excluir branch">×</button>
+                  </div>
                 </div>
               }
             </div>
@@ -50,15 +112,18 @@
 
         <section class="panel reference-panel">
           <div class="panel-heading">
-            <h3>Branches remotas</h3>
+            <div>
+              <h3>Branches remotas</h3>
+              <p>Referências disponíveis no último fetch</p>
+            </div>
             <span>{{ repositoryReferences.remoteBranches.length }}</span>
           </div>
           @if (repositoryReferences.remoteBranches.length > 0) {
             <div class="reference-list">
               @for (branch of repositoryReferences.remoteBranches; track branch) {
-                <div class="reference-item">
+                <div class="reference-item remote-reference">
                   <span class="remote-dot" aria-hidden="true"></span>
-                  <span>{{ branch }}</span>
+                  <span class="branch-name">{{ branch }}</span>
                 </div>
               }
             </div>
@@ -77,7 +142,7 @@
               @for (tag of repositoryReferences.tags; track tag) {
                 <div class="reference-item">
                   <span class="tag-dot" aria-hidden="true">◆</span>
-                  <span>{{ tag }}</span>
+                  <span class="branch-name">{{ tag }}</span>
                 </div>
               }
             </div>
@@ -96,7 +161,7 @@
               @for (stash of repositoryReferences.stashes; track stash) {
                 <div class="reference-item">
                   <span class="stash-dot" aria-hidden="true">◆</span>
-                  <span>{{ stash }}</span>
+                  <span class="branch-name">{{ stash }}</span>
                 </div>
               }
             </div>
@@ -111,7 +176,41 @@
     <h2>Branches</h2>
     <div class="panel empty-state">
       <h3>Nenhum repositório selecionado</h3>
-      <p>Abra um repositório para visualizar suas branches e referências.</p>
+      <p>Abra um repositório para visualizar e gerenciar suas branches.</p>
     </div>
+  }
+
+  @if (pendingCreateBranch(); as request) {
+    <app-confirm-dialog
+      title="Criar e ativar branch?"
+      [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + '. Deseja continuar?'"
+      confirmLabel="Criar e ativar"
+      cancelLabel="Cancelar"
+      (confirmed)="confirmCreateBranch()"
+      (cancelled)="cancelCreateBranch()"
+    />
+  }
+
+  @if (pendingCheckoutBranch(); as branch) {
+    <app-confirm-dialog
+      title="Trocar de branch?"
+      [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao trocar para a branch ' + branch + '. Deseja continuar?'"
+      confirmLabel="Trocar branch"
+      cancelLabel="Continuar aqui"
+      (confirmed)="confirmCheckout()"
+      (cancelled)="cancelCheckout()"
+    />
+  }
+
+  @if (pendingDeleteBranch(); as branch) {
+    <app-confirm-dialog
+      title="Excluir branch?"
+      [message]="'Excluir a branch ' + branch + '? O Git só permitirá a exclusão se ela já tiver sido integrada. Os commits não serão apagados.'"
+      confirmLabel="Excluir branch"
+      cancelLabel="Cancelar"
+      [destructive]="true"
+      (confirmed)="confirmDeleteBranch()"
+      (cancelled)="cancelDeleteBranch()"
+    />
   }
 </section>

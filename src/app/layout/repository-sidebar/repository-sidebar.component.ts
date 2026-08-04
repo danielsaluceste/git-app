@@ -1,10 +1,18 @@
-import { Component, inject, Input, OnInit, signal } from "@angular/core";
+import { Component, computed, inject, Input, OnInit, signal } from "@angular/core";
 import { Router, RouterLink, RouterLinkActive } from "@angular/router";
 import { LayoutService } from "../../core/services/layout.service";
 import { Repository, RepositoryReferences } from "../../core/models/repository.model";
 import { RepositoryService } from "../../core/services/repository.service";
+import { ToastService } from "../../core/services/toast.service";
 
 type ReferenceSection = "local" | "remote" | "tags" | "stashes";
+
+const EMPTY_REFERENCES: RepositoryReferences = {
+  localBranches: [],
+  remoteBranches: [],
+  tags: [],
+  stashes: [],
+};
 
 @Component({
   selector: "app-repository-sidebar",
@@ -18,15 +26,13 @@ export class RepositorySidebarComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly layoutService = inject(LayoutService);
+  private readonly toastService = inject(ToastService);
 
-  readonly references = signal<RepositoryReferences>({
-    localBranches: [],
-    remoteBranches: [],
-    tags: [],
-    stashes: [],
-  });
+  readonly references = computed(() => this.repositoryService.repositoryReferences() ?? EMPTY_REFERENCES);
   readonly isLoadingReferences = signal(true);
-  readonly referenceError = signal("");
+  readonly changesCount = computed(() => this.repositoryService.repositoryStatus()?.files.length ?? 0);
+  readonly aheadCount = computed(() => this.repositoryService.repositoryStatus()?.aheadCount ?? 0);
+  readonly behindCount = computed(() => this.repositoryService.repositoryStatus()?.behindCount ?? 0);
   expandedSections: Record<ReferenceSection, boolean> = {
     local: true,
     remote: false,
@@ -36,16 +42,34 @@ export class RepositorySidebarComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      this.references.set(await this.repositoryService.getReferences(this.repository.path));
+      await this.repositoryService.getReferences(this.repository.path);
     } catch {
-      this.referenceError.set("Não foi possível carregar as referências do Git.");
+      this.toastService.error("Não foi possível carregar as referências do Git.", "Referências do Git");
     } finally {
       this.isLoadingReferences.set(false);
+    }
+
+    try {
+      await this.repositoryService.getStatus(this.repository.path);
+    } catch {
+      // A página de alterações exibirá o erro detalhado se o status falhar.
     }
   }
 
   toggleSection(section: ReferenceSection): void {
     this.expandedSections[section] = !this.expandedSections[section];
+  }
+
+  syncPendingLabel(): string {
+    const pending: string[] = [];
+    if (this.aheadCount() > 0) {
+      pending.push(`${this.aheadCount()} para enviar`);
+    }
+    if (this.behindCount() > 0) {
+      pending.push(`${this.behindCount()} para baixar`);
+    }
+
+    return pending.join(" · ");
   }
 
   closeRepository(): void {

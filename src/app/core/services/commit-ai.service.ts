@@ -1,21 +1,23 @@
-import { Injectable, signal } from "@angular/core";
+import { computed, inject, Injectable, signal } from "@angular/core";
 import type { InitProgressReport, MLCEngineInterface } from "@mlc-ai/web-llm";
-
-const MODEL_ID = "Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC";
-const MODEL_SIZE_LABEL = "aproximadamente 300 MB";
+import { AiModelId, getAiModelOption } from "../models/ai-model.model";
+import { SettingsService } from "./settings.service";
 
 @Injectable({ providedIn: "root" })
 export class CommitAiService {
+  private readonly settingsService = inject(SettingsService);
   private readonly workerModel = signal<MLCEngineInterface | undefined>(undefined);
   private enginePromise: Promise<MLCEngineInterface> | undefined;
   private worker: Worker | undefined;
+  private loadedModelId: AiModelId | undefined;
 
   readonly isSupported = signal(this.detectWebGpuSupport());
   readonly isLoadingModel = signal(false);
   readonly isGenerating = signal(false);
   readonly progress = signal(0);
   readonly progressText = signal("Preparando a IA local...");
-  readonly modelSizeLabel = MODEL_SIZE_LABEL;
+  readonly selectedModel = computed(() => getAiModelOption(this.settingsService.aiModel()));
+  readonly modelSizeLabel = computed(() => this.selectedModel().sizeLabel);
 
   async isModelCached(): Promise<boolean> {
     if (!this.isSupported()) {
@@ -23,7 +25,7 @@ export class CommitAiService {
     }
 
     const webllm = await import("@mlc-ai/web-llm");
-    return webllm.hasModelInCache(MODEL_ID, webllm.prebuiltAppConfig);
+    return webllm.hasModelInCache(this.settingsService.aiModel(), webllm.prebuiltAppConfig);
   }
 
   async generateCommitMessage(diff: string): Promise<string> {
@@ -63,19 +65,26 @@ export class CommitAiService {
     if (!this.isSupported()) {
       throw new Error("A aceleração WebGPU não está disponível neste ambiente.");
     }
-    if (this.workerModel()) {
+    const selectedModelId = this.settingsService.aiModel();
+
+    if (this.workerModel() && this.loadedModelId === selectedModelId) {
       return this.workerModel() as MLCEngineInterface;
     }
-    if (this.enginePromise) {
+    if (this.enginePromise && this.loadedModelId === selectedModelId) {
       return this.enginePromise;
     }
 
-    this.enginePromise = this.initializeModel();
+    if (this.workerModel() || this.enginePromise) {
+      this.resetEngine();
+    }
+
+    this.loadedModelId = selectedModelId;
+    this.enginePromise = this.initializeModel(selectedModelId);
 
     return this.enginePromise;
   }
 
-  private async initializeModel(): Promise<MLCEngineInterface> {
+  private async initializeModel(modelId: AiModelId): Promise<MLCEngineInterface> {
     this.isLoadingModel.set(true);
     this.progress.set(0);
     this.progressText.set("Baixando e preparando o modelo local...");
@@ -85,7 +94,7 @@ export class CommitAiService {
 
     try {
       const webllm = await import("@mlc-ai/web-llm");
-      const engine = await webllm.CreateWebWorkerMLCEngine(this.worker, MODEL_ID, {
+      const engine = await webllm.CreateWebWorkerMLCEngine(this.worker, modelId, {
         appConfig: webllm.prebuiltAppConfig,
         initProgressCallback: (report: InitProgressReport) => this.updateProgress(report),
       });
@@ -97,10 +106,19 @@ export class CommitAiService {
       this.worker?.terminate();
       this.worker = undefined;
       this.enginePromise = undefined;
+      this.loadedModelId = undefined;
       throw error;
     } finally {
       this.isLoadingModel.set(false);
     }
+  }
+
+  private resetEngine(): void {
+    this.worker?.terminate();
+    this.worker = undefined;
+    this.workerModel.set(undefined);
+    this.enginePromise = undefined;
+    this.loadedModelId = undefined;
   }
 
   private updateProgress(report: InitProgressReport): void {

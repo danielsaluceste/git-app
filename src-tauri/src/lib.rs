@@ -16,7 +16,17 @@ pub fn run() {
             commands::repository::unstage_repository_files,
             commands::repository::commit_repository,
             commands::repository::get_repository_staged_diff,
+            commands::repository::get_repository_file_diff,
             commands::repository::get_repository_commits,
+            commands::repository::get_commit_files,
+            commands::repository::get_commit_file_diff,
+            commands::repository::fetch_repository,
+            commands::repository::pull_repository,
+            commands::repository::push_repository,
+            commands::repository::checkout_branch,
+            commands::repository::create_branch,
+            commands::repository::rename_branch,
+            commands::repository::delete_branch,
             commands::system::ping
         ])
         .run(tauri::generate_context!())

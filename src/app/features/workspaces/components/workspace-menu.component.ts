@@ -1,6 +1,7 @@
 import { Component, inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Workspace } from "../../../core/models/workspace.model";
+import { ToastService } from "../../../core/services/toast.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 
@@ -12,6 +13,7 @@ import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/c
 })
 export class WorkspaceMenuComponent {
   private readonly workspaceService = inject(WorkspaceService);
+  private readonly toastService = inject(ToastService);
   readonly workspaces = this.workspaceService.workspaces;
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
 
@@ -74,6 +76,10 @@ export class WorkspaceMenuComponent {
       return;
     }
 
+    this.toastService.success(
+      this.editingId ? "Workspace atualizado com sucesso." : "Workspace criado com sucesso.",
+      this.editingId ? "Workspace atualizado" : "Workspace criado",
+    );
     this.resetForm();
   }
 
@@ -92,6 +98,7 @@ export class WorkspaceMenuComponent {
     }
 
     this.workspaceService.remove(this.workspaceToDelete.id);
+    this.toastService.success("Workspace excluído. Os repositórios foram preservados.", "Workspace excluído");
     this.workspaceToDelete = null;
     this.isOpen = false;
     this.resetForm();

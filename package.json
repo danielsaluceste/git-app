@@ -6,7 +6,11 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:desktop": "node scripts/build-release.mjs",
+    "build:windows": "node scripts/build-release.mjs windows",
+    "build:linux": "node scripts/build-release.mjs linux",
+    "build:mac": "node scripts/build-release.mjs macos"
   },
   "private": true,
   "dependencies": {

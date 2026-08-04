@@ -1,0 +1,23 @@
+<div class="toast-container" aria-live="polite" aria-atomic="false">
+  @for (toast of toasts(); track toast.id) {
+    <article
+      class="toast"
+      [class.toast-success]="toast.kind === 'success'"
+      [class.toast-error]="toast.kind === 'error'"
+      [class.toast-warning]="toast.kind === 'warning'"
+      [class.toast-info]="toast.kind === 'info'"
+      [attr.role]="toast.kind === 'error' ? 'alert' : 'status'"
+      [style.--toast-duration]="toast.duration + 'ms'"
+    >
+      <span class="toast-icon" aria-hidden="true">{{ icon(toast) }}</span>
+      <div class="toast-copy">
+        <strong>{{ toast.title }}</strong>
+        <p>{{ toast.message }}</p>
+      </div>
+      <button type="button" class="toast-close" aria-label="Fechar aviso" (click)="dismiss(toast.id)">
+        ×
+      </button>
+      <span class="toast-progress" aria-hidden="true"></span>
+    </article>
+  }
+</div>

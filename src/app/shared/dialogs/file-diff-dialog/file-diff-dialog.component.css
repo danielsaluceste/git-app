@@ -1,0 +1,285 @@
+:host {
+  display: contents;
+}
+
+.diff-dialog {
+  display: grid;
+  width: min(calc(100vw - 2.5rem), 72rem);
+  height: min(calc(100vh - 2.5rem), 46rem);
+  box-sizing: border-box;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid #374151;
+  border-radius: 0.9rem;
+  padding: 1.25rem;
+  background: #172033;
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
+  color: #e5e7eb;
+  animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.diff-dialog::backdrop {
+  background: rgb(3 7 18 / 68%);
+  backdrop-filter: blur(0.2rem);
+  animation: dialog-backdrop-enter 160ms ease-out both;
+}
+
+.diff-header,
+.diff-heading,
+.diff-meta,
+.diff-footer {
+  display: flex;
+  align-items: center;
+}
+
+.diff-header {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.diff-heading {
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.diff-heading > div {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.3rem;
+  color: #f97316;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2 {
+  max-width: 58rem;
+  margin: 0;
+  overflow: hidden;
+  color: #f9fafb;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff-icon {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #7c4a1d;
+  border-radius: 0.7rem;
+  background: #332313;
+  color: #fdba74;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.close-button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.close-button:hover {
+  border-color: #4b5563;
+  background: #263244;
+  color: #f9fafb;
+}
+
+.diff-meta {
+  gap: 0.65rem;
+  border-bottom: 1px solid #263244;
+  padding-bottom: 0.85rem;
+  color: #9ca3af;
+  font-size: 0.78rem;
+}
+
+.status-badge {
+  border: 1px solid #4b5563;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  background: #263244;
+  color: #d1d5db;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.status-added {
+  border-color: #286047;
+  background: #123b2e;
+  color: #6ee7b7;
+}
+
+.status-deleted {
+  border-color: #991b1b;
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.status-untracked {
+  border-color: #9a5b18;
+  background: #4a2d14;
+  color: #fdba74;
+}
+
+.status-renamed {
+  border-color: #155e75;
+  background: #164e63;
+  color: #67e8f9;
+}
+
+.diff-content {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #263244;
+  border-radius: 0.6rem;
+  background: #0d1422;
+}
+
+.diff-code {
+  min-width: max-content;
+  margin: 0;
+  padding: 0.65rem 0;
+  color: #d1d5db;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.diff-line {
+  display: block;
+  min-height: 1.6em;
+  padding: 0 1rem;
+}
+
+.diff-added {
+  background: rgb(22 101 52 / 28%);
+  color: #86efac;
+}
+
+.diff-removed {
+  background: rgb(127 29 29 / 28%);
+  color: #fca5a5;
+}
+
+.diff-hunk {
+  background: rgb(88 28 135 / 25%);
+  color: #d8b4fe;
+}
+
+.diff-file-header {
+  background: rgb(30 64 175 / 18%);
+  color: #93c5fd;
+}
+
+.diff-context {
+  color: #cbd5e1;
+}
+
+.diff-state {
+  display: grid;
+  min-height: 100%;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.error-state {
+  color: #fecaca;
+}
+
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  margin-bottom: 0.7rem;
+  border: 2px solid #7c4a1d;
+  border-top-color: #fb923c;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.diff-footer {
+  justify-content: space-between;
+  gap: 1rem;
+  color: #6b7280;
+  font-size: 0.72rem;
+}
+
+.close-action {
+  border: 0;
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.9rem;
+  background: #374151;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.close-action:hover {
+  background: #4b5563;
+}
+
+@keyframes dialog-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .diff-dialog {
+    width: calc(100vw - 1rem);
+    height: calc(100vh - 1rem);
+    padding: 1rem;
+  }
+
+  .diff-footer {
+    align-items: start;
+    flex-direction: column;
+  }
+}

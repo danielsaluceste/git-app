@@ -45,7 +45,10 @@
         <section class="panel files-panel">
           <div class="panel-heading">
             <div>
-              <h3>Não preparados</h3>
+              <div class="panel-title-row">
+                <h3>Não preparados</h3>
+                <span class="file-count">{{ unstagedFiles(repositoryStatus.files).length }}</span>
+              </div>
               <p>Alterações no working tree</p>
             </div>
             <button
@@ -83,7 +86,10 @@
         <section class="panel files-panel staged-panel">
           <div class="panel-heading">
             <div>
-              <h3>Preparados</h3>
+              <div class="panel-title-row">
+                <h3>Preparados</h3>
+                <span class="file-count staged-count">{{ stagedFiles(repositoryStatus.files).length }}</span>
+              </div>
               <p>Arquivos incluídos no próximo commit</p>
             </div>
             <button

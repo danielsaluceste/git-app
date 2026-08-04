@@ -22,13 +22,26 @@
   </div>
 
   <nav aria-label="Navegação do repositório">
+    <a routerLink="/overview" routerLinkActive="active">
+      <span aria-hidden="true">◉</span>
+      <span>Visão geral</span>
+      @if (aheadCount() > 0 || behindCount() > 0) {
+        <span class="sync-badge" [title]="syncPendingLabel()">
+          @if (aheadCount() > 0) {
+            <span>↑{{ aheadCount() }}</span>
+          }
+          @if (behindCount() > 0) {
+            <span>↓{{ behindCount() }}</span>
+          }
+        </span>
+      }
+    </a>
     <a routerLink="/changes" routerLinkActive="active">
       <span aria-hidden="true">◐</span>
-      Alterações
-    </a>
-    <a routerLink="/history" routerLinkActive="active">
-      <span aria-hidden="true">◴</span>
-      Histórico
+      <span>Alterações</span>
+      @if (changesCount() > 0) {
+        <span class="changes-badge" [attr.aria-label]="changesCount() + ' arquivos alterados'">{{ changesCount() }}</span>
+      }
     </a>
     <a routerLink="/branches" routerLinkActive="active">
       <span aria-hidden="true">⑂</span>
@@ -41,10 +54,6 @@
 
     @if (isLoadingReferences()) {
       <div class="reference-status">Carregando referências...</div>
-    }
-
-    @if (referenceError()) {
-      <div class="reference-error">{{ referenceError() }}</div>
     }
 
     <button

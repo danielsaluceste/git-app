@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { LayoutService } from "../../../core/services/layout.service";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
+import { ToastService } from "../../../core/services/toast.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
 
 @Component({
@@ -16,6 +17,7 @@ export class RepositoriesPageComponent {
   private readonly workspaceService = inject(WorkspaceService);
   private readonly router = inject(Router);
   private readonly layoutService = inject(LayoutService);
+  private readonly toastService = inject(ToastService);
 
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
   readonly repositories = computed(() =>
@@ -25,11 +27,8 @@ export class RepositoriesPageComponent {
   );
 
   isLoading = false;
-  errorMessage = "";
 
   async addLocalRepository(): Promise<void> {
-    this.errorMessage = "";
-
     try {
       const selected = await open({
         directory: true,
@@ -50,13 +49,17 @@ export class RepositoriesPageComponent {
       });
 
       if (!added) {
-        this.errorMessage = "Este repositório já está adicionado neste workspace.";
+        this.toastService.warning("Este repositório já está adicionado neste workspace.", "Repositório duplicado");
+      } else {
+        this.toastService.success("Repositório adicionado ao workspace.", "Repositório adicionado");
       }
     } catch (error: unknown) {
-      this.errorMessage =
+      this.toastService.error(
         typeof error === "string"
           ? error
-          : "Não foi possível adicionar a pasta. Selecione um repositório Git válido.";
+          : "Não foi possível adicionar a pasta. Selecione um repositório Git válido.",
+        "Repositório local",
+      );
     } finally {
       this.isLoading = false;
     }
@@ -65,7 +68,7 @@ export class RepositoriesPageComponent {
   openRepository(repository: Repository): void {
     this.repositoryService.setActive(repository);
     this.layoutService.closeMainSidebar();
-    void this.router.navigate(["/changes"]);
+    void this.router.navigate(["/overview"]);
   }
 
   trackRepository(_index: number, repository: Repository): string {

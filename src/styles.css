@@ -29,6 +29,66 @@ select {
   animation: page-enter 180ms ease-out both;
 }
 
+.app-tooltip {
+  position: relative;
+}
+
+.app-tooltip::before,
+.app-tooltip::after {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.app-tooltip::before {
+  bottom: calc(100% + 0.3rem);
+  left: 50%;
+  border: 0.35rem solid transparent;
+  border-top-color: #374151;
+  content: "";
+  transform: translate(-50%, 0.35rem);
+}
+
+.app-tooltip::after {
+  right: auto;
+  bottom: calc(100% + 0.8rem);
+  left: 50%;
+  width: max-content;
+  max-width: 17rem;
+  border: 1px solid #374151;
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.7rem;
+  background: #1f2937;
+  box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 28%);
+  color: #f9fafb;
+  content: attr(data-tooltip);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  transform: translate(-50%, 0.25rem);
+  white-space: normal;
+}
+
+.app-tooltip:hover::before,
+.app-tooltip:hover::after,
+.app-tooltip:focus-visible::before,
+.app-tooltip:focus-visible::after {
+  opacity: 1;
+}
+
+.app-tooltip:hover::before,
+.app-tooltip:focus-visible::before {
+  transform: translate(-50%, 0);
+}
+
+.app-tooltip:hover::after,
+.app-tooltip:focus-visible::after {
+  transform: translate(-50%, 0);
+}
+
 @keyframes page-enter {
   from {
     opacity: 0;

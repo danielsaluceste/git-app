@@ -1,0 +1,79 @@
+.page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #f97316;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h2,
+h3 {
+  color: #f9fafb;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+.description {
+  max-width: 55rem;
+  margin-top: 0.5rem;
+  color: #9ca3af;
+}
+
+.empty-state {
+  display: grid;
+  min-height: 20rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.6rem;
+  border: 1px dashed #334155;
+  border-radius: 0.85rem;
+  padding: 2rem;
+  background: linear-gradient(145deg, #172033, #131c2d);
+  text-align: center;
+}
+
+.empty-icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.35rem;
+  place-items: center;
+  border: 1px solid #374151;
+  border-radius: 1rem;
+  background: #1f2937;
+  color: #fb923c;
+  font-size: 1.8rem;
+}
+
+.empty-state h3 {
+  font-size: 1rem;
+}
+
+.empty-state p {
+  max-width: 28rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}

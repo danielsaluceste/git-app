@@ -126,6 +126,46 @@ a.active,
   color: #f9fafb;
 }
 
+.changes-badge {
+  display: inline-grid;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  box-sizing: border-box;
+  margin-left: auto;
+  place-items: center;
+  border: 1px solid #9a5b18;
+  border-radius: 999px;
+  padding: 0 0.3rem;
+  background: #4a2d14;
+  color: #fed7aa;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  border: 1px solid #286047;
+  border-radius: 999px;
+  padding: 0.25rem 0.4rem;
+  background: #123b2e;
+  color: #a7f3d0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sync-badge span:first-child {
+  color: #6ee7b7;
+}
+
+.sync-badge span + span {
+  color: #93c5fd;
+}
+
 .reference-chevron {
   width: 0.45rem;
   height: 0.45rem;

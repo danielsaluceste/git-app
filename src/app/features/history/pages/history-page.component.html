@@ -2,54 +2,174 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Commits</p>
-        <h2>Histórico</h2>
+        <p class="eyebrow">Repositório</p>
+        <h2>Visão geral</h2>
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
-      <button type="button" class="refresh-button" [disabled]="isLoading()" (click)="loadCommits()">
-        <span aria-hidden="true">↻</span>
-        Atualizar
-      </button>
+
+      <div class="sync-toolbar" aria-label="Sincronização do repositório">
+        <button type="button" class="sync-button fetch-button app-tooltip" data-tooltip="Atualizar referências remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('fetch')">
+          <span aria-hidden="true">↓</span>
+          {{ syncLabel("fetch") }}
+        </button>
+        <button type="button" class="sync-button app-tooltip" data-tooltip="Baixar e aplicar alterações remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('pull')">
+          <span aria-hidden="true">↓</span>
+          {{ syncLabel("pull") }}
+        </button>
+        <button type="button" class="sync-button push-button app-tooltip" data-tooltip="Enviar commits para o remoto" [disabled]="isLoading() || !!syncAction()" (click)="runSync('push')">
+          <span aria-hidden="true">↑</span>
+          {{ syncLabel("push") }}
+          @if (aheadCount() > 0) {
+            <span class="pending-badge" [attr.aria-label]="aheadCount() + ' commits pendentes'">{{ aheadCount() }}</span>
+          }
+        </button>
+        <button type="button" class="refresh-button app-tooltip" data-tooltip="Atualizar histórico local" [disabled]="isLoading() || !!syncAction()" (click)="loadOverview()">
+          <span aria-hidden="true">↻</span>
+          Atualizar
+        </button>
+      </div>
     </header>
+
+    <div class="overview-summary">
+      <span class="branch-pill"><span aria-hidden="true">⑂</span>{{ currentBranch() }}</span>
+      <span class="summary-copy">Histórico visual do repositório</span>
+    </div>
 
     @if (isLoading()) {
       <div class="panel loading-state">Lendo o histórico do Git...</div>
-    } @else if (errorMessage()) {
-      <div class="panel error-state">{{ errorMessage() }}</div>
     } @else if (commits().length === 0) {
       <div class="panel empty-state">
         <h3>Nenhum commit encontrado</h3>
         <p>Este repositório ainda não possui commits.</p>
       </div>
     } @else {
-      <section class="panel history-panel">
-        <div class="panel-heading">
-          <div>
-            <h3>Commits recentes</h3>
-            <p>Mostrando os últimos {{ commits().length }} commits</p>
+      <div class="overview-layout">
+        <section class="panel graph-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Histórico de commits</h3>
+              <p>{{ commits().length }} commits recentes · clique em um commit para ver os detalhes</p>
+            </div>
           </div>
-        </div>
 
-        <div class="commit-list">
-          @for (commit of commits(); track commit.hash) {
-            <article class="commit-row">
-              <span class="commit-dot" aria-hidden="true"></span>
-              <div class="commit-main">
-                <strong [title]="commit.subject">{{ commit.subject }}</strong>
-                <span>{{ commit.authorName }} · {{ formatDate(commit.date) }}</span>
-              </div>
+          <div class="commit-graph" role="list" aria-label="Histórico de commits">
+            @for (commit of commits(); track commit.hash) {
+              <button
+                type="button"
+                class="commit-row"
+                [class.selected]="selectedCommit()?.hash === commit.hash"
+                (click)="selectCommit(commit)"
+                role="listitem"
+              >
+                <span class="graph-column" [class.merge-commit]="commit.parents.length > 1" aria-hidden="true">
+                  <span class="graph-line"></span>
+                  @if (commit.parents.length > 1) {
+                    <span class="graph-merge-line"></span>
+                  }
+                  <span class="graph-node"></span>
+                </span>
+                <span class="commit-main">
+                  <strong [title]="commit.subject">{{ commit.subject }}</strong>
+                  <span>{{ commit.authorName }} · {{ formatDate(commit.date) }}</span>
+                </span>
+                <code [title]="commit.hash">{{ commit.shortHash }}</code>
+              </button>
+            }
+          </div>
+        </section>
+
+        <aside class="panel commit-details">
+          @if (selectedCommit(); as commit) {
+            <div class="details-heading">
+              <span class="details-eyebrow">Commit selecionado</span>
               <code [title]="commit.hash">{{ commit.shortHash }}</code>
-            </article>
+            </div>
+            <h3>{{ commit.subject }}</h3>
+            <dl>
+              <div>
+                <dt>Autor</dt>
+                <dd>{{ commit.authorName }}</dd>
+              </div>
+              <div>
+                <dt>Data</dt>
+                <dd>{{ formatDate(commit.date) }}</dd>
+              </div>
+              <div>
+                <dt>Hash</dt>
+                <dd class="hash-value" [title]="commit.hash">{{ commit.hash }}</dd>
+              </div>
+              <div>
+                <dt>Parent(s)</dt>
+                <dd>{{ commit.parents.length || "Nenhum" }}</dd>
+              </div>
+            </dl>
+
+            <button type="button" class="branch-create-button" (click)="createBranchFromSelectedCommit()">
+              <span aria-hidden="true">⑂</span>
+              Criar branch a partir deste commit
+            </button>
+
+            <section class="changed-files">
+              <div class="changed-files-heading">
+                <div>
+                  <h4>Arquivos alterados</h4>
+                  <p>Clique em um arquivo para abrir o diff.</p>
+                </div>
+                @if (!commitFilesLoading()) {
+                  <span class="file-count">{{ selectedCommitFiles().length }}</span>
+                }
+              </div>
+
+              @if (commitFilesLoading()) {
+                <div class="files-loading">Lendo arquivos...</div>
+              } @else if (commitFilesError()) {
+                <div class="files-error">{{ commitFilesError() }}</div>
+              } @else if (selectedCommitFiles().length > 0) {
+                <div class="commit-file-list">
+                  @for (file of selectedCommitFiles(); track file.path) {
+                    <button type="button" class="commit-file-row" (click)="openCommitFile(file)" [title]="'Visualizar diff de ' + file.path">
+                      <span
+                        class="commit-file-status"
+                        [class.status-added]="file.status === 'added'"
+                        [class.status-deleted]="file.status === 'deleted'"
+                        [class.status-renamed]="file.status === 'renamed'"
+                      >{{ statusCode(file.status) }}</span>
+                      <span class="commit-file-path">{{ file.path }}</span>
+                      <span class="commit-file-arrow" aria-hidden="true">›</span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="files-loading">Nenhum arquivo alterado encontrado.</div>
+              }
+            </section>
+          } @else {
+            <div class="details-empty">
+              <span class="details-icon" aria-hidden="true">⌁</span>
+              <h3>Detalhes do commit</h3>
+              <p>Selecione um commit no gráfico para visualizar autor, data, hash e relações.</p>
+            </div>
           }
-        </div>
-      </section>
+        </aside>
+      </div>
     }
   } @else {
-    <p class="eyebrow">Commits</p>
-    <h2>Histórico</h2>
+    <p class="eyebrow">Repositório</p>
+    <h2>Visão geral</h2>
     <div class="panel empty-state">
       <h3>Nenhum repositório selecionado</h3>
-      <p>Abra um repositório para visualizar seus commits.</p>
+      <p>Abra um repositório para visualizar o histórico e sincronizar com o remoto.</p>
     </div>
+  }
+
+  @if (selectedCommitFile(); as file) {
+    <app-file-diff-dialog
+      [file]="file"
+      [diff]="commitFileDiff()"
+      [loading]="commitFileDiffLoading()"
+      [error]="commitFileDiffError()"
+      [contextLabel]="'Arquivo do commit ' + (selectedCommit()?.shortHash || '')"
+      (closed)="closeCommitFile()"
+    />
   }
 </section>

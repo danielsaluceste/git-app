@@ -31,6 +31,60 @@
         <span class="slider" aria-hidden="true"></span>
       </label>
     </div>
+
+    @if (aiEnabled()) {
+      <div class="model-picker">
+        <button
+          type="button"
+          class="model-picker-toggle"
+          [attr.aria-expanded]="modelPickerOpen"
+          aria-controls="ai-model-options"
+          (click)="toggleModelPicker()"
+        >
+          <span class="model-picker-toggle-copy">
+            <strong>Modelo para mensagens de commit</strong>
+            <span>{{ selectedAiModel().name }} · {{ selectedAiModel().tierLabel }}</span>
+          </span>
+          <span class="model-picker-toggle-action">
+            {{ modelPickerOpen ? "Fechar" : "Alterar modelo" }}
+            <span class="picker-chevron" [class.open]="modelPickerOpen" aria-hidden="true"></span>
+          </span>
+        </button>
+
+        @if (modelPickerOpen) {
+          <div id="ai-model-options" class="model-options" role="radiogroup" aria-label="Modelo de IA para mensagens de commit">
+            <div class="model-picker-heading">
+              <span>Escolha entre economia de recursos ou uma análise mais detalhada.</span>
+              <span class="model-selected-label">{{ selectedAiModel().sizeLabel }}</span>
+            </div>
+
+            @for (model of aiModels; track model.id) {
+              <label class="model-option" [class.selected]="aiModel() === model.id">
+                <input
+                  type="radio"
+                  name="ai-model"
+                  [value]="model.id"
+                  [checked]="aiModel() === model.id"
+                  (change)="selectAiModel(model.id)"
+                />
+                <span class="model-radio" aria-hidden="true"></span>
+                <span class="model-details">
+                  <span class="model-name-row">
+                    <strong>{{ model.name }}</strong>
+                    <span class="model-tier tier-{{ model.tier }}">{{ model.tierLabel }}</span>
+                    @if (model.recommended) {
+                      <span class="model-recommended">Recomendado</span>
+                    }
+                  </span>
+                  <span class="model-description">{{ model.description }}</span>
+                  <span class="model-meta">{{ model.sizeLabel }} · {{ model.hardwareLabel }}</span>
+                </span>
+              </label>
+            }
+          </div>
+        }
+      </div>
+    }
   </section>
 
   <section class="settings-card" aria-labelledby="notification-settings-title">

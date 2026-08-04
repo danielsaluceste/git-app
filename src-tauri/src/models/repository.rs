@@ -24,6 +24,8 @@ pub struct RepositoryStatus {
     pub staged_count: usize,
     pub unstaged_count: usize,
     pub untracked_count: usize,
+    pub ahead_count: usize,
+    pub behind_count: usize,
     pub files: Vec<RepositoryFile>,
 }
 
@@ -45,4 +47,11 @@ pub struct RepositoryCommit {
     pub author_email: String,
     pub date: String,
     pub parents: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitFile {
+    pub path: String,
+    pub status: String,
 }
