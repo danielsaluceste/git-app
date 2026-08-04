@@ -333,6 +333,24 @@ export class RepositorySidebarComponent implements OnInit {
     return separatorIndex >= 0 ? remoteBranch.slice(separatorIndex + 1) : remoteBranch;
   }
 
+  stashLabel(stash: string): string {
+    const [, ...parts] = stash.split("|");
+    const description = parts.join("|").trim();
+    const separatorIndex = description.indexOf(":");
+
+    if (separatorIndex < 0) {
+      return description || "Sem mensagem";
+    }
+
+    const message = description.slice(separatorIndex + 1).trim() || "Sem mensagem";
+    const branch = description
+      .slice(0, separatorIndex)
+      .trim()
+      .replace(/^(?:On|WIP on|index on)\s+/i, "");
+
+    return branch ? `${message}: ${branch}` : message;
+  }
+
   private getGitErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
       return error.trim();

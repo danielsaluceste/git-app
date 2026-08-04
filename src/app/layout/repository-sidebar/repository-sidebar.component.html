@@ -200,7 +200,7 @@
           @for (stash of references().stashes; track stash) {
             <button type="button" class="reference-item">
               <span class="stash-dot" aria-hidden="true">◆</span>
-              <span>{{ stash }}</span>
+              <span [title]="stash">{{ stashLabel(stash) }}</span>
             </button>
           }
         } @else {

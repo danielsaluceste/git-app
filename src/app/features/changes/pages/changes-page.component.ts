@@ -248,8 +248,16 @@ export class ChangesPageComponent implements OnInit {
   }
 
   stashDescription(stash: string): string {
-    const [, ...parts] = stash.split("|");
-    return parts.join("|").trim() || "Sem mensagem";
+    const description = this.rawStashDescription(stash);
+    const separatorIndex = description.indexOf(":");
+    const message = separatorIndex >= 0 ? description.slice(separatorIndex + 1).trim() : description;
+    return message || "Sem mensagem";
+  }
+
+  stashBranch(stash: string): string {
+    const description = this.rawStashDescription(stash);
+    const separatorIndex = description.indexOf(":");
+    return separatorIndex >= 0 ? description.slice(0, separatorIndex).trim() : "Branch desconhecida";
   }
 
   async applyStash(stash: string): Promise<void> {
@@ -280,6 +288,11 @@ export class ChangesPageComponent implements OnInit {
       (repository) => this.repositoryService.dropStash(repository.path, stash),
       "Stash excluído.",
     );
+  }
+
+  private rawStashDescription(stash: string): string {
+    const [, ...parts] = stash.split("|");
+    return parts.join("|").trim();
   }
 
   statusLabel(status: GitFileStatus): string {
