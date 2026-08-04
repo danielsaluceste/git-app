@@ -684,6 +684,13 @@ pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
 #[tauri::command]
 pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> {
     ensure_repository(&path)?;
+
+    if is_running_development_repository(&path) {
+        return Err(
+            "Não é possível fazer checkout no próprio repositório do OranGIT enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
+        );
+    }
+
     validate_commit_hash(&commit_hash)?;
     run_git_with_timeout(
         &path,
@@ -779,6 +786,34 @@ fn ensure_repository(path: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn is_running_development_repository(path: &str) -> bool {
+    if !cfg!(debug_assertions) {
+        return false;
+    }
+
+    let Ok(executable_path) = std::env::current_exe() else {
+        return false;
+    };
+
+    let Some(app_repository) = executable_path
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+    else {
+        return false;
+    };
+
+    let Ok(requested_repository) = PathBuf::from(path).canonicalize() else {
+        return false;
+    };
+    let Ok(running_repository) = app_repository.canonicalize() else {
+        return false;
+    };
+
+    requested_repository == running_repository
 }
 
 fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
