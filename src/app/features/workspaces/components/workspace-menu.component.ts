@@ -1,6 +1,9 @@
 import { Component, inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { Router } from "@angular/router";
 import { Workspace } from "../../../core/models/workspace.model";
+import { LayoutService } from "../../../core/services/layout.service";
+import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
@@ -13,6 +16,9 @@ import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/c
 })
 export class WorkspaceMenuComponent {
   private readonly workspaceService = inject(WorkspaceService);
+  private readonly layoutService = inject(LayoutService);
+  private readonly repositoryService = inject(RepositoryService);
+  private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
   readonly workspaces = this.workspaceService.workspaces;
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
@@ -34,9 +40,16 @@ export class WorkspaceMenuComponent {
   }
 
   selectWorkspace(id: string): void {
+    const changedWorkspace = id !== this.activeWorkspace().id;
     this.workspaceService.select(id);
     this.isOpen = false;
     this.resetForm();
+
+    if (changedWorkspace) {
+      this.repositoryService.setActive(undefined);
+      this.layoutService.openMainSidebar();
+      void this.router.navigate(["/repositories"]);
+    }
   }
 
   startCreate(): void {
