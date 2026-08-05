@@ -1,4 +1,4 @@
-<section class="page">
+<section class="page changes-page">
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
@@ -46,25 +46,6 @@
     @if (isLoading()) {
       <div class="panel loading-state">Lendo o status do Git...</div>
     } @else if (status(); as repositoryStatus) {
-      <div class="summary-grid">
-        <article class="summary-card">
-          <span class="summary-label">Branch atual</span>
-          <strong>{{ repositoryStatus.currentBranch || "HEAD destacado" }}</strong>
-        </article>
-        <article class="summary-card">
-          <span class="summary-label">Staged</span>
-          <strong>{{ repositoryStatus.stagedCount }}</strong>
-        </article>
-        <article class="summary-card">
-          <span class="summary-label">Não staged</span>
-          <strong>{{ repositoryStatus.unstagedCount }}</strong>
-        </article>
-        <article class="summary-card">
-          <span class="summary-label">Não rastreados</span>
-          <strong>{{ repositoryStatus.untrackedCount }}</strong>
-        </article>
-      </div>
-
       <div class="changes-layout">
         <section class="panel files-panel">
           <div class="panel-heading">
