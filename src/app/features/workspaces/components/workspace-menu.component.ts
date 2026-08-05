@@ -1,4 +1,4 @@
-import { Component, inject } from "@angular/core";
+import { Component, ElementRef, HostListener, inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { Workspace } from "../../../core/models/workspace.model";
@@ -20,6 +20,7 @@ export class WorkspaceMenuComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly workspaces = this.workspaceService.workspaces;
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
 
@@ -37,6 +38,21 @@ export class WorkspaceMenuComponent {
     if (!this.isOpen) {
       this.resetForm();
     }
+  }
+
+  @HostListener("document:click", ["$event"])
+  closeOnOutsideClick(event: MouseEvent): void {
+    if (!this.isOpen) {
+      return;
+    }
+
+    const target = event.target as Node | null;
+    if (target && this.elementRef.nativeElement.contains(target)) {
+      return;
+    }
+
+    this.isOpen = false;
+    this.resetForm();
   }
 
   selectWorkspace(id: string): void {

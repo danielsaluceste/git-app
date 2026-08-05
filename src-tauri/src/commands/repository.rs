@@ -306,8 +306,11 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
     let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok();
     let mut local_branches = run_git_lines(
         &path,
-        &["for-each-ref", "--format=%(refname:short)", "refs/heads"],
-    )?;
+        &["for-each-ref", "--format=%(refname)", "refs/heads"],
+    )?
+    .into_iter()
+    .filter_map(|reference| reference.strip_prefix("refs/heads/").map(ToOwned::to_owned))
+    .collect::<Vec<_>>();
     if let Some(branch) = current_branch.as_ref() {
         if !local_branches.iter().any(|item| item == branch) {
             local_branches.insert(0, branch.clone());
@@ -315,9 +318,14 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
     }
     let remote_branches = run_git_lines(
         &path,
-        &["for-each-ref", "--format=%(refname:short)", "refs/remotes"],
+        &["for-each-ref", "--format=%(refname)", "refs/remotes"],
     )?
     .into_iter()
+    .filter_map(|reference| {
+        reference
+            .strip_prefix("refs/remotes/")
+            .map(ToOwned::to_owned)
+    })
     .filter(|branch| !branch.ends_with("/HEAD"))
     .collect();
     let tags = run_git_lines(
