@@ -312,6 +312,68 @@ h3 {
   border-bottom: 1px solid #263244;
 }
 
+.commit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.8rem;
+}
+
+.amend-option {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  color: #d1d5db;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.amend-option:hover,
+.amend-option.is-active {
+  border-color: #5b3b16;
+  background: #332313;
+  color: #fed7aa;
+}
+
+.amend-option input {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+  accent-color: #f97316;
+  cursor: pointer;
+}
+
+.amend-option input:disabled {
+  cursor: wait;
+}
+
+.amend-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.amend-option-copy strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amend-option-copy small {
+  overflow: hidden;
+  color: #9ca3af;
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-title-row {
   display: flex;
   align-items: center;

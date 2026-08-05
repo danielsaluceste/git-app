@@ -22,6 +22,8 @@ pub fn run() {
             commands::repository::stage_repository_files,
             commands::repository::unstage_repository_files,
             commands::repository::commit_repository,
+            commands::repository::get_last_commit_message,
+            commands::repository::revert_commit,
             commands::repository::get_repository_staged_diff,
             commands::repository::get_repository_file_diff,
             commands::repository::stash_repository,

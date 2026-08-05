@@ -95,8 +95,16 @@ export class RepositoryService {
     await invoke("unstage_repository_files", { path, files });
   }
 
-  async commit(path: string, message: string): Promise<void> {
-    await invoke("commit_repository", { path, message });
+  async commit(path: string, message: string, amend = false): Promise<void> {
+    await invoke("commit_repository", { path, message, amend });
+  }
+
+  async getLastCommitMessage(path: string): Promise<string> {
+    return invoke<string>("get_last_commit_message", { path });
+  }
+
+  async revertCommit(path: string, commitHash: string): Promise<void> {
+    await invoke("revert_commit", { path, commitHash });
   }
 
   async getStagedDiff(path: string): Promise<string> {

@@ -395,6 +395,13 @@
           <small>Ir para este commit</small>
         </span>
       </button>
+      <button type="button" class="context-menu-danger" (click)="revertFromContextMenu()">
+        <span class="context-menu-icon" aria-hidden="true">↶</span>
+        <span>
+          <strong>Desfazer este commit</strong>
+          <small>Criar um commit inverso</small>
+        </span>
+      </button>
     </div>
   }
 
@@ -407,6 +414,19 @@
       cancelLabel="Cancelar"
       (confirmed)="confirmCheckoutCommit()"
       (cancelled)="cancelCheckoutCommit()"
+    />
+  }
+
+  @if (pendingRevertCommit(); as commit) {
+    <app-confirm-dialog
+      title="Desfazer este commit?"
+      [message]="'Será criado um novo commit para desfazer ' + commit.shortHash + '. O commit original continuará no histórico e as alterações locais precisam estar limpas. Deseja continuar?'"
+      [messageHighlight]="commit.shortHash"
+      confirmLabel="Desfazer commit"
+      cancelLabel="Cancelar"
+      [destructive]="true"
+      (confirmed)="confirmRevertCommit()"
+      (cancelled)="cancelRevertCommit()"
     />
   }
 </section>

@@ -586,18 +586,65 @@ pub fn unstage_repository_files(path: String, files: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command]
-pub fn commit_repository(path: String, message: String) -> Result<(), String> {
+pub fn commit_repository(path: String, message: String, amend: bool) -> Result<(), String> {
     ensure_repository(&path)?;
 
-    if message.trim().is_empty() {
+    if !amend && message.trim().is_empty() {
         return Err("Digite uma mensagem para criar o commit.".to_string());
     }
 
-    let args = vec![
-        "commit".to_string(),
-        "-m".to_string(),
-        message.trim().to_string(),
-    ];
+    let mut args = vec!["commit".to_string()];
+    if amend {
+        args.push("--amend".to_string());
+        if message.trim().is_empty() {
+            args.push("--no-edit".to_string());
+        } else {
+            args.extend(["-m".to_string(), message.trim().to_string()]);
+        }
+    } else {
+        args.extend(["-m".to_string(), message.trim().to_string()]);
+    }
+
+    run_git_strings(&path, &args).map(|_| ())
+}
+
+#[tauri::command]
+pub fn get_last_commit_message(path: String) -> Result<String, String> {
+    ensure_repository(&path)?;
+
+    let message = run_git(&path, &["log", "-1", "--format=%B"])?;
+    let message = message.trim();
+    if message.is_empty() {
+        return Err("Este repositório ainda não possui commits.".to_string());
+    }
+
+    Ok(message.to_string())
+}
+
+#[tauri::command]
+pub fn revert_commit(path: String, commit_hash: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&commit_hash)?;
+
+    let status = run_git(&path, &["status", "--porcelain"])?;
+    if !status.trim().is_empty() {
+        return Err(
+            "Finalize ou guarde as alterações locais antes de desfazer um commit.".to_string(),
+        );
+    }
+
+    let commit_info = run_git(&path, &["rev-list", "--parents", "-n", "1", &commit_hash])?;
+    let parent_count = commit_info.split_whitespace().count().saturating_sub(1);
+    if parent_count == 0 {
+        return Err("Este commit não pode ser desfeito porque não possui parent.".to_string());
+    }
+
+    let mut args = vec!["revert".to_string(), "--no-edit".to_string()];
+    if parent_count > 1 {
+        args.extend(["-m".to_string(), "1".to_string()]);
+    }
+    args.push(commit_hash);
+
     run_git_strings(&path, &args).map(|_| ())
 }
 

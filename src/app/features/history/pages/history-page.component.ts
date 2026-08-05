@@ -66,6 +66,8 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
   readonly commitFileDiffError = signal("");
   readonly isCheckingOut = signal(false);
   readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
+  readonly pendingRevertCommit = signal<Commit | undefined>(undefined);
+  readonly isRevertingCommit = signal(false);
   readonly commitContextMenu = signal<CommitContextMenu | undefined>(undefined);
   readonly historyQuery = signal("");
   readonly authorFilter = signal("");
@@ -312,6 +314,41 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
     }
   }
 
+  revertFromContextMenu(): void {
+    const commit = this.commitContextMenu()?.commit;
+    this.closeCommitContextMenu();
+    if (commit) {
+      this.pendingRevertCommit.set(commit);
+    }
+  }
+
+  cancelRevertCommit(): void {
+    this.pendingRevertCommit.set(undefined);
+  }
+
+  async confirmRevertCommit(): Promise<void> {
+    const commit = this.pendingRevertCommit();
+    this.pendingRevertCommit.set(undefined);
+    const repository = this.activeRepository();
+    if (!repository || !commit || this.isRevertingCommit()) {
+      return;
+    }
+
+    this.isRevertingCommit.set(true);
+    try {
+      await this.repositoryService.revertCommit(repository.path, commit.hash);
+      this.toastService.success(
+        `Commit ${commit.shortHash} desfeito com sucesso.`,
+        "Revert concluído",
+      );
+      await this.loadOverview();
+    } catch (error: unknown) {
+      this.toastService.error(this.getCommitRevertErrorMessage(error), "Desfazer commit");
+    } finally {
+      this.isRevertingCommit.set(false);
+    }
+  }
+
   async loadMoreCommits(): Promise<void> {
     const repository = this.activeRepository();
     if (!repository || this.isLoading() || this.isLoadingMore() || !this.hasMoreCommits()) {
@@ -516,7 +553,7 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
     const availableWidth = pageRect?.width ?? window.innerWidth;
     const availableHeight = pageRect?.height ?? window.innerHeight;
     const menuWidth = 224;
-    const menuHeight = 96;
+    const menuHeight = 150;
 
     return {
       x: Math.max(8, Math.min(event.clientX - originX, availableWidth - menuWidth - 8)),
@@ -812,6 +849,18 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
     }
 
     return "Não foi possível fazer checkout neste commit.";
+  }
+
+  private getCommitRevertErrorMessage(error: unknown): string {
+    if (typeof error === "string" && error.trim()) {
+      return `Não foi possível desfazer este commit: ${error.trim()}`;
+    }
+
+    if (error instanceof Error && error.message) {
+      return `Não foi possível desfazer este commit: ${error.message}`;
+    }
+
+    return "Não foi possível desfazer este commit.";
   }
 
   private getCommitFilesErrorMessage(error: unknown): string {

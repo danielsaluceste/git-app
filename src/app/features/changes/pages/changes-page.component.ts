@@ -30,7 +30,9 @@ export class ChangesPageComponent implements OnInit {
   readonly status = signal<RepositoryStatus | undefined>(undefined);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
+  readonly isLoadingAmendMessage = signal(false);
   readonly commitMessage = signal("");
+  readonly amendLastCommit = signal(false);
   readonly showStashForm = signal(false);
   readonly stashMessage = signal("");
   readonly stashFilePaths = signal<string[]>([]);
@@ -190,7 +192,12 @@ export class ChangesPageComponent implements OnInit {
       return;
     }
     if (!message) {
-      this.toastService.warning("Digite uma mensagem para o commit.");
+      if (!this.amendLastCommit()) {
+        this.toastService.warning("Digite uma mensagem para o commit.");
+        return;
+      }
+    }
+    if (this.isLoadingAmendMessage()) {
       return;
     }
     if (this.stagedFiles(files).length === 0) {
@@ -203,12 +210,37 @@ export class ChangesPageComponent implements OnInit {
     }
 
     const committed = await this.runGitAction(
-      () => this.repositoryService.commit(repository.path, message),
-      "Commit criado com sucesso.",
+      () => this.repositoryService.commit(repository.path, message, this.amendLastCommit()),
+      this.amendLastCommit() ? "Último commit atualizado com sucesso." : "Commit criado com sucesso.",
     );
     if (committed) {
       this.commitMessage.set("");
+      this.amendLastCommit.set(false);
       void this.router.navigate(["/overview"]);
+    }
+  }
+
+  async toggleAmend(event: Event): Promise<void> {
+    const enabled = (event.target as HTMLInputElement).checked;
+    this.amendLastCommit.set(enabled);
+    if (!enabled || this.commitMessage().trim()) {
+      return;
+    }
+
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.isLoadingAmendMessage.set(true);
+    try {
+      this.commitMessage.set(await this.repositoryService.getLastCommitMessage(repository.path));
+    } catch (error: unknown) {
+      this.amendLastCommit.set(false);
+      (event.target as HTMLInputElement).checked = false;
+      this.toastService.error(this.getGitErrorMessage(error), "Amend");
+    } finally {
+      this.isLoadingAmendMessage.set(false);
     }
   }
 

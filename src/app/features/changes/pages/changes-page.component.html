@@ -160,17 +160,31 @@
         <section fixed-layout-panel class="panel commit-panel">
           <div class="panel-heading">
             <div>
-              <h3>Commit</h3>
-              <p>Registre as alterações preparadas</p>
+              <h3>{{ amendLastCommit() ? "Atualizar commit" : "Commit" }}</h3>
+              <p>{{ amendLastCommit() ? "Atualize o último commit com os arquivos preparados" : "Registre as alterações preparadas" }}</p>
             </div>
+          </div>
+          <div class="commit-actions">
+            <label class="amend-option" [class.is-active]="amendLastCommit()" [title]="amendLastCommit() ? 'Substituir o último commit' : 'Adicionar alterações ao último commit'">
+              <input
+                type="checkbox"
+                [checked]="amendLastCommit()"
+                [disabled]="isSaving() || isLoadingAmendMessage()"
+                (change)="toggleAmend($event)"
+              />
+              <span class="amend-option-copy">
+                <strong>Amend último commit</strong>
+                <small>Adicionar estas alterações ao commit anterior</small>
+              </span>
+            </label>
           </div>
           <div class="textarea-wrap">
             <textarea
               [ngModel]="commitMessage()"
               (ngModelChange)="commitMessage.set($event)"
-              [disabled]="isSaving() || aiLoadingModel() || aiGenerating()"
+              [disabled]="isSaving() || isLoadingAmendMessage() || aiLoadingModel() || aiGenerating()"
               rows="3"
-              placeholder="Descreva o que foi alterado..."
+              [placeholder]="amendLastCommit() ? 'Mensagem do commit anterior...' : 'Descreva o que foi alterado...'"
             ></textarea>
             @if (aiEnabled() && aiSupported()) {
               <button
@@ -217,12 +231,14 @@
             <button
               type="button"
               class="commit-button"
-              [disabled]="isSaving() || !commitMessage().trim() || stagedFiles(repositoryStatus.files).length === 0 || conflictFiles(repositoryStatus.files).length > 0"
+              [disabled]="isSaving() || isLoadingAmendMessage() || (!amendLastCommit() && !commitMessage().trim()) || stagedFiles(repositoryStatus.files).length === 0 || conflictFiles(repositoryStatus.files).length > 0"
               (click)="commitChanges(repositoryStatus.files)"
               title="Criar commit (Ctrl+Enter)"
             >
               @if (isSaving()) {
                 Salvando...
+              } @else if (amendLastCommit()) {
+                Atualizar commit
               } @else {
                 Criar commit
               }
