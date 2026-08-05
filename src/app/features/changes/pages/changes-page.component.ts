@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, HostListener, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
@@ -10,10 +10,12 @@ import { ToastService } from "../../../core/services/toast.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
 import { FixedBottomLayoutComponent } from "../../../shared/components/fixed-bottom-layout/fixed-bottom-layout.component";
+import { ConflictResolverComponent } from "../../../shared/components/conflict-resolver/conflict-resolver.component";
+import { StashDialogComponent } from "../../../shared/dialogs/stash-dialog/stash-dialog.component";
 
 @Component({
   selector: "app-changes-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule],
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
@@ -31,6 +33,7 @@ export class ChangesPageComponent implements OnInit {
   readonly commitMessage = signal("");
   readonly showStashForm = signal(false);
   readonly stashMessage = signal("");
+  readonly stashFilePaths = signal<string[]>([]);
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiSupported = this.commitAiService.isSupported;
   readonly aiLoadingModel = this.commitAiService.isLoadingModel;
@@ -40,6 +43,7 @@ export class ChangesPageComponent implements OnInit {
   readonly showAiDownloadConfirm = signal(false);
   readonly aiModelSize = this.commitAiService.modelSizeLabel;
   readonly selectedFile = signal<GitFile | undefined>(undefined);
+  readonly selectedConflictFile = signal<GitFile | undefined>(undefined);
   readonly fileDiff = signal("");
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
@@ -47,6 +51,24 @@ export class ChangesPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.loadStatus();
+  }
+
+  @HostListener("window:keydown", ["$event"])
+  onKeyboardShortcut(event: KeyboardEvent): void {
+    const modifier = event.ctrlKey || event.metaKey;
+
+    if (modifier && event.key === "Enter") {
+      const repositoryStatus = this.status();
+      if (repositoryStatus && !this.isLoading() && !this.isSaving()) {
+        event.preventDefault();
+        void this.commitChanges(repositoryStatus.files);
+      }
+      return;
+    }
+
+    if (event.key === "Escape" && this.showStashForm() && !this.isSaving()) {
+      this.closeStashForm();
+    }
   }
 
   async loadStatus(): Promise<boolean> {
@@ -75,6 +97,23 @@ export class ChangesPageComponent implements OnInit {
 
   unstagedFiles(files: GitFile[]): GitFile[] {
     return files.filter((file) => !file.isStaged);
+  }
+
+  conflictFiles(files: GitFile[]): GitFile[] {
+    return files.filter((file) => file.isConflicted || file.status === "conflicted");
+  }
+
+  openConflictResolver(file: GitFile): void {
+    this.selectedConflictFile.set(file);
+  }
+
+  closeConflictResolver(): void {
+    this.selectedConflictFile.set(undefined);
+  }
+
+  async onConflictResolved(): Promise<void> {
+    this.closeConflictResolver();
+    await this.loadStatus();
   }
 
   async openFileDiff(file: GitFile): Promise<void> {
@@ -158,6 +197,10 @@ export class ChangesPageComponent implements OnInit {
       this.toastService.warning("Prepare pelo menos um arquivo antes de criar o commit.");
       return;
     }
+    if (this.conflictFiles(files).length > 0) {
+      this.toastService.warning("Resolva todos os conflitos antes de criar o commit.");
+      return;
+    }
 
     const committed = await this.runGitAction(
       () => this.repositoryService.commit(repository.path, message),
@@ -211,23 +254,47 @@ export class ChangesPageComponent implements OnInit {
 
   openStashForm(): void {
     this.stashMessage.set("");
+    this.stashFilePaths.set(
+      (this.status()?.files ?? [])
+        .filter((file) => !file.isConflicted && file.status !== "conflicted")
+        .map((file) => file.path),
+    );
     this.showStashForm.set(true);
   }
 
   closeStashForm(): void {
     this.stashMessage.set("");
+    this.stashFilePaths.set([]);
     this.showStashForm.set(false);
   }
 
   async saveStash(): Promise<void> {
     const repository = this.activeRepository();
+    const files = this.status()?.files ?? [];
+    const selectedPaths = this.stashFilePaths();
     if (!repository) {
       return;
     }
 
+    if (this.conflictFiles(files).length > 0) {
+      this.toastService.warning("Resolva os conflitos antes de guardar um stash.");
+      return;
+    }
+    if (files.length > 0 && selectedPaths.length === 0) {
+      this.toastService.warning("Selecione pelo menos um arquivo para guardar no stash.");
+      return;
+    }
+
+    const allPaths = files.map((file) => file.path);
+    const isPartial = selectedPaths.length !== allPaths.length;
+
     const saved = await this.runGitAction(
       (activeRepository) =>
-        this.repositoryService.stash(activeRepository.path, this.stashMessage().trim() || undefined),
+        this.repositoryService.stash(
+          activeRepository.path,
+          this.stashMessage().trim() || undefined,
+          isPartial ? selectedPaths : undefined,
+        ),
       "Alterações guardadas no stash.",
     );
     if (saved) {
@@ -246,6 +313,8 @@ export class ChangesPageComponent implements OnInit {
         return "Renomeado";
       case "untracked":
         return "Não rastreado";
+      case "conflicted":
+        return "Conflito";
       case "modified":
         return "Modificado";
     }
@@ -261,6 +330,8 @@ export class ChangesPageComponent implements OnInit {
         return "R";
       case "untracked":
         return "?";
+      case "conflicted":
+        return "!";
       case "modified":
         return "M";
     }

@@ -6,6 +6,7 @@ import {
   RepositoryStatus,
   RepositoryReferences,
   RepositoryAuthenticationSource,
+  ConflictFile,
 } from "../models/repository.model";
 import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
@@ -60,6 +61,32 @@ export class RepositoryService {
     return status;
   }
 
+  async getConflicts(path: string): Promise<ConflictFile[]> {
+    return invoke<ConflictFile[]>("get_repository_conflicts", { path });
+  }
+
+  async resolveConflict(
+    path: string,
+    filePath: string,
+    content: string,
+    keepFile: boolean,
+  ): Promise<void> {
+    await invoke("resolve_repository_conflict", {
+      path,
+      filePath,
+      content,
+      keepFile,
+    });
+  }
+
+  async resolveConflictSide(path: string, filePath: string, side: "ours" | "theirs"): Promise<void> {
+    await invoke("resolve_repository_conflict_side", {
+      path,
+      filePath,
+      side,
+    });
+  }
+
   async stageFiles(path: string, files: string[]): Promise<void> {
     await invoke("stage_repository_files", { path, files });
   }
@@ -80,12 +107,20 @@ export class RepositoryService {
     return invoke<string>("get_repository_file_diff", { path, filePath, staged });
   }
 
-  async stash(path: string, message?: string): Promise<void> {
-    await invoke("stash_repository", { path, message });
+  async stash(path: string, message?: string, filePaths?: string[]): Promise<void> {
+    await invoke("stash_repository", { path, message, filePaths });
   }
 
   async applyStash(path: string, stashRef: string): Promise<void> {
     await invoke("apply_stash", { path, stashRef });
+  }
+
+  async applyStashFiles(path: string, stashRef: string, filePaths: string[]): Promise<void> {
+    await invoke("apply_stash_files", { path, stashRef, filePaths });
+  }
+
+  async renameStash(path: string, stashRef: string, message: string): Promise<void> {
+    await invoke("rename_stash", { path, stashRef, message });
   }
 
   async dropStash(path: string, stashRef: string): Promise<void> {
@@ -100,8 +135,18 @@ export class RepositoryService {
     return invoke<string>("get_stash_file_diff", { path, stashRef, filePath });
   }
 
-  async getCommits(path: string): Promise<Commit[]> {
-    return invoke<Commit[]>("get_repository_commits", { path });
+  async getCommits(
+    path: string,
+    allBranches = true,
+    skip = 0,
+    limit = 100,
+  ): Promise<Commit[]> {
+    return invoke<Commit[]>("get_repository_commits", {
+      path,
+      allBranches,
+      skip,
+      limit,
+    });
   }
 
   async getCommitFiles(path: string, commitHash: string): Promise<CommitFile[]> {

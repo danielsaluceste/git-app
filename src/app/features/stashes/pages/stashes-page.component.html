@@ -24,11 +24,14 @@
                   <h3>{{ stashDescriptionByReference(stashRef) }}</h3>
                   <span class="branch-badge">{{ stashBranchByReference(stashRef) }}</span>
                 </div>
-                <p>Arquivos salvos neste stash e alterações de cada arquivo.</p>
+                <p>Selecione os arquivos para aplicar e clique em um deles para visualizar o diff.</p>
               </div>
               <div class="detail-actions">
-                <button type="button" class="apply-button" [disabled]="isApplying()" (click)="applyStash(stashRef)">
-                  Aplicar
+                <button type="button" class="rename-button" [disabled]="isApplying()" (click)="openRenameForm()">
+                  Renomear
+                </button>
+                <button type="button" class="apply-button" [disabled]="isApplying() || selectedStashPaths().length === 0" (click)="applySelectedStash(stashRef)">
+                  Aplicar ({{ selectedStashPaths().length }})
                 </button>
                 <button type="button" class="delete-button" [disabled]="isApplying()" (click)="requestDeleteStash()">
                   Excluir stash
@@ -37,6 +40,27 @@
               </div>
             </div>
 
+            @if (showRenameForm()) {
+              <form class="stash-rename-form" (ngSubmit)="renameSelectedStash()">
+                <div>
+                  <strong>Renomear stash</strong>
+                  <p>Use uma mensagem curta para encontrar este stash mais facilmente.</p>
+                </div>
+                <input
+                  [ngModel]="renameMessage()"
+                  (ngModelChange)="renameMessage.set($event)"
+                  name="renameMessage"
+                  autocomplete="off"
+                  placeholder="Ex.: antes de atualizar a branch"
+                  [disabled]="isApplying()"
+                />
+                <div class="rename-form-actions">
+                  <button type="button" class="text-button" [disabled]="isApplying()" (click)="closeRenameForm()">Cancelar</button>
+                  <button type="submit" class="apply-button" [disabled]="isApplying() || !renameMessage().trim()">Salvar nome</button>
+                </div>
+              </form>
+            }
+
             @if (stashLoading()) {
               <div class="state-panel">Lendo os arquivos do stash...</div>
             } @else if (stashFiles().length > 0) {
@@ -44,22 +68,44 @@
                 <div class="file-list-panel">
                   <div class="list-heading">
                     <span>ARQUIVOS</span>
-                    <span>{{ stashFiles().length }} · ↑ ↓</span>
+                    <div class="list-heading-actions">
+                      <span>{{ selectedStashPaths().length }}/{{ stashFiles().length }}</span>
+                      <button type="button" class="select-all-button" (click)="toggleAllStashFiles()">
+                        {{ allStashFilesSelected() ? "Desmarcar" : "Todos" }}
+                      </button>
+                    </div>
                   </div>
                   @for (file of stashFiles(); track file.path) {
-                    <button
-                      type="button"
-                      class="stash-file-button"
-                      [class.selected]="selectedFile()?.path === file.path"
-                      (click)="openStashFile(file)"
-                    >
-                      <span class="file-status" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-untracked]="file.status === 'untracked'" [class.status-renamed]="file.status === 'renamed'">{{ statusCode(file.status) }}</span>
-                      <span class="file-path" [title]="file.path">{{ file.path }}</span>
-                    </button>
+                    <div class="stash-file-row" [class.selected]="selectedFile()?.path === file.path">
+                      <button
+                        type="button"
+                        class="stash-file-check"
+                        [class.checked]="isStashFileSelected(file.path)"
+                        [attr.aria-pressed]="isStashFileSelected(file.path)"
+                        [attr.aria-label]="isStashFileSelected(file.path) ? 'Remover ' + file.path + ' da aplicação' : 'Selecionar ' + file.path + ' para aplicação'"
+                        (click)="toggleStashFile(file.path, $event)"
+                      >
+                        <span aria-hidden="true">✓</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="stash-file-button"
+                        (click)="openStashFile(file)"
+                      >
+                        <span class="file-status" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-untracked]="file.status === 'untracked'" [class.status-renamed]="file.status === 'renamed'">{{ statusCode(file.status) }}</span>
+                        <span class="file-path" [title]="file.path">{{ file.path }}</span>
+                      </button>
+                    </div>
                   }
                 </div>
 
                 <div class="diff-panel">
+                  <div class="diff-heading">
+                    <span>PRÉ-VISUALIZAÇÃO</span>
+                    @if (selectedFile(); as file) {
+                      <span [title]="file.path">{{ file.path }}</span>
+                    }
+                  </div>
                   @if (fileDiffLoading()) {
                     <div class="state-panel">Lendo as alterações do arquivo...</div>
                   } @else if (fileDiffError()) {

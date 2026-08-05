@@ -35,5 +35,19 @@ export interface RepositoryStatus {
   untrackedCount: number;
   aheadCount: number;
   behindCount: number;
+  conflictedCount: number;
   files: GitFile[];
+}
+
+export interface ConflictFile {
+  path: string;
+  base: string;
+  ours: string;
+  theirs: string;
+  result: string;
+  baseExists: boolean;
+  oursExists: boolean;
+  theirsExists: boolean;
+  resultExists: boolean;
+  isBinary: boolean;
 }

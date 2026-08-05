@@ -4,6 +4,8 @@ export interface Commit {
   subject: string;
   authorName: string;
   authorEmail: string;
+  avatarUrl?: string;
   date: string;
   parents: string[];
+  references: string[];
 }

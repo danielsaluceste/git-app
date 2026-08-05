@@ -1,0 +1,107 @@
+<dialog
+  #dialog
+  class="conflict-dialog"
+  (cancel)="$event.preventDefault(); closed.emit()"
+  (click)="onBackdropClick($event)"
+  aria-labelledby="conflict-title"
+>
+  <header class="conflict-header">
+    <div class="conflict-heading">
+      <span class="conflict-icon" aria-hidden="true">⇄</span>
+      <div>
+        <p class="eyebrow">Resolver conflito</p>
+        <h2 id="conflict-title" [title]="file.path">{{ file.path }}</h2>
+      </div>
+    </div>
+    <button type="button" class="close-button" aria-label="Fechar resolvedor" (click)="closed.emit()">×</button>
+  </header>
+
+  @if (isLoading()) {
+    <div class="conflict-state">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      Lendo as versões do conflito...
+    </div>
+  } @else if (error()) {
+    <div class="conflict-state error-state">{{ error() }}</div>
+  } @else if (conflict(); as currentConflict) {
+    <div class="conflict-notices">
+      <div class="conflict-intro">
+      <span class="warning-icon" aria-hidden="true">!</span>
+      <div>
+        <strong>Escolha como este arquivo deve ficar</strong>
+        <p>Você pode usar uma versão inteira ou editar o resultado antes de marcar como resolvido.</p>
+      </div>
+      </div>
+
+      @if (currentConflict.isBinary) {
+        <div class="binary-notice">
+          Este arquivo parece ser binário e não pode ser editado como texto. Escolha uma das versões para continuar.
+        </div>
+      }
+    </div>
+
+    <div class="conflict-grid">
+      <section class="version-card ours-card">
+        <header class="version-heading">
+          <div>
+            <span class="version-kicker">Sua versão</span>
+            <strong>Branch atual</strong>
+          </div>
+          <button type="button" class="version-action ours-action" [disabled]="isSaving()" (click)="useSide('ours')">
+            {{ sideLabel("ours", currentConflict.oursExists) }}
+          </button>
+        </header>
+        <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.ours, currentConflict.oursExists) }}</pre>
+      </section>
+
+      <section class="version-card theirs-card">
+        <header class="version-heading">
+          <div>
+            <span class="version-kicker">Versão recebida</span>
+            <strong>Outra branch</strong>
+          </div>
+          <button type="button" class="version-action theirs-action" [disabled]="isSaving()" (click)="useSide('theirs')">
+            {{ sideLabel("theirs", currentConflict.theirsExists) }}
+          </button>
+        </header>
+        <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.theirs, currentConflict.theirsExists) }}</pre>
+      </section>
+
+      <section class="version-card result-card">
+        <header class="version-heading">
+          <div>
+            <span class="version-kicker">Resultado</span>
+            <strong>O que será salvo</strong>
+          </div>
+          @if (currentConflict.baseExists && !currentConflict.isBinary) {
+            <button type="button" class="base-action" [disabled]="isSaving()" (click)="useBase()">Usar base</button>
+          }
+        </header>
+
+        @if (currentConflict.isBinary) {
+          <div class="version-content result-placeholder">A resolução será aplicada pela versão escolhida.</div>
+        } @else if (resultExists()) {
+          <textarea
+            [ngModel]="resultContent()"
+            (ngModelChange)="resultContent.set($event)"
+            [disabled]="isSaving()"
+            spellcheck="false"
+            aria-label="Resultado da resolução"
+          ></textarea>
+        } @else {
+          <div class="version-content result-placeholder">O arquivo será excluído.</div>
+        }
+      </section>
+    </div>
+
+    <footer class="conflict-footer">
+      <span>O resultado fica preparado no Git e poderá ser incluído no próximo commit.</span>
+      <div class="footer-actions">
+        <button type="button" class="cancel-action" [disabled]="isSaving()" (click)="closed.emit()">Cancelar</button>
+        <button type="button" class="resolve-action" [disabled]="isSaving() || currentConflict.isBinary" (click)="markAsResolved()">
+          {{ isSaving() ? "Salvando..." : "Marcar como resolvido" }}
+        </button>
+      </div>
+    </footer>
+  }
+</dialog>

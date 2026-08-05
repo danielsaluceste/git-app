@@ -26,6 +26,7 @@ pub struct RepositoryStatus {
     pub untracked_count: usize,
     pub ahead_count: usize,
     pub behind_count: usize,
+    pub conflicted_count: usize,
     pub files: Vec<RepositoryFile>,
 }
 
@@ -35,6 +36,22 @@ pub struct RepositoryFile {
     pub path: String,
     pub status: String,
     pub is_staged: bool,
+    pub is_conflicted: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictFile {
+    pub path: String,
+    pub base: String,
+    pub ours: String,
+    pub theirs: String,
+    pub result: String,
+    pub base_exists: bool,
+    pub ours_exists: bool,
+    pub theirs_exists: bool,
+    pub result_exists: bool,
+    pub is_binary: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +64,7 @@ pub struct RepositoryCommit {
     pub author_email: String,
     pub date: String,
     pub parents: Vec<String>,
+    pub references: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

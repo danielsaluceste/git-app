@@ -160,6 +160,25 @@ h3 {
   background: #14532d;
 }
 
+.rename-button {
+  flex: 0 0 auto;
+  border: 1px solid #374151;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  background: #1f2937;
+  color: #d1d5db;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.rename-button:hover:not(:disabled) {
+  border-color: #6b7280;
+  background: #263244;
+  color: #fff;
+}
+
 .detail-actions {
   display: flex;
   align-items: center;
@@ -187,10 +206,58 @@ h3 {
 }
 
 .apply-button:disabled,
+.rename-button:disabled,
 .delete-button:disabled,
 .refresh-button:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.stash-rename-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  border: 1px solid #374151;
+  border-radius: 0.55rem;
+  padding: 0.75rem;
+  background: #111827;
+}
+
+.stash-rename-form strong {
+  color: #f3f4f6;
+  font-size: 0.78rem;
+}
+
+.stash-rename-form p {
+  margin-top: 0.2rem;
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+.stash-rename-form input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #374151;
+  border-radius: 0.45rem;
+  padding: 0.6rem 0.7rem;
+  outline: none;
+  background: #172033;
+  color: #f9fafb;
+  font: inherit;
+  font-size: 0.76rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.stash-rename-form input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
+}
+
+.rename-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 0.65rem;
 }
 
 .detail-heading {
@@ -238,13 +305,84 @@ h3 {
   color: #fdba74;
 }
 
-.stash-file-button {
+.list-heading-actions {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.5rem;
+}
+
+.select-all-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #fb923c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.select-all-button:hover {
+  color: #fdba74;
+}
+
+.stash-file-row {
+  display: flex;
+  align-items: center;
   min-width: 0;
   border: 1px solid transparent;
   border-radius: 0.4rem;
+  background: transparent;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.stash-file-row:hover,
+.stash-file-row.selected {
+  border-color: #374151;
+  background: #1f2937;
+}
+
+.stash-file-check {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 1.35rem;
+  margin-left: 0.4rem;
+  place-items: center;
+  border: 1px solid #4b5563;
+  border-radius: 0.35rem;
+  padding: 0;
+  background: #111827;
+  color: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.stash-file-check:hover,
+.stash-file-check.checked {
+  border-color: #f97316;
+  background: #4a2d14;
+  color: #fed7aa;
+}
+
+.stash-file-check:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
+}
+
+.stash-file-button {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 0;
   padding: 0.55rem 0.45rem;
   background: transparent;
   color: #d1d5db;
@@ -253,10 +391,7 @@ h3 {
   text-align: left;
 }
 
-.stash-file-button:hover,
-.stash-file-button.selected {
-  border-color: #374151;
-  background: #1f2937;
+.stash-file-button:hover {
   color: #f9fafb;
 }
 
@@ -288,8 +423,38 @@ h3 {
 }
 
 .diff-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   background: #0d1422;
+}
+
+.diff-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid #263244;
+  padding: 0.55rem 0.75rem;
+  background: #111827;
+  color: #6b7280;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.diff-heading span:last-child {
+  max-width: 65%;
+  overflow: hidden;
+  color: #fdba74;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
 }
 
 .diff-code {

@@ -19,33 +19,42 @@
     </header>
 
     @if (showStashForm()) {
-      <form class="stash-form" (ngSubmit)="saveStash()">
-        <div>
-          <strong>Guardar alterações atuais</strong>
-          <p>Os arquivos rastreados e não rastreados serão removidos do working tree.</p>
-        </div>
-        <input
-          [ngModel]="stashMessage()"
-          (ngModelChange)="stashMessage.set($event)"
-          name="stashMessage"
-          placeholder="Mensagem opcional, ex.: antes de trocar de branch"
-          autocomplete="off"
-          [disabled]="isSaving()"
-        />
-        <div class="stash-form-actions">
-          <button type="button" class="stash-cancel-button" [disabled]="isSaving()" (click)="closeStashForm()">
-            Cancelar
-          </button>
-          <button type="submit" class="stash-save-button" [disabled]="isSaving()">
-            {{ isSaving() ? "Guardando..." : "Guardar alterações" }}
-          </button>
-        </div>
-      </form>
+      <app-stash-dialog
+        [files]="status()?.files ?? []"
+        [message]="stashMessage()"
+        [isSaving]="isSaving()"
+        [selectedPaths]="stashFilePaths()"
+        (messageChange)="stashMessage.set($event)"
+        (selectedPathsChange)="stashFilePaths.set($event)"
+        (confirmed)="saveStash()"
+        (cancelled)="closeStashForm()"
+      />
     }
 
     @if (isLoading()) {
       <div class="panel loading-state">Lendo o status do Git...</div>
     } @else if (status(); as repositoryStatus) {
+      @if (conflictFiles(repositoryStatus.files).length > 0) {
+        <section class="conflict-panel" aria-live="polite">
+          <div class="conflict-panel-heading">
+            <div class="conflict-panel-icon" aria-hidden="true">!</div>
+            <div>
+              <strong>{{ conflictFiles(repositoryStatus.files).length }} conflito(s) precisam de resolução</strong>
+              <p>Resolva os arquivos antes de preparar ou criar o commit.</p>
+            </div>
+          </div>
+          <div class="conflict-file-list">
+            @for (file of conflictFiles(repositoryStatus.files); track file.path) {
+              <button type="button" class="conflict-file-button" [disabled]="isSaving()" (click)="openConflictResolver(file)" [title]="'Resolver conflito em ' + file.path">
+                <span class="conflict-file-status">!</span>
+                <span class="conflict-file-path">{{ file.path }}</span>
+                <span class="conflict-file-arrow" aria-hidden="true">›</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+
       <app-fixed-bottom-layout>
         <div fixed-layout-content class="changes-layout">
         <section class="panel files-panel">
@@ -78,18 +87,22 @@
                       [class.status-deleted]="file.status === 'deleted'"
                       [class.status-untracked]="file.status === 'untracked'"
                       [class.status-renamed]="file.status === 'renamed'"
+                      [class.status-conflicted]="file.isConflicted"
                       [attr.title]="statusLabel(file.status)"
                     >{{ statusCode(file.status) }}</span>
                     <span class="file-path" [title]="file.path">{{ file.path }}</span>
                   </button>
-                  <button type="button" class="file-action-button" [disabled]="isSaving()" (click)="stageFile(file)" [attr.aria-label]="'Preparar ' + file.path" title="Preparar arquivo">
+                  <button type="button" class="file-action-button" [disabled]="isSaving() || file.isConflicted" (click)="stageFile(file)" [attr.aria-label]="file.isConflicted ? 'Resolva o conflito de ' + file.path : 'Preparar ' + file.path" [title]="file.isConflicted ? 'Resolver conflito primeiro' : 'Preparar arquivo'">
                     <span aria-hidden="true">+</span>
                   </button>
                 </div>
               }
             </div>
           } @else {
-            <p class="empty-files">Nenhuma alteração não preparada.</p>
+            <div class="empty-files">
+              <span class="empty-files-icon" aria-hidden="true">✓</span>
+              <span>Nenhuma alteração não preparada.</span>
+            </div>
           }
         </section>
 
@@ -123,6 +136,7 @@
                       [class.status-deleted]="file.status === 'deleted'"
                       [class.status-untracked]="file.status === 'untracked'"
                       [class.status-renamed]="file.status === 'renamed'"
+                      [class.status-conflicted]="file.isConflicted"
                       [attr.title]="statusLabel(file.status)"
                     >{{ statusCode(file.status) }}</span>
                     <span class="file-path" [title]="file.path">{{ file.path }}</span>
@@ -134,7 +148,10 @@
               }
             </div>
           } @else {
-            <p class="empty-files">Nenhum arquivo preparado.</p>
+            <div class="empty-files staged-empty">
+              <span class="empty-files-icon" aria-hidden="true">✓</span>
+              <span>Nenhum arquivo preparado.</span>
+            </div>
           }
         </section>
 
@@ -196,11 +213,13 @@
           }
           <div class="commit-footer">
             <span>{{ stagedFiles(repositoryStatus.files).length }} arquivo(s) preparado(s)</span>
+            <span class="commit-shortcut-hint"><kbd>Ctrl</kbd><kbd>Enter</kbd></span>
             <button
               type="button"
               class="commit-button"
-              [disabled]="isSaving() || !commitMessage().trim() || stagedFiles(repositoryStatus.files).length === 0"
+              [disabled]="isSaving() || !commitMessage().trim() || stagedFiles(repositoryStatus.files).length === 0 || conflictFiles(repositoryStatus.files).length > 0"
               (click)="commitChanges(repositoryStatus.files)"
+              title="Criar commit (Ctrl+Enter)"
             >
               @if (isSaving()) {
                 Salvando...
@@ -219,6 +238,17 @@
       <h3>Nenhum repositório selecionado</h3>
       <p>Abra um repositório para visualizar e preparar arquivos.</p>
     </div>
+  }
+
+  @if (selectedConflictFile(); as conflictFile) {
+    @if (activeRepository(); as repository) {
+      <app-conflict-resolver
+        [repositoryPath]="repository.path"
+        [file]="conflictFile"
+        (closed)="closeConflictResolver()"
+        (resolved)="onConflictResolved()"
+      />
+    }
   }
 
   @if (selectedFile(); as file) {

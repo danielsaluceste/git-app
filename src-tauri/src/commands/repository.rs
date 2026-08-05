@@ -1,12 +1,12 @@
 use crate::commands::github;
 use crate::models::repository::{
-    CommitFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile, RepositoryReferences,
-    RepositoryStatus,
+    CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
+    RepositoryReferences, RepositoryStatus,
 };
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -350,6 +350,7 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
     let mut staged_count = 0;
     let mut unstaged_count = 0;
     let mut untracked_count = 0;
+    let mut conflicted_count = 0;
 
     for line in status_output.lines().filter(|line| !line.trim().is_empty()) {
         let bytes = line.as_bytes();
@@ -360,8 +361,9 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
         let index_status = bytes[0] as char;
         let worktree_status = bytes[1] as char;
         let is_untracked = index_status == '?' && worktree_status == '?';
-        let is_staged = index_status != ' ' && index_status != '?';
-        let is_unstaged = worktree_status != ' ' && worktree_status != '?';
+        let is_conflicted = is_unmerged_status(index_status, worktree_status);
+        let is_staged = !is_conflicted && index_status != ' ' && index_status != '?';
+        let is_unstaged = is_conflicted || (worktree_status != ' ' && worktree_status != '?');
 
         if is_untracked {
             untracked_count += 1;
@@ -372,8 +374,13 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
         if is_unstaged {
             unstaged_count += 1;
         }
+        if is_conflicted {
+            conflicted_count += 1;
+        }
 
-        let status = if is_untracked {
+        let status = if is_conflicted {
+            "conflicted"
+        } else if is_untracked {
             "untracked"
         } else if index_status == 'R' || worktree_status == 'R' {
             "renamed"
@@ -389,6 +396,7 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
             path: line[3..].trim().to_string(),
             status: status.to_string(),
             is_staged,
+            is_conflicted,
         });
     }
 
@@ -409,6 +417,7 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
             path: path.to_string(),
             status: "untracked".to_string(),
             is_staged: false,
+            is_conflicted: false,
         });
     }
 
@@ -420,8 +429,130 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
         untracked_count,
         ahead_count,
         behind_count,
+        conflicted_count,
         files,
     })
+}
+
+#[tauri::command]
+pub fn get_repository_conflicts(path: String) -> Result<Vec<ConflictFile>, String> {
+    ensure_repository(&path)?;
+    let status_output = run_git(&path, &["status", "--porcelain=v1", "--untracked-files=no"])?;
+    let mut conflicts = Vec::new();
+
+    for line in status_output.lines().filter(|line| !line.trim().is_empty()) {
+        let bytes = line.as_bytes();
+        if bytes.len() < 3 || !is_unmerged_status(bytes[0] as char, bytes[1] as char) {
+            continue;
+        }
+
+        let file_path = line[3..].trim().to_string();
+        let relative_path = validate_repository_file_path(&file_path)?;
+        let (base, base_exists) = read_conflict_stage(&path, &file_path, 1);
+        let (ours, ours_exists) = read_conflict_stage(&path, &file_path, 2);
+        let (theirs, theirs_exists) = read_conflict_stage(&path, &file_path, 3);
+        let working_path = PathBuf::from(&path).join(relative_path);
+        let (result, result_exists, result_is_binary) = read_working_file(&working_path);
+
+        conflicts.push(ConflictFile {
+            path: file_path,
+            base: base.clone(),
+            ours: ours.clone(),
+            theirs: theirs.clone(),
+            result,
+            base_exists,
+            ours_exists,
+            theirs_exists,
+            result_exists,
+            is_binary: result_is_binary
+                || base.as_bytes().contains(&0)
+                || ours.as_bytes().contains(&0)
+                || theirs.as_bytes().contains(&0),
+        });
+    }
+
+    Ok(conflicts)
+}
+
+#[tauri::command]
+pub fn resolve_repository_conflict(
+    path: String,
+    file_path: String,
+    content: String,
+    keep_file: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_repository_file_path(&file_path)?;
+    let working_path = PathBuf::from(&path).join(relative_path);
+
+    if keep_file {
+        if content.contains('\0') {
+            return Err(
+                "O resultado contém dados binários inválidos para edição de texto.".to_string(),
+            );
+        }
+
+        if let Some(parent) = working_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| {
+                format!("Não foi possível preparar a pasta do arquivo: {error}")
+            })?;
+        }
+        std::fs::write(&working_path, content.as_bytes())
+            .map_err(|error| format!("Não foi possível salvar o resultado do conflito: {error}"))?;
+    } else if working_path.exists() {
+        std::fs::remove_file(&working_path)
+            .map_err(|error| format!("Não foi possível remover o arquivo: {error}"))?;
+    }
+
+    let add_args = vec![
+        "add".to_string(),
+        "-u".to_string(),
+        "--".to_string(),
+        file_path,
+    ];
+    run_git_strings(&path, &add_args).map(|_| ())
+}
+
+#[tauri::command]
+pub fn resolve_repository_conflict_side(
+    path: String,
+    file_path: String,
+    side: String,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_repository_file_path(&file_path)?;
+    let normalized_side = side.trim().to_ascii_lowercase();
+    if normalized_side != "ours" && normalized_side != "theirs" {
+        return Err("Escolha uma versão válida para resolver o conflito.".to_string());
+    }
+
+    let stage = if normalized_side == "ours" { 2 } else { 3 };
+    let stage_exists = read_conflict_stage(&path, &file_path, stage).1;
+    if stage_exists {
+        let checkout_flag = format!("--{normalized_side}");
+        let checkout_args = vec![
+            "checkout".to_string(),
+            checkout_flag,
+            "--".to_string(),
+            file_path.clone(),
+        ];
+        run_git_strings(&path, &checkout_args).map(|_| ())?;
+    } else {
+        let working_path = PathBuf::from(&path).join(relative_path);
+        if working_path.exists() {
+            std::fs::remove_file(&working_path).map_err(|error| {
+                format!("Não foi possível manter a exclusão do arquivo: {error}")
+            })?;
+        }
+    }
+
+    let add_args = vec![
+        "add".to_string(),
+        "-u".to_string(),
+        "--".to_string(),
+        file_path,
+    ];
+    run_git_strings(&path, &add_args).map(|_| ())
 }
 
 #[tauri::command]
@@ -559,11 +690,15 @@ pub fn get_repository_file_diff(
 }
 
 #[tauri::command]
-pub fn stash_repository(path: String, message: Option<String>) -> Result<(), String> {
+pub fn stash_repository(
+    path: String,
+    message: Option<String>,
+    file_paths: Option<Vec<String>>,
+) -> Result<(), String> {
     ensure_repository(&path)?;
 
-    let status = run_git(&path, &["status", "--porcelain", "--untracked-files=all"])?;
-    if status.trim().is_empty() {
+    let status_output = run_git(&path, &["status", "--porcelain", "--untracked-files=all"])?;
+    if status_output.trim().is_empty() {
         return Err("Não há alterações para guardar no stash.".to_string());
     }
 
@@ -577,6 +712,12 @@ pub fn stash_repository(path: String, message: Option<String>) -> Result<(), Str
         args.push(message);
     }
 
+    if let Some(file_paths) = file_paths {
+        let selected_paths = validate_worktree_file_selection(&path, file_paths)?;
+        args.push("--".to_string());
+        args.extend(selected_paths);
+    }
+
     run_git_strings(&path, &args).map(|_| ())
 }
 
@@ -587,6 +728,79 @@ pub fn apply_stash(path: String, stash_ref: String) -> Result<(), String> {
     run_git_with_timeout(
         &path,
         &["stash", "apply", "--index", &stash_ref],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn apply_stash_files(
+    path: String,
+    stash_ref: String,
+    file_paths: Vec<String>,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+
+    let selected_paths = validate_stash_file_selection(&path, &stash_ref, file_paths)?;
+    for file_path in selected_paths {
+        let source = if stash_contains_path(&path, &stash_ref, &file_path) {
+            stash_ref.clone()
+        } else {
+            let untracked_parent = format!("{stash_ref}^3");
+            if stash_contains_path(&path, &untracked_parent, &file_path) {
+                untracked_parent
+            } else {
+                stash_ref.clone()
+            }
+        };
+
+        let args = vec![
+            "restore".to_string(),
+            "--source".to_string(),
+            source,
+            "--staged".to_string(),
+            "--worktree".to_string(),
+            "--no-overlay".to_string(),
+            "--".to_string(),
+            file_path,
+        ];
+        run_git_strings(&path, &args)?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rename_stash(path: String, stash_ref: String, message: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_stash_reference(&path, &stash_ref)?;
+
+    let message = message.trim();
+    if message.is_empty() {
+        return Err("A mensagem do stash não pode ficar vazia.".to_string());
+    }
+
+    let stash_index = parse_stash_index(&stash_ref)?;
+    let stash_hash = run_git(&path, &["rev-parse", &stash_ref])?;
+    let stash_hash = stash_hash.trim();
+    if stash_hash.is_empty() {
+        return Err("Não foi possível identificar o stash selecionado.".to_string());
+    }
+
+    let store_args = vec![
+        "stash".to_string(),
+        "store".to_string(),
+        "--message".to_string(),
+        message.to_string(),
+        stash_hash.to_string(),
+    ];
+    run_git_strings(&path, &store_args)?;
+
+    let previous_stash_ref = format!("stash@{{{}}}", stash_index + 1);
+    run_git_with_timeout(
+        &path,
+        ["stash", "drop", "--quiet", previous_stash_ref.as_str()],
         GIT_COMMAND_TIMEOUT,
     )
     .map(|_| ())
@@ -772,28 +986,38 @@ fn summarize_changed_areas(changed_files: &str) -> String {
 }
 
 #[tauri::command]
-pub fn get_repository_commits(path: String) -> Result<Vec<RepositoryCommit>, String> {
+pub fn get_repository_commits(
+    path: String,
+    all_branches: bool,
+    skip: usize,
+    limit: usize,
+) -> Result<Vec<RepositoryCommit>, String> {
     let repository_path = PathBuf::from(&path);
 
     if !repository_path.is_dir() || !repository_path.join(".git").exists() {
         return Err("O repositório selecionado não está disponível.".to_string());
     }
 
-    let log = run_git(
-        &path,
-        &[
-            "log",
-            "--max-count=100",
-            "--date=iso-strict",
-            "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%P%x1e",
-        ],
-    )?;
+    let safe_limit = limit.clamp(1, 500);
+    let mut arguments = vec!["log".to_string()];
+    if all_branches {
+        arguments.push("--all".to_string());
+    }
+    arguments.extend([
+        format!("--skip={skip}"),
+        format!("--max-count={safe_limit}"),
+        "--date=iso-strict".to_string(),
+        "--decorate=short".to_string(),
+        "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%P%x1f%D%x1e".to_string(),
+    ]);
+    let argument_refs = arguments.iter().map(String::as_str).collect::<Vec<_>>();
+    let log = run_git(&path, &argument_refs)?;
 
     let commits = log
         .split('\x1e')
         .filter_map(|record| {
             let fields: Vec<&str> = record.trim().split('\x1f').collect();
-            if fields.len() < 7 || fields[0].is_empty() {
+            if fields.len() < 8 || fields[0].is_empty() {
                 return None;
             }
 
@@ -808,6 +1032,12 @@ pub fn get_repository_commits(path: String) -> Result<Vec<RepositoryCommit>, Str
                     .split_whitespace()
                     .map(ToOwned::to_owned)
                     .collect(),
+                references: fields[7]
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|reference| !reference.is_empty())
+                    .map(ToOwned::to_owned)
+                    .collect(),
             })
         })
         .collect();
@@ -820,17 +1050,30 @@ pub fn get_commit_files(path: String, commit_hash: String) -> Result<Vec<CommitF
     ensure_repository(&path)?;
     validate_commit_hash(&commit_hash)?;
 
-    let output = run_git_with_timeout(
-        &path,
-        &[
-            "show",
-            "--format=",
+    let output = if let Some(parent) = get_commit_first_parent(&path, &commit_hash)? {
+        let args = [
+            "diff-tree",
+            "--no-commit-id",
             "--name-status",
             "--find-renames",
-            &commit_hash,
-        ],
-        GIT_COMMAND_TIMEOUT,
-    )?;
+            "-r",
+            parent.as_str(),
+            commit_hash.as_str(),
+        ];
+        run_git_with_timeout(&path, args, GIT_COMMAND_TIMEOUT)?
+    } else {
+        run_git_with_timeout(
+            &path,
+            [
+                "show",
+                "--format=",
+                "--name-status",
+                "--find-renames",
+                commit_hash.as_str(),
+            ],
+            GIT_COMMAND_TIMEOUT,
+        )?
+    };
 
     let files = output
         .lines()
@@ -870,16 +1113,29 @@ pub fn get_commit_file_diff(
         return Err("O arquivo selecionado não é válido.".to_string());
     }
 
-    let args = vec![
-        "show".to_string(),
-        "--format=".to_string(),
-        "--no-ext-diff".to_string(),
-        "--no-textconv".to_string(),
-        "--unified=3".to_string(),
-        commit_hash,
-        "--".to_string(),
-        file_path,
-    ];
+    let args = if let Some(parent) = get_commit_first_parent(&path, &commit_hash)? {
+        vec![
+            "diff".to_string(),
+            "--no-ext-diff".to_string(),
+            "--no-textconv".to_string(),
+            "--unified=3".to_string(),
+            parent,
+            commit_hash,
+            "--".to_string(),
+            file_path,
+        ]
+    } else {
+        vec![
+            "show".to_string(),
+            "--format=".to_string(),
+            "--no-ext-diff".to_string(),
+            "--no-textconv".to_string(),
+            "--unified=3".to_string(),
+            commit_hash,
+            "--".to_string(),
+            file_path,
+        ]
+    };
     let diff = run_git_with_timeout(&path, &args, GIT_DIFF_TIMEOUT)?;
     let max_chars = 30_000;
 
@@ -1100,6 +1356,12 @@ fn ensure_repository(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn is_unmerged_status(index_status: char, worktree_status: char) -> bool {
+    index_status == 'U'
+        || worktree_status == 'U'
+        || matches!((index_status, worktree_status), ('A', 'A') | ('D', 'D'))
+}
+
 fn is_running_development_repository(path: &str) -> bool {
     if !cfg!(debug_assertions) {
         return false;
@@ -1128,6 +1390,48 @@ fn is_running_development_repository(path: &str) -> bool {
     requested_repository == running_repository
 }
 
+fn validate_repository_file_path(file_path: &str) -> Result<PathBuf, String> {
+    let trimmed = file_path.trim();
+    let relative_path = Path::new(trimmed);
+    if trimmed.is_empty()
+        || trimmed.chars().any(char::is_control)
+        || relative_path.is_absolute()
+        || relative_path.components().any(|component| {
+            matches!(
+                component,
+                Component::ParentDir | Component::RootDir | Component::Prefix(_)
+            )
+        })
+    {
+        return Err("O caminho do arquivo em conflito não é válido.".to_string());
+    }
+
+    Ok(relative_path.to_path_buf())
+}
+
+fn read_conflict_stage(path: &str, file_path: &str, stage: u8) -> (String, bool) {
+    let spec = format!(":{stage}:{file_path}");
+    let args = vec!["show".to_string(), spec];
+    match run_git_strings(path, &args) {
+        Ok(content) => (content, true),
+        Err(_) => (String::new(), false),
+    }
+}
+
+fn read_working_file(path: &Path) -> (String, bool, bool) {
+    match std::fs::read(path) {
+        Ok(content) => {
+            let is_binary = content.contains(&0);
+            (
+                String::from_utf8_lossy(&content).to_string(),
+                true,
+                is_binary,
+            )
+        }
+        Err(_) => (String::new(), false, false),
+    }
+}
+
 fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
     let valid_length = (7..=64).contains(&commit_hash.len());
     let valid_characters = commit_hash
@@ -1139,6 +1443,11 @@ fn validate_commit_hash(commit_hash: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn get_commit_first_parent(path: &str, commit_hash: &str) -> Result<Option<String>, String> {
+    let output = run_git(path, &["rev-list", "--parents", "-n", "1", commit_hash])?;
+    Ok(output.split_whitespace().nth(1).map(ToOwned::to_owned))
 }
 
 fn validate_stash_reference(path: &str, stash_ref: &str) -> Result<(), String> {
@@ -1153,6 +1462,87 @@ fn validate_stash_reference(path: &str, stash_ref: &str) -> Result<(), String> {
     )
     .map(|_| ())
     .map_err(|_| "O stash selecionado não está mais disponível.".to_string())
+}
+
+fn parse_stash_index(stash_ref: &str) -> Result<usize, String> {
+    stash_ref
+        .strip_prefix("stash@{")
+        .and_then(|value| value.strip_suffix('}'))
+        .ok_or_else(|| "A referência do stash selecionado não é válida.".to_string())?
+        .parse::<usize>()
+        .map_err(|_| "A referência do stash selecionado não é válida.".to_string())
+}
+
+fn validate_stash_file_selection(
+    path: &str,
+    stash_ref: &str,
+    file_paths: Vec<String>,
+) -> Result<Vec<String>, String> {
+    if file_paths.is_empty() {
+        return Err("Selecione pelo menos um arquivo para aplicar.".to_string());
+    }
+
+    let available_files = get_stash_files(path.to_string(), stash_ref.to_string())?;
+    let available_paths: HashSet<String> =
+        available_files.into_iter().map(|file| file.path).collect();
+    let mut selected_paths = Vec::new();
+    let mut seen_paths = HashSet::new();
+
+    for file_path in file_paths {
+        let validated_path = validate_repository_file_path(&file_path)
+            .map_err(|_| "Um dos arquivos selecionados não possui um caminho válido.".to_string())?
+            .to_string_lossy()
+            .to_string();
+
+        if !available_paths.contains(&validated_path) {
+            return Err("Um dos arquivos selecionados não pertence ao stash atual.".to_string());
+        }
+
+        if seen_paths.insert(validated_path.clone()) {
+            selected_paths.push(validated_path);
+        }
+    }
+
+    Ok(selected_paths)
+}
+
+fn stash_contains_path(path: &str, tree_reference: &str, file_path: &str) -> bool {
+    let object_reference = format!("{tree_reference}:{file_path}");
+    let args = vec!["cat-file".to_string(), "-e".to_string(), object_reference];
+    run_git_strings(path, &args).is_ok()
+}
+
+fn validate_worktree_file_selection(
+    path: &str,
+    file_paths: Vec<String>,
+) -> Result<Vec<String>, String> {
+    if file_paths.is_empty() {
+        return Err("Selecione pelo menos um arquivo para guardar no stash.".to_string());
+    }
+
+    let status = get_repository_status(path.to_string())?;
+    let available_paths: HashSet<String> = status.files.into_iter().map(|file| file.path).collect();
+    let mut selected_paths = Vec::new();
+    let mut seen_paths = HashSet::new();
+
+    for file_path in file_paths {
+        let validated_path = validate_repository_file_path(&file_path)
+            .map_err(|_| "Um dos arquivos selecionados não possui um caminho válido.".to_string())?
+            .to_string_lossy()
+            .to_string();
+
+        if !available_paths.contains(&validated_path) {
+            return Err(
+                "Um dos arquivos selecionados não possui alterações disponíveis.".to_string(),
+            );
+        }
+
+        if seen_paths.insert(validated_path.clone()) {
+            selected_paths.push(validated_path);
+        }
+    }
+
+    Ok(selected_paths)
 }
 
 fn validate_start_point(path: &str, start_point: &str) -> Result<(), String> {

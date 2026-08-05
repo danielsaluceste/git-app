@@ -49,17 +49,179 @@
         <p>Este repositório ainda não possui commits.</p>
       </div>
     } @else {
-      <div class="overview-layout">
+      <div class="overview-layout" [class.has-selected-commit]="selectedCommit()">
         <section class="panel graph-panel">
-          <div class="panel-heading">
-            <div>
-              <h3>Histórico de commits</h3>
-              <p>{{ commits().length }} commits recentes · clique, dê duplo clique ou use o botão direito</p>
+          <div class="panel-heading history-panel-heading">
+            <div class="history-heading-row">
+              <div>
+                <h3>Histórico de commits</h3>
+                <p>{{ filteredCommits().length }} de {{ commits().length }} commits</p>
+              </div>
+              <div class="history-heading-actions">
+                <div class="history-scope-control">
+                  <button
+                    type="button"
+                    class="history-scope-select"
+                    [class.is-open]="isFilterMenuOpen('scope')"
+                    [attr.aria-expanded]="isFilterMenuOpen('scope')"
+                    aria-haspopup="listbox"
+                    aria-label="Escolher branches exibidas"
+                    (click)="toggleFilterMenu('scope', $event)"
+                  >
+                    <span class="history-scope-icon" aria-hidden="true">⑂</span>
+                    <span>{{ historyScopeLabel() }}</span>
+                    <span class="history-select-chevron" aria-hidden="true">⌄</span>
+                  </button>
+                  @if (isFilterMenuOpen('scope')) {
+                    <div class="history-select-menu history-scope-menu" role="listbox" aria-label="Escopo do histórico" (click)="$event.stopPropagation()">
+                      <button type="button" data-filter-menu="scope" role="option" [class.selected]="historyScope() === 'all'" [attr.aria-selected]="historyScope() === 'all'" (click)="selectHistoryScope('all', $event)">
+                        <span>
+                          <strong>Todas as branches</strong>
+                          <small>Histórico completo do repositório</small>
+                        </span>
+                        @if (historyScope() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                      </button>
+                      <button type="button" data-filter-menu="scope" role="option" [class.selected]="historyScope() === 'current'" [attr.aria-selected]="historyScope() === 'current'" (click)="selectHistoryScope('current', $event)">
+                        <span>
+                          <strong>Branch atual</strong>
+                          <small>{{ currentBranch() }}</small>
+                        </span>
+                        @if (historyScope() === "current") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                      </button>
+                    </div>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="history-filter-toggle app-tooltip"
+                  [class.is-active]="showHistoryFilters()"
+                  [attr.data-tooltip]="showHistoryFilters() ? 'Ocultar filtros' : 'Buscar e filtrar histórico'"
+                  [attr.aria-expanded]="showHistoryFilters()"
+                  aria-label="Mostrar ou ocultar busca e filtros"
+                  (click)="toggleHistoryFilters()"
+                >
+                  <span aria-hidden="true">⌕</span>
+                </button>
+              </div>
             </div>
+
+            @if (showHistoryFilters()) {
+              <div class="history-filters">
+              <label class="history-search">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  #historySearch
+                  type="search"
+                  [value]="historyQuery()"
+                  (input)="setHistoryQuery($event)"
+                  placeholder="Buscar mensagem, autor ou hash..."
+                  aria-label="Buscar mensagem, autor ou hash"
+                />
+              </label>
+              <label class="history-filter-control">
+                <span>Autor</span>
+                <button
+                  type="button"
+                  class="history-select"
+                  [class.is-open]="isFilterMenuOpen('author')"
+                  [attr.aria-expanded]="isFilterMenuOpen('author')"
+                  aria-haspopup="listbox"
+                  aria-label="Filtrar por autor"
+                  (click)="toggleFilterMenu('author', $event)"
+                >
+                  <span>{{ authorFilter() || "Todos" }}</span>
+                  <span class="history-select-chevron" aria-hidden="true">⌄</span>
+                </button>
+                @if (isFilterMenuOpen('author')) {
+                  <div class="history-select-menu" role="listbox" aria-label="Autores" (click)="$event.stopPropagation()">
+                    <button type="button" data-filter-menu="author" role="option" [class.selected]="!authorFilter()" [attr.aria-selected]="!authorFilter()" (click)="selectAuthorFilter('', $event)">
+                      <span>Todos</span>
+                      @if (!authorFilter()) { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    @for (author of authors(); track author) {
+                      <button type="button" data-filter-menu="author" role="option" [class.selected]="authorFilter() === author" [attr.aria-selected]="authorFilter() === author" (click)="selectAuthorFilter(author, $event)">
+                        <span>{{ author }}</span>
+                        @if (authorFilter() === author) { <span class="history-option-check" aria-hidden="true">✓</span> }
+                      </button>
+                    }
+                  </div>
+                }
+              </label>
+              <label class="history-filter-control">
+                <span>Tipo</span>
+                <button
+                  type="button"
+                  class="history-select"
+                  [class.is-open]="isFilterMenuOpen('kind')"
+                  [attr.aria-expanded]="isFilterMenuOpen('kind')"
+                  aria-haspopup="listbox"
+                  aria-label="Filtrar tipo de commit"
+                  (click)="toggleFilterMenu('kind', $event)"
+                >
+                  <span>{{ commitKindLabel() }}</span>
+                  <span class="history-select-chevron" aria-hidden="true">⌄</span>
+                </button>
+                @if (isFilterMenuOpen('kind')) {
+                  <div class="history-select-menu" role="listbox" aria-label="Tipo de commit" (click)="$event.stopPropagation()">
+                    <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'all'" [attr.aria-selected]="commitKindFilter() === 'all'" (click)="selectCommitKindFilter('all', $event)">
+                      <span>Todos</span>
+                      @if (commitKindFilter() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'regular'" [attr.aria-selected]="commitKindFilter() === 'regular'" (click)="selectCommitKindFilter('regular', $event)">
+                      <span>Sem merge</span>
+                      @if (commitKindFilter() === "regular") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'merge'" [attr.aria-selected]="commitKindFilter() === 'merge'" (click)="selectCommitKindFilter('merge', $event)">
+                      <span>Somente merges</span>
+                      @if (commitKindFilter() === "merge") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                  </div>
+                }
+              </label>
+              <label class="history-filter-control">
+                <span>Período</span>
+                <button
+                  type="button"
+                  class="history-select"
+                  [class.is-open]="isFilterMenuOpen('date')"
+                  [attr.aria-expanded]="isFilterMenuOpen('date')"
+                  aria-haspopup="listbox"
+                  aria-label="Filtrar por período"
+                  (click)="toggleFilterMenu('date', $event)"
+                >
+                  <span>{{ commitDateLabel() }}</span>
+                  <span class="history-select-chevron" aria-hidden="true">⌄</span>
+                </button>
+                @if (isFilterMenuOpen('date')) {
+                  <div class="history-select-menu" role="listbox" aria-label="Período" (click)="$event.stopPropagation()">
+                    <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === 'all'" [attr.aria-selected]="commitDateFilter() === 'all'" (click)="selectCommitDateFilter('all', $event)">
+                      <span>Qualquer período</span>
+                      @if (commitDateFilter() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === '7d'" [attr.aria-selected]="commitDateFilter() === '7d'" (click)="selectCommitDateFilter('7d', $event)">
+                      <span>Últimos 7 dias</span>
+                      @if (commitDateFilter() === "7d") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === '30d'" [attr.aria-selected]="commitDateFilter() === '30d'" (click)="selectCommitDateFilter('30d', $event)">
+                      <span>Últimos 30 dias</span>
+                      @if (commitDateFilter() === "30d") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                    <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === 'year'" [attr.aria-selected]="commitDateFilter() === 'year'" (click)="selectCommitDateFilter('year', $event)">
+                      <span>Último ano</span>
+                      @if (commitDateFilter() === "year") { <span class="history-option-check" aria-hidden="true">✓</span> }
+                    </button>
+                  </div>
+                }
+              </label>
+              @if (hasHistoryFilters()) {
+                <button type="button" class="clear-history-filters" (click)="clearHistoryFilters()">Limpar filtros</button>
+              }
+              </div>
+            }
           </div>
 
           <div class="commit-graph" role="list" aria-label="Histórico de commits">
-            @for (commit of commits(); track commit.hash) {
+            @for (commit of filteredCommits(); track commit.hash) {
               <button
                 type="button"
                 class="commit-row"
@@ -77,21 +239,60 @@
                   }
                   <span class="graph-node"></span>
                 </span>
+                <span class="commit-avatar-tooltip app-tooltip" [attr.data-tooltip]="commit.authorName">
+                  <span class="commit-avatar">
+                    <span class="commit-avatar-fallback" [style.background-color]="avatarColor(commit.authorName)">
+                      {{ commitInitial(commit.authorName) }}
+                    </span>
+                    @if (commit.avatarUrl) {
+                      <img [src]="commit.avatarUrl" [alt]="'Foto de ' + commit.authorName" (error)="hideAvatar($event)" />
+                    }
+                  </span>
+                </span>
                 <span class="commit-main">
                   <strong [title]="commit.subject">{{ commit.subject }}</strong>
-                  <span>{{ commit.authorName }} · {{ formatDate(commit.date) }}</span>
+                  @if (commit.references.length > 0) {
+                    <span class="commit-refs" aria-label="Referências">
+                      @for (reference of commit.references; track reference) {
+                        <span class="commit-ref" [title]="reference">{{ formatReference(reference) }}</span>
+                      }
+                    </span>
+                  }
+                  <span class="commit-meta">
+                    <span class="commit-author" [title]="commit.authorName">{{ commit.authorName }}</span>
+                    <span class="commit-meta-separator" aria-hidden="true">·</span>
+                    <span class="commit-date">{{ formatCompactDate(commit.date) }}</span>
+                  </span>
                 </span>
-                <code [title]="commit.hash">{{ commit.shortHash }}</code>
               </button>
             }
           </div>
+          @if (hasMoreCommits()) {
+            <div class="history-load-more">
+              <button type="button" class="load-more-commits" [disabled]="isLoadingMore()" (click)="loadMoreCommits()">
+                @if (isLoadingMore()) {
+                  <span class="load-more-spinner" aria-hidden="true"></span>
+                  Carregando commits...
+                } @else {
+                  <span aria-hidden="true">↓</span>
+                  Carregar mais commits
+                }
+              </button>
+            </div>
+          }
+          @if (filteredCommits().length === 0) {
+            <div class="filtered-empty">Nenhum commit corresponde aos filtros atuais.</div>
+          }
         </section>
 
-        <aside class="panel commit-details" [class.is-scroll-offset]="actionBarScrolled()">
-          @if (selectedCommit(); as commit) {
+        @if (selectedCommit(); as commit) {
+          <aside class="panel commit-details" [class.is-scroll-offset]="actionBarScrolled()">
             <div class="details-heading">
               <span class="details-eyebrow">Commit selecionado</span>
-              <code [title]="commit.hash">{{ commit.shortHash }}</code>
+              <div class="details-heading-actions">
+                <code [title]="commit.hash">{{ commit.shortHash }}</code>
+                <button type="button" class="details-close-button" aria-label="Fechar detalhes do commit" title="Fechar detalhes" (click)="closeCommitDetails()">×</button>
+              </div>
             </div>
             <h3>{{ commit.subject }}</h3>
             <dl>
@@ -152,14 +353,8 @@
                 <div class="files-loading">Nenhum arquivo alterado encontrado.</div>
               }
             </section>
-          } @else {
-            <div class="details-empty">
-              <span class="details-icon" aria-hidden="true">⌁</span>
-              <h3>Detalhes do commit</h3>
-              <p>Selecione um commit no gráfico para visualizar autor, data, hash e relações.</p>
-            </div>
-          }
-        </aside>
+          </aside>
+        }
       </div>
     }
   } @else {

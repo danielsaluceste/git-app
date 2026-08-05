@@ -1,4 +1,5 @@
 import { Component, computed, effect, HostListener, inject, OnInit, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
@@ -7,7 +8,7 @@ import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/c
 
 @Component({
   selector: "app-stashes-page",
-  imports: [ConfirmDialogComponent],
+  imports: [ConfirmDialogComponent, FormsModule],
   templateUrl: "./stashes-page.component.html",
   styleUrl: "./stashes-page.component.css",
 })
@@ -22,9 +23,12 @@ export class StashesPageComponent implements OnInit {
   readonly stashes = computed(() => this.references()?.stashes ?? []);
   readonly isLoading = signal(true);
   readonly isApplying = signal(false);
+  readonly showRenameForm = signal(false);
+  readonly renameMessage = signal("");
   readonly pendingDeleteStash = signal<string | undefined>(undefined);
   readonly selectedStash = signal<string | undefined>(undefined);
   readonly stashFiles = signal<CommitFile[]>([]);
+  readonly selectedStashPaths = signal<string[]>([]);
   readonly stashLoading = signal(false);
   readonly selectedFile = signal<CommitFile | undefined>(undefined);
   readonly fileDiff = signal("");
@@ -132,6 +136,95 @@ export class StashesPageComponent implements OnInit {
     } finally {
       this.isApplying.set(false);
     }
+  }
+
+  async applySelectedStash(stashRef: string): Promise<void> {
+    const repository = this.activeRepository();
+    const selectedPaths = this.selectedStashPaths();
+    if (!repository || this.isApplying()) {
+      return;
+    }
+    if (selectedPaths.length === 0) {
+      this.toastService.warning("Selecione pelo menos um arquivo para aplicar.");
+      return;
+    }
+
+    this.isApplying.set(true);
+    try {
+      if (selectedPaths.length === this.stashFiles().length) {
+        await this.repositoryService.applyStash(repository.path, stashRef);
+      } else {
+        await this.repositoryService.applyStashFiles(repository.path, stashRef, selectedPaths);
+      }
+      this.toastService.success(
+        selectedPaths.length === this.stashFiles().length
+          ? "As alterações do stash foram aplicadas."
+          : `${selectedPaths.length} arquivo(s) do stash foram aplicados.`,
+        "Stash aplicado",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(this.getErrorMessage(error), "Aplicar stash");
+    } finally {
+      this.isApplying.set(false);
+    }
+  }
+
+  openRenameForm(): void {
+    this.renameMessage.set(this.selectedStash() ? this.stashDescriptionByReference(this.selectedStash()!) : "");
+    this.showRenameForm.set(true);
+  }
+
+  closeRenameForm(): void {
+    this.showRenameForm.set(false);
+    this.renameMessage.set("");
+  }
+
+  async renameSelectedStash(): Promise<void> {
+    const repository = this.activeRepository();
+    const stashRef = this.selectedStash();
+    const message = this.renameMessage().trim();
+    if (!repository || !stashRef || this.isApplying()) {
+      return;
+    }
+    if (!message) {
+      this.toastService.warning("Digite uma mensagem para o stash.");
+      return;
+    }
+
+    this.isApplying.set(true);
+    try {
+      await this.repositoryService.renameStash(repository.path, stashRef, message);
+      await this.loadReferences();
+      this.closeRenameForm();
+      this.toastService.success("A mensagem do stash foi atualizada.", "Stash renomeado");
+      this.openStash("stash@{0}");
+    } catch (error: unknown) {
+      this.toastService.error(this.getErrorMessage(error), "Renomear stash");
+    } finally {
+      this.isApplying.set(false);
+    }
+  }
+
+  isStashFileSelected(filePath: string): boolean {
+    return this.selectedStashPaths().includes(filePath);
+  }
+
+  allStashFilesSelected(): boolean {
+    return this.stashFiles().length > 0 && this.selectedStashPaths().length === this.stashFiles().length;
+  }
+
+  toggleStashFile(filePath: string, event: MouseEvent): void {
+    event.stopPropagation();
+    const selectedPaths = this.selectedStashPaths();
+    this.selectedStashPaths.set(
+      selectedPaths.includes(filePath)
+        ? selectedPaths.filter((path) => path !== filePath)
+        : [...selectedPaths, filePath],
+    );
+  }
+
+  toggleAllStashFiles(): void {
+    this.selectedStashPaths.set(this.allStashFilesSelected() ? [] : this.stashFiles().map((file) => file.path));
   }
 
   @HostListener("document:keydown", ["$event"])
@@ -272,6 +365,8 @@ export class StashesPageComponent implements OnInit {
 
     this.selectedStash.set(stashRef);
     this.stashFiles.set([]);
+    this.selectedStashPaths.set([]);
+    this.showRenameForm.set(false);
     this.selectedFile.set(undefined);
     this.fileDiff.set("");
     this.fileDiffError.set("");
@@ -284,6 +379,7 @@ export class StashesPageComponent implements OnInit {
       }
 
       this.stashFiles.set(files);
+      this.selectedStashPaths.set(files.map((file) => file.path));
       if (files[0]) {
         await this.openStashFile(files[0]);
       }
@@ -297,7 +393,10 @@ export class StashesPageComponent implements OnInit {
   private resetDetails(): void {
     this.selectedStash.set(undefined);
     this.stashFiles.set([]);
+    this.selectedStashPaths.set([]);
     this.stashLoading.set(false);
+    this.showRenameForm.set(false);
+    this.renameMessage.set("");
     this.selectedFile.set(undefined);
     this.fileDiff.set("");
     this.fileDiffLoading.set(false);

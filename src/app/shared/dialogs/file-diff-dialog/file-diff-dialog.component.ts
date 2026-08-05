@@ -42,6 +42,8 @@ export class FileDiffDialogComponent implements AfterViewInit {
         return "Renomeado";
       case "untracked":
         return "Não rastreado";
+      case "conflicted":
+        return "Conflito";
       case "modified":
         return "Modificado";
     }

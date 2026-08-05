@@ -1,7 +1,7 @@
 .page {
   display: grid;
   gap: 1rem;
-  max-width: 1250px;
+  max-width: 1550px;
   margin: 0 auto;
 }
 
@@ -242,9 +242,14 @@ h3 {
 
 .overview-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 0.85rem;
+  transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overview-layout.has-selected-commit {
+  grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.75fr);
 }
 
 .graph-panel,
@@ -257,6 +262,450 @@ h3 {
   border-bottom: 1px solid #263244;
 }
 
+.history-panel-heading {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.history-heading-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.history-heading-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.45rem;
+}
+
+.history-scope-control {
+  position: relative;
+  z-index: 6;
+}
+
+.history-scope-select {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+  max-width: 13rem;
+  gap: 0.42rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.history-scope-select:hover,
+.history-scope-select:focus-visible,
+.history-scope-select.is-open {
+  border-color: #374151;
+  background: #1f2937;
+  color: #f3f4f6;
+  outline: none;
+}
+
+.history-scope-select > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-scope-icon {
+  color: #fb923c;
+  font-size: 1.1rem;
+  line-height: 0.8;
+}
+
+.history-scope-select .history-select-chevron {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-basis: 0.8rem;
+  margin-left: 0.1rem;
+}
+
+.history-scope-menu {
+  right: 0;
+  left: auto;
+  min-width: 18rem;
+}
+
+.history-scope-menu > button > span:first-child {
+  display: grid;
+  justify-items: start;
+  gap: 0.15rem;
+}
+
+.history-scope-menu strong {
+  color: #f3f4f6;
+  font-size: 0.76rem;
+}
+
+.history-scope-menu small {
+  color: #9ca3af;
+  font-size: 0.68rem;
+}
+
+.history-filter-toggle {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.history-filter-toggle:hover,
+.history-filter-toggle:focus-visible,
+.history-filter-toggle.is-active {
+  border-color: #4b5563;
+  background: #263244;
+  color: #fb923c;
+  outline: none;
+}
+
+.history-filter-toggle > span {
+  position: relative;
+  display: block;
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 0;
+}
+
+.history-filter-toggle > span::after {
+  position: absolute;
+  right: -0.32rem;
+  bottom: -0.17rem;
+  width: 0.38rem;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.history-filter-toggle.app-tooltip::before {
+  right: 0.55rem;
+  left: auto;
+  transform: translate(0, 0.35rem);
+}
+
+.history-filter-toggle.app-tooltip::after {
+  right: 0;
+  left: auto;
+  transform: translate(0, 0.25rem);
+}
+
+.history-filter-toggle.app-tooltip:hover::before,
+.history-filter-toggle.app-tooltip:focus-visible::before,
+.history-filter-toggle.app-tooltip:hover::after,
+.history-filter-toggle.app-tooltip:focus-visible::after {
+  transform: translate(0, 0);
+}
+
+.history-filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #202b3d;
+}
+
+.history-search {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 19rem;
+  min-width: 14rem;
+  min-height: 2.35rem;
+  box-sizing: border-box;
+  gap: 0.35rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0 0.7rem;
+  background: #111827;
+  color: #d1d5db;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.history-search > span {
+  color: #fbbf24;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.history-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0.62rem 0;
+  background: transparent;
+  color: #f9fafb;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.history-search input::placeholder {
+  color: #6b7280;
+}
+
+.history-search:focus-within,
+.history-select:focus-visible,
+.clear-history-filters:focus-visible {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgb(249 115 22 / 16%);
+}
+
+.history-filter-control {
+  position: relative;
+  display: grid;
+  min-width: 8.5rem;
+  gap: 0.25rem;
+}
+
+.history-filter-control:focus-within {
+  z-index: 5;
+}
+
+.history-filter-control > span {
+  color: #6b7280;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.history-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 2.35rem;
+  box-sizing: border-box;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  outline: 0;
+  background: #111827;
+  color: #f9fafb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.history-select:hover,
+.history-select.is-open {
+  border-color: #4b5563;
+  background: #172033;
+}
+
+.history-select > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-select-chevron {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  place-items: center;
+  margin-left: 0.6rem;
+  color: #9ca3af;
+  font-size: 0;
+  line-height: 1;
+  transition: color 140ms ease;
+}
+
+.history-select-chevron::before {
+  width: 0.42rem;
+  height: 0.42rem;
+  box-sizing: border-box;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: translateY(calc(-0.12rem + 1px)) rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.history-select.is-open .history-select-chevron {
+  color: #fb923c;
+}
+
+.history-select.is-open .history-select-chevron::before {
+  transform: translateY(calc(0.12rem + 1px)) rotate(225deg);
+}
+
+.history-select-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 15rem;
+  gap: 0.2rem;
+  overflow-y: auto;
+  border: 1px solid #3b4658;
+  border-radius: 0.6rem;
+  padding: 0.35rem;
+  background: #172033;
+  box-shadow: 0 0.9rem 2rem rgb(3 7 18 / 42%);
+  animation: history-select-menu-in 120ms ease-out both;
+}
+
+.history-select-menu > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.6rem;
+  background: transparent;
+  color: #d1d5db;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.history-select-menu > button:hover,
+.history-select-menu > button:focus-visible,
+.history-select-menu > button.selected {
+  border-color: #374151;
+  background: #263244;
+  color: #fff;
+  outline: none;
+}
+
+.history-option-check {
+  margin-left: 0.75rem;
+  color: #fb923c;
+  font-weight: 800;
+}
+
+.clear-history-filters {
+  min-height: 2.35rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: #263244;
+  color: #fed7aa;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.clear-history-filters:hover {
+  border-color: #f97316;
+  background: #4a2d14;
+}
+
+.filtered-empty {
+  padding: 1.4rem 0.5rem 0.5rem;
+  color: #9ca3af;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.history-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 0.9rem 0 0.2rem;
+}
+
+.load-more-commits {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  gap: 0.45rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  background: #172033;
+  color: #fed7aa;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.load-more-commits:hover:not(:disabled),
+.load-more-commits:focus-visible {
+  border-color: #f97316;
+  background: #263244;
+  color: #fff;
+  outline: none;
+}
+
+.load-more-commits:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.load-more-spinner {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1.5px solid #6b7280;
+  border-top-color: #fb923c;
+  border-radius: 50%;
+  animation: history-load-spin 700ms linear infinite;
+}
+
+@keyframes history-load-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes history-select-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes commit-details-in {
+  from {
+    opacity: 0;
+    transform: translateX(0.6rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .commit-graph {
   display: grid;
   padding-top: 0.4rem;
@@ -264,14 +713,14 @@ h3 {
 
 .commit-row {
   display: grid;
-  grid-template-columns: 4rem minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 0.7rem;
+  grid-template-columns: 2rem 1.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
   min-width: 0;
   border: 1px solid transparent;
   border-bottom-color: #202b3d;
   border-radius: 0.55rem;
-  padding: 0.7rem 0.35rem;
+  padding: 0.45rem 0.35rem;
   background: transparent;
   color: #e5e7eb;
   cursor: pointer;
@@ -301,15 +750,28 @@ h3 {
   box-shadow: inset 0 0 0 1px rgb(249 115 22 / 20%);
 }
 
+.commit-row:focus {
+  outline: none;
+}
+
+.commit-row:focus-visible {
+  outline: none;
+}
+
+.commit-row:focus-visible:not(.selected) {
+  border-color: #6b7280;
+  background: #1f2937;
+}
+
 .graph-column {
   position: relative;
-  min-height: 3.7rem;
+  min-height: 2.15rem;
 }
 
 .graph-line {
   position: absolute;
-  top: -0.75rem;
-  bottom: -0.75rem;
+  top: -0.45rem;
+  bottom: -0.45rem;
   left: 1.08rem;
   width: 2px;
   background: #374151;
@@ -354,14 +816,55 @@ h3 {
   transform-origin: left center;
 }
 
-.commit-main {
+.commit-avatar {
+  position: relative;
   display: grid;
-  align-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #263244;
+  border-radius: 50%;
+  background: #263244;
+  box-shadow: 0 0 0 2px #172033;
+}
+
+.commit-avatar-tooltip {
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+}
+
+.commit-avatar-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.commit-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.commit-main {
+  display: flex;
+  align-items: center;
   min-width: 0;
-  gap: 0.3rem;
+  gap: 0.55rem;
 }
 
 .commit-main strong {
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   color: #f3f4f6;
   font-size: 0.88rem;
@@ -370,11 +873,50 @@ h3 {
   white-space: nowrap;
 }
 
-.commit-main span {
-  overflow: hidden;
+.commit-meta {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 13rem;
+  gap: 0.3rem;
   color: #9ca3af;
   font-size: 0.75rem;
+}
+
+.commit-author {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-refs {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 12rem;
+  gap: 0.3rem;
+  overflow: hidden;
+  flex: 0 1 auto;
+}
+
+.commit-ref {
+  overflow: hidden;
+  border: 1px solid #365b52;
+  border-radius: 0.3rem;
+  padding: 0.14rem 0.35rem;
+  background: #123b2e;
+  color: #86efac;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-meta-separator,
+.commit-date {
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 
@@ -390,6 +932,7 @@ code {
   top: 0;
   min-height: 15rem;
   transition: top 180ms ease;
+  animation: commit-details-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .commit-details.is-scroll-offset {
@@ -402,6 +945,56 @@ code {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.details-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.details-close-button {
+  position: relative;
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.details-close-button::before,
+.details-close-button::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.75rem;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+}
+
+.details-close-button::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.details-close-button::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.details-close-button:hover,
+.details-close-button:focus-visible {
+  border-color: #4b5563;
+  background: #263244;
+  color: #f9fafb;
+  outline: none;
 }
 
 .details-eyebrow {
@@ -475,22 +1068,6 @@ dd {
   font-family: "Cascadia Code", Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.details-empty {
-  display: grid;
-  align-content: center;
-  min-height: 15rem;
-  gap: 0.65rem;
-}
-
-.details-icon {
-  color: #f97316;
-  font-size: 2rem;
-}
-
-.details-empty p {
-  line-height: 1.5;
 }
 
 .changed-files {
@@ -721,6 +1298,25 @@ dd {
 }
 
 @media (max-width: 900px) {
+  .history-heading-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .history-filters {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .history-search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .history-filter-control {
+    flex: 1 1 8rem;
+  }
+
   .page-heading {
     align-items: start;
     flex-direction: column;
@@ -752,9 +1348,10 @@ dd {
 
 @media (max-width: 620px) {
   .commit-row {
-    grid-template-columns: 3rem minmax(0, 1fr);
+    grid-template-columns: 2rem 1.7rem minmax(0, 1fr);
   }
 
+  .commit-meta,
   .commit-row code {
     display: none;
   }
