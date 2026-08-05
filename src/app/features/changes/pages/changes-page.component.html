@@ -160,23 +160,9 @@
         <section fixed-layout-panel class="panel commit-panel">
           <div class="panel-heading">
             <div>
-              <h3>{{ amendLastCommit() ? "Atualizar commit" : "Commit" }}</h3>
+              <h3>{{ amendLastCommit() ? "Atualizar último commit" : "Commit" }}</h3>
               <p>{{ amendLastCommit() ? "Atualize o último commit com os arquivos preparados" : "Registre as alterações preparadas" }}</p>
             </div>
-          </div>
-          <div class="commit-actions">
-            <label class="amend-option" [class.is-active]="amendLastCommit()" [title]="amendLastCommit() ? 'Substituir o último commit' : 'Adicionar alterações ao último commit'">
-              <input
-                type="checkbox"
-                [checked]="amendLastCommit()"
-                [disabled]="isSaving() || isLoadingAmendMessage()"
-                (change)="toggleAmend($event)"
-              />
-              <span class="amend-option-copy">
-                <strong>Amend último commit</strong>
-                <small>Adicionar estas alterações ao commit anterior</small>
-              </span>
-            </label>
           </div>
           <div class="textarea-wrap">
             <textarea
@@ -226,8 +212,19 @@
             </div>
           }
           <div class="commit-footer">
-            <span>{{ stagedFiles(repositoryStatus.files).length }} arquivo(s) preparado(s)</span>
-            <span class="commit-shortcut-hint"><kbd>Ctrl</kbd><kbd>Enter</kbd></span>
+            <label class="amend-option" [class.is-active]="amendLastCommit()" [title]="amendLastCommit() ? 'Atualizar o último commit' : 'Adicionar alterações ao commit anterior'">
+              <input
+                type="checkbox"
+                [checked]="amendLastCommit()"
+                [disabled]="isSaving() || isLoadingAmendMessage()"
+                (change)="toggleAmend($event)"
+              />
+              <span class="amend-option-copy">
+                <strong>Atualizar último commit</strong>
+                <small>Adicionar estas alterações ao commit anterior</small>
+              </span>
+            </label>
+            <span class="commit-file-count">{{ stagedFiles(repositoryStatus.files).length }} arquivo(s) preparado(s)</span>
             <button
               type="button"
               class="commit-button"
