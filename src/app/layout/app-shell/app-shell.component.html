@@ -1,4 +1,8 @@
-<div class="app-shell">
+<div
+  class="app-shell"
+  [class.main-sidebar-collapsed]="!mainSidebarOpen()"
+  [class.repository-open]="!!activeRepository()"
+>
   <app-sidebar
     [collapsed]="!mainSidebarOpen()"
     (toggleRequested)="closeMainSidebar()"

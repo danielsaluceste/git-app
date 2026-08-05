@@ -1,9 +1,15 @@
 import { GitFile } from "./git-file.model";
 
+export type RepositoryCloneSource = "local" | "url" | "github";
+export type RepositoryAuthenticationSource = "system" | "github";
+
 export interface Repository {
   name: string;
   path: string;
   workspaceId: string;
+  cloneSource?: RepositoryCloneSource;
+  authenticationSource?: RepositoryAuthenticationSource;
+  githubConnectionId?: number;
   currentBranch?: string;
   isDirty?: boolean;
 }

@@ -3,13 +3,148 @@
     <div>
       <p class="eyebrow">Conectividade</p>
       <h2>Integrações</h2>
-      <p class="description">Gerencie as conexões do Git App com outros serviços.</p>
+      <p class="description">
+        Conecte serviços ao workspace <strong>{{ activeWorkspace().name }}</strong> para clonar,
+        sincronizar e publicar seus repositórios.
+      </p>
     </div>
   </header>
 
-  <div class="empty-state">
-    <div class="empty-icon" aria-hidden="true">⇄</div>
-    <h3>Nenhuma integração configurada</h3>
-    <p>As conexões com GitHub e outros serviços aparecerão aqui.</p>
-  </div>
+  <section class="integration-card" aria-labelledby="github-title">
+    <header class="integration-card-heading">
+      <div class="service-mark" aria-hidden="true">GH</div>
+      <div class="service-heading-copy">
+        <div class="service-title-row">
+          <h3 id="github-title">GitHub</h3>
+          @if (connections().length > 0) {
+            <span class="connected-badge"><span class="status-dot"></span> Conectado</span>
+          } @else {
+            <span class="available-badge">Disponível</span>
+          }
+        </div>
+        <p>Use uma ou mais contas para trabalhar com repositórios pessoais e de organizações.</p>
+      </div>
+    </header>
+
+    @if (connections().length === 0 && connectionState === "idle") {
+      <div class="integration-empty">
+        <div class="integration-empty-icon" aria-hidden="true">↗</div>
+        <div>
+          <strong>Nenhuma conta conectada</strong>
+          <p>A autorização acontece diretamente no GitHub e não expõe sua senha ao OranGIT.</p>
+        </div>
+        <button type="button" class="primary-button" (click)="connectGithub()">
+          <span aria-hidden="true">+</span>
+          Conectar GitHub
+        </button>
+      </div>
+    } @else {
+      <div class="accounts-heading">
+        <div>
+          <strong>Contas deste workspace</strong>
+          <span>{{ connections().length }} {{ connections().length === 1 ? "conta" : "contas" }}</span>
+        </div>
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="connectionState === 'starting' || connectionState === 'waiting'"
+          (click)="connectGithub()"
+        >
+          <span aria-hidden="true">+</span>
+          Conectar outra conta
+        </button>
+      </div>
+
+      <div class="account-list">
+        @for (connection of connections(); track trackConnection($index, connection)) {
+          <article class="account-item">
+            @if (connection.avatarUrl) {
+              <img class="account-avatar" [src]="connection.avatarUrl" [alt]="'Avatar de @' + connection.login" />
+            } @else {
+              <div class="account-avatar account-avatar-fallback" aria-hidden="true">{{ connection.login.charAt(0).toUpperCase() }}</div>
+            }
+
+            <div class="account-copy">
+              <div class="account-name-row">
+                <strong>{{ connection.name || connection.login }}</strong>
+                @if (connection.isDefault) {
+                  <span class="default-badge">Principal</span>
+                }
+              </div>
+              <span>@{{ connection.login }}</span>
+            </div>
+
+            <div class="account-actions">
+              @if (!connection.isDefault) {
+                <button type="button" class="text-button" (click)="setDefault(connection)">
+                  Tornar principal
+                </button>
+              }
+              <button type="button" class="icon-button danger" title="Desconectar conta" (click)="disconnect(connection)">
+                ×
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    @if (connectionState === "starting" || connectionState === "waiting") {
+      @if (deviceFlow; as flow) {
+        <div class="device-flow-panel" aria-live="polite">
+          <div class="device-flow-heading">
+            <div class="device-spinner" aria-hidden="true"></div>
+            <div>
+              <strong>Autorize sua conta pelo GitHub</strong>
+              <p>{{ connectionMessage }}</p>
+            </div>
+            <button type="button" class="close-flow-button" title="Cancelar conexão" (click)="cancelConnection()">×</button>
+          </div>
+
+          <div class="device-flow-content">
+            <div class="device-code-box">
+              <span class="device-code-label">Seu código</span>
+              <strong>{{ flow.userCode }}</strong>
+              <button type="button" class="copy-button" (click)="copyDeviceCode()">
+                {{ copiedCode ? "Copiado" : "Copiar código" }}
+              </button>
+            </div>
+            <div class="device-flow-actions">
+              <button type="button" class="primary-button" (click)="openGithubAuthorization()">
+                Abrir GitHub
+                <span aria-hidden="true">↗</span>
+              </button>
+              <small>O código expira em {{ Math.ceil(flow.expiresIn / 60) }} minutos.</small>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="loading-row" aria-live="polite">
+          <span class="device-spinner" aria-hidden="true"></span>
+          {{ connectionMessage }}
+          <button type="button" class="text-button" (click)="cancelConnection()">Cancelar</button>
+        </div>
+      }
+    }
+
+    @if (connectionState === "success") {
+      <div class="success-row" aria-live="polite">
+        <span aria-hidden="true">✓</span>
+        {{ connectionMessage }}
+      </div>
+    }
+
+    @if (connectionState === "error") {
+      <div class="error-row" role="alert">
+        <span aria-hidden="true">!</span>
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="text-button" (click)="connectGithub()">Tentar novamente</button>
+      </div>
+    }
+  </section>
+
+  <p class="security-note">
+    <span aria-hidden="true">⌁</span>
+    As credenciais ficam protegidas no armazenamento seguro do sistema operacional.
+  </p>
 </section>

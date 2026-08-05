@@ -12,6 +12,51 @@
   gap: 1rem;
 }
 
+.overview-action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  border: 1px solid #263244;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.7rem;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+}
+
+.overview-action-bar.is-scrolled {
+  border-color: #263244;
+  background: rgb(23 32 51 / 96%);
+  box-shadow: 0 0.45rem 1rem rgb(3 7 18 / 20%);
+  backdrop-filter: blur(10px);
+}
+
+.overview-action-bar .overview-summary {
+  min-width: 0;
+}
+
+.overview-action-bar .summary-copy {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-action-bar .sync-toolbar {
+  flex: 0 0 auto;
+}
+
+.overview-action-bar .sync-button,
+.overview-action-bar .refresh-button {
+  padding-block: 0.5rem;
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   color: #f97316;
@@ -116,6 +161,12 @@ h3 {
   color: #bbf7d0;
   font-size: 0.66rem;
   line-height: 1;
+}
+
+.pull-button .pending-badge {
+  border-color: #60a5fa;
+  background: #172554;
+  color: #bfdbfe;
 }
 
 .sync-button:disabled,
@@ -338,6 +389,11 @@ code {
   position: sticky;
   top: 0;
   min-height: 15rem;
+  transition: top 180ms ease;
+}
+
+.commit-details.is-scroll-offset {
+  top: 3.75rem;
 }
 
 .details-heading {
@@ -674,12 +730,23 @@ dd {
     justify-content: start;
   }
 
+  .overview-action-bar {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .overview-action-bar .sync-toolbar {
+    width: 100%;
+    justify-content: start;
+  }
+
   .overview-layout {
     grid-template-columns: 1fr;
   }
 
   .commit-details {
     position: static;
+    top: auto;
   }
 }
 

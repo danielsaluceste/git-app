@@ -1,8 +1,20 @@
-import { Component, HostListener, inject, OnInit, signal } from "@angular/core";
+import {
+  AfterViewInit,
+  Component,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+} from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { fromEvent } from "rxjs";
 import { Router } from "@angular/router";
 import { Commit } from "../../../core/models/commit.model";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { GitFile } from "../../../core/models/git-file.model";
+import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
@@ -22,10 +34,12 @@ interface CommitContextMenu {
   templateUrl: "./history-page.component.html",
   styleUrl: "./history-page.component.css",
 })
-export class HistoryPageComponent implements OnInit {
+export class HistoryPageComponent implements OnInit, AfterViewInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly commits = signal<Commit[]>([]);
@@ -34,6 +48,7 @@ export class HistoryPageComponent implements OnInit {
   readonly currentBranch = signal("HEAD destacado");
   readonly aheadCount = signal(0);
   readonly behindCount = signal(0);
+  readonly actionBarScrolled = signal(false);
   readonly syncAction = signal<SyncAction>("");
   readonly selectedCommitFiles = signal<CommitFile[]>([]);
   readonly commitFilesLoading = signal(false);
@@ -48,6 +63,18 @@ export class HistoryPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.loadOverview();
+  }
+
+  ngAfterViewInit(): void {
+    const scrollContainer = this.elementRef.nativeElement.closest(".content") as HTMLElement | null;
+    if (!scrollContainer) {
+      return;
+    }
+
+    this.actionBarScrolled.set(scrollContainer.scrollTop > 8);
+    fromEvent(scrollContainer, "scroll", { passive: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.actionBarScrolled.set(scrollContainer.scrollTop > 8));
   }
 
   async loadOverview(): Promise<void> {
@@ -255,16 +282,29 @@ export class HistoryPageComponent implements OnInit {
     }
 
     this.syncAction.set(action);
+    const syncCredentials = this.getSyncCredentials(repository);
 
     try {
       if (action === "fetch") {
-        await this.repositoryService.fetch(repository.path);
+        await this.repositoryService.fetch(
+          repository.path,
+          syncCredentials.workspaceId,
+          syncCredentials.githubUserId,
+        );
         this.toastService.success("Referências remotas atualizadas.", "Fetch concluído");
       } else if (action === "pull") {
-        await this.repositoryService.pull(repository.path);
+        await this.repositoryService.pull(
+          repository.path,
+          syncCredentials.workspaceId,
+          syncCredentials.githubUserId,
+        );
         this.toastService.success("Alterações baixadas e aplicadas.", "Pull concluído");
       } else {
-        await this.repositoryService.push(repository.path);
+        await this.repositoryService.push(
+          repository.path,
+          syncCredentials.workspaceId,
+          syncCredentials.githubUserId,
+        );
         this.toastService.success("Alterações enviadas para o repositório remoto.", "Push concluído");
       }
 
@@ -333,6 +373,20 @@ export class HistoryPageComponent implements OnInit {
     }
 
     return "Não foi possível executar a sincronização com o repositório remoto.";
+  }
+
+  private getSyncCredentials(repository: Repository): {
+    workspaceId?: string;
+    githubUserId?: number;
+  } {
+    if (repository.authenticationSource !== "github" || repository.githubConnectionId === undefined) {
+      return {};
+    }
+
+    return {
+      workspaceId: repository.workspaceId,
+      githubUserId: repository.githubConnectionId,
+    };
   }
 
   private getCommitCheckoutErrorMessage(error: unknown): string {

@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.fixed-layout {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.fixed-layout-content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fixed-layout-panel {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+}
+
+.fixed-layout-panel-bleed {
+  margin-inline: -2rem;
+  margin-bottom: -2rem;
+}

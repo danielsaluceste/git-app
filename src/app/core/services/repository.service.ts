@@ -5,6 +5,7 @@ import {
   Repository,
   RepositoryStatus,
   RepositoryReferences,
+  RepositoryAuthenticationSource,
 } from "../models/repository.model";
 import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
@@ -25,6 +26,26 @@ export class RepositoryService {
 
   async inspectLocalRepository(path: string): Promise<LocalRepositoryInfo> {
     return invoke<LocalRepositoryInfo>("inspect_repository", { path });
+  }
+
+  async cloneRepository(
+    url: string,
+    destination: string,
+    operationId: string,
+    workspaceId?: string,
+    githubUserId?: number,
+  ): Promise<LocalRepositoryInfo> {
+    return invoke<LocalRepositoryInfo>("clone_repository", {
+      url,
+      destination,
+      operationId,
+      workspaceId: workspaceId ?? null,
+      githubUserId: githubUserId ?? null,
+    });
+  }
+
+  async cancelClone(operationId: string): Promise<void> {
+    await invoke("cancel_clone", { operationId });
   }
 
   async getReferences(path: string): Promise<RepositoryReferences> {
@@ -91,16 +112,28 @@ export class RepositoryService {
     return invoke<string>("get_commit_file_diff", { path, commitHash, filePath });
   }
 
-  async fetch(path: string): Promise<void> {
-    await invoke("fetch_repository", { path });
+  async fetch(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
+    await invoke("fetch_repository", {
+      path,
+      workspaceId: workspaceId ?? null,
+      githubUserId: githubUserId ?? null,
+    });
   }
 
-  async pull(path: string): Promise<void> {
-    await invoke("pull_repository", { path });
+  async pull(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
+    await invoke("pull_repository", {
+      path,
+      workspaceId: workspaceId ?? null,
+      githubUserId: githubUserId ?? null,
+    });
   }
 
-  async push(path: string): Promise<void> {
-    await invoke("push_repository", { path });
+  async push(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
+    await invoke("push_repository", {
+      path,
+      workspaceId: workspaceId ?? null,
+      githubUserId: githubUserId ?? null,
+    });
   }
 
   async checkoutBranch(path: string, branch: string): Promise<void> {
@@ -125,6 +158,34 @@ export class RepositoryService {
 
   async deleteRemoteBranch(path: string, remoteBranch: string): Promise<void> {
     await invoke("delete_remote_branch", { path, remoteBranch });
+  }
+
+  updateAuthentication(
+    repository: Repository,
+    source: RepositoryAuthenticationSource,
+    githubConnectionId?: number,
+  ): boolean {
+    if (source === "github" && githubConnectionId === undefined) {
+      return false;
+    }
+
+    const updatedRepository: Repository = {
+      ...repository,
+      authenticationSource: source,
+      githubConnectionId: source === "github" ? githubConnectionId : undefined,
+    };
+    const repositories = this.repositoriesState().map((item) =>
+      item.workspaceId === repository.workspaceId && item.path === repository.path
+        ? updatedRepository
+        : item,
+    );
+
+    this.setRepositories(repositories);
+    if (this.activeRepositoryState()?.path === repository.path) {
+      this.activeRepositoryState.set(updatedRepository);
+    }
+
+    return true;
   }
 
   add(repository: Repository): boolean {

@@ -8,8 +8,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(commands::repository::CloneProcessState::default())
+        .manage(commands::github::GithubCredentialState::default())
         .invoke_handler(tauri::generate_handler![
             commands::repository::inspect_repository,
+            commands::repository::clone_repository,
+            commands::repository::cancel_clone,
             commands::repository::get_repository_references,
             commands::repository::get_repository_status,
             commands::repository::stage_repository_files,
@@ -34,6 +38,10 @@ pub fn run() {
             commands::repository::rename_branch,
             commands::repository::delete_branch,
             commands::repository::delete_remote_branch,
+            commands::github::start_device_flow,
+            commands::github::poll_device_flow,
+            commands::github::list_repositories,
+            commands::github::disconnect_account,
             commands::system::ping
         ])
         .run(tauri::generate_context!())

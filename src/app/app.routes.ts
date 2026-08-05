@@ -4,6 +4,7 @@ import { BranchesPageComponent } from "./features/branches/pages/branches-page.c
 import { ChangesPageComponent } from "./features/changes/pages/changes-page.component";
 import { IntegrationsPageComponent } from "./features/integrations/pages/integrations-page.component";
 import { RepositoriesPageComponent } from "./features/repositories/pages/repositories-page.component";
+import { RepositorySettingsPageComponent } from "./features/repository-settings/pages/repository-settings-page.component";
 import { SettingsPageComponent } from "./features/settings/pages/settings-page.component";
 
 export const routes: Routes = [
@@ -31,6 +32,7 @@ export const routes: Routes = [
       },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },
+      { path: "repository-settings", component: RepositorySettingsPageComponent },
       { path: "settings", component: SettingsPageComponent },
     ],
   },

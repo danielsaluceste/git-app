@@ -102,7 +102,12 @@ export class RepositorySidebarComponent implements OnInit {
 
     this.isBranchActionRunning.set(true);
     try {
-      await this.repositoryService.fetch(this.repository.path);
+      const syncCredentials = this.getSyncCredentials();
+      await this.repositoryService.fetch(
+        this.repository.path,
+        syncCredentials.workspaceId,
+        syncCredentials.githubUserId,
+      );
       await this.refreshRepositoryData();
       this.toastService.success("As referências remotas foram atualizadas.", "Fetch concluído");
     } catch (error: unknown) {
@@ -392,6 +397,17 @@ export class RepositorySidebarComponent implements OnInit {
       this.repositoryService.getReferences(this.repository.path),
       this.repositoryService.getStatus(this.repository.path),
     ]);
+  }
+
+  private getSyncCredentials(): { workspaceId?: string; githubUserId?: number } {
+    if (this.repository.authenticationSource !== "github" || this.repository.githubConnectionId === undefined) {
+      return {};
+    }
+
+    return {
+      workspaceId: this.repository.workspaceId,
+      githubUserId: this.repository.githubConnectionId,
+    };
   }
 
   private localBranchName(remoteBranch: string): string {

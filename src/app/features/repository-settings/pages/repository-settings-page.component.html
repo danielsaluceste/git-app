@@ -1,0 +1,111 @@
+<section class="page">
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Repositório · Configurações</p>
+        <h2>Configurações do repositório</h2>
+        <p class="description" [title]="repository.path">
+          Ajuste como o OranGIT deve autenticar as operações remotas de <strong>{{ repository.name }}</strong>.
+        </p>
+      </div>
+      <button type="button" class="back-button" (click)="goBack()">Voltar à visão geral</button>
+    </header>
+
+    <section class="settings-card" aria-labelledby="authentication-title">
+      <div class="settings-card-heading">
+        <div class="settings-icon" aria-hidden="true">⌁</div>
+        <div>
+          <h3 id="authentication-title">Autenticação remota</h3>
+          <p>Escolha qual credencial será usada no fetch, pull e push deste repositório.</p>
+        </div>
+      </div>
+
+      <div class="current-auth">
+        <span class="current-auth-label">Configuração atual</span>
+        <strong>{{ sourceLabel(repository) }}</strong>
+      </div>
+
+      <div class="auth-options">
+        <button
+          type="button"
+          class="auth-option"
+          [class.selected]="selectedSource === 'system'"
+          (click)="selectSource('system')"
+        >
+          <span class="option-icon computer-icon" aria-hidden="true">⌘</span>
+          <span class="option-copy">
+            <strong>Credenciais do computador</strong>
+            <small>Usar SSH, Git Credential Manager ou a configuração local do Git.</small>
+          </span>
+          @if (selectedSource === "system") {
+            <span class="selected-check" aria-hidden="true">✓</span>
+          }
+        </button>
+
+        <button
+          type="button"
+          class="auth-option"
+          [class.selected]="selectedSource === 'github'"
+          (click)="selectSource('github')"
+        >
+          <span class="option-icon github-icon" aria-hidden="true">GH</span>
+          <span class="option-copy">
+            <strong>Conta GitHub conectada</strong>
+            <small>Usar uma conta do workspace para acessar repositórios privados.</small>
+          </span>
+          @if (selectedSource === "github") {
+            <span class="selected-check" aria-hidden="true">✓</span>
+          }
+        </button>
+      </div>
+
+      @if (selectedSource === "github") {
+        <div class="github-account-picker">
+          @if (githubConnections().length > 0) {
+            <label>
+              <span>Conta usada neste repositório</span>
+              <select
+                [value]="selectedGithubConnectionId ?? ''"
+                (change)="selectGithubConnectionFromEvent($event)"
+              >
+                @for (connection of githubConnections(); track connection.id) {
+                  <option [value]="connection.id">
+                    @{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}
+                  </option>
+                }
+              </select>
+            </label>
+          } @else {
+            <div class="no-account-state">
+              <div>
+                <strong>Nenhuma conta GitHub conectada neste workspace.</strong>
+                <span>Conecte uma conta para usar a autenticação do GitHub.</span>
+              </div>
+              <button type="button" class="secondary-button" (click)="openIntegrations()">
+                Abrir integrações
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <footer class="settings-actions">
+        <span>Essa escolha vale somente para este repositório.</span>
+        <button type="button" class="save-button" [disabled]="isSaving" (click)="save()">
+          {{ isSaving ? "Salvando..." : "Salvar configuração" }}
+        </button>
+      </footer>
+    </section>
+
+    <p class="security-note">
+      <span aria-hidden="true">●</span>
+      O token do GitHub permanece protegido no armazenamento seguro do sistema.
+    </p>
+  } @else {
+    <section class="empty-state">
+      <h3>Nenhum repositório aberto</h3>
+      <p>Abra um repositório para editar suas configurações de autenticação.</p>
+      <button type="button" class="save-button" (click)="goBack()">Voltar</button>
+    </section>
+  }
+</section>

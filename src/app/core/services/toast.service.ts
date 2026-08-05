@@ -1,4 +1,5 @@
-import { Injectable, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
+import { SettingsService } from "./settings.service";
 
 export type ToastKind = "success" | "error" | "warning" | "info";
 
@@ -12,8 +13,10 @@ export interface ToastItem {
 
 @Injectable({ providedIn: "root" })
 export class ToastService {
+  private readonly settingsService = inject(SettingsService);
   private readonly toastsState = signal<ToastItem[]>([]);
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
+  private audioContext: AudioContext | null = null;
   private nextId = 0;
 
   readonly toasts = this.toastsState.asReadonly();
@@ -49,8 +52,55 @@ export class ToastService {
     const toast: ToastItem = { id, kind, title, message, duration };
 
     this.toastsState.update((toasts) => [...toasts, toast].slice(-4));
+    this.playNotificationSound(kind);
 
     const timer = setTimeout(() => this.dismiss(id), duration);
     this.timers.set(id, timer);
+  }
+
+  private playNotificationSound(kind: ToastKind): void {
+    if (typeof window === "undefined" || !this.settingsService.notificationSounds()) {
+      return;
+    }
+
+    try {
+      this.audioContext ??= new AudioContext();
+      const context = this.audioContext;
+      const now = context.currentTime;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const frequency = this.soundFrequency(kind);
+
+      oscillator.type = kind === "error" ? "sawtooth" : "sine";
+      oscillator.frequency.setValueAtTime(frequency, now);
+      oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.88, now + 0.14);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.045, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.16);
+
+      if (context.state === "suspended") {
+        void context.resume().catch(() => undefined);
+      }
+    } catch {
+      // O som é opcional e não deve impedir a exibição da notificação.
+    }
+  }
+
+  private soundFrequency(kind: ToastKind): number {
+    switch (kind) {
+      case "success":
+        return 660;
+      case "error":
+        return 240;
+      case "warning":
+        return 420;
+      case "info":
+        return 540;
+    }
   }
 }

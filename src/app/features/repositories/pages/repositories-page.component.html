@@ -1,18 +1,18 @@
-<section class="page">
+<section class="page" [class.modal-open]="isAddRepositoryModalOpen">
   <div class="page-heading">
     <div>
       <p class="eyebrow">Workspace · {{ activeWorkspace().name }}</p>
       <h2>Repositórios</h2>
-      <p class="description">Adicione repositórios Git que já estão no seu computador.</p>
+      <p class="description">Adicione repositórios locais, clone novos projetos ou conecte o GitHub.</p>
     </div>
 
     <button
       type="button"
       class="primary-button"
       [disabled]="isLoading"
-      (click)="addLocalRepository()"
+      (click)="openAddRepositoryModal()"
     >
-      {{ isLoading ? "Verificando..." : "Adicionar repositório local" }}
+      {{ isLoading ? "Adicionando..." : "Adicionar repositório" }}
     </button>
   </div>
 
@@ -34,9 +34,232 @@
       <div class="empty-icon">▣</div>
       <h3>Nenhum repositório neste workspace</h3>
       <p>Adicione uma pasta Git local para começar a trabalhar.</p>
-      <button type="button" class="secondary-button" [disabled]="isLoading" (click)="addLocalRepository()">
-        Adicionar repositório local
+      <button type="button" class="secondary-button" [disabled]="isLoading" (click)="openAddRepositoryModal()">
+        Adicionar repositório
       </button>
+    </div>
+  }
+
+  @if (isAddRepositoryModalOpen) {
+    <div class="repository-modal-backdrop" (click)="closeAddRepositoryModal()">
+      <section
+        class="repository-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-repository-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="repository-modal-header">
+          <div>
+            <p class="eyebrow">Novo repositório</p>
+            <h2 id="add-repository-title">Adicionar repositório</h2>
+            <p>Escolha como deseja conectar um projeto ao workspace atual.</p>
+          </div>
+          <button
+            type="button"
+            class="modal-close-button"
+            aria-label="Fechar"
+            [disabled]="isLoading"
+            (click)="closeAddRepositoryModal()"
+          >
+            ×
+          </button>
+        </header>
+
+        @if (addRepositoryMode === "options") {
+          <div class="repository-options">
+            <button type="button" class="repository-option" [disabled]="isLoading" (click)="addLocalRepository()">
+              <span class="repository-option-icon local-option-icon" aria-hidden="true">▣</span>
+              <span class="repository-option-copy">
+                <strong>Selecionar repositório local</strong>
+                <span>Escolha uma pasta Git que já está neste computador.</span>
+              </span>
+              <span class="repository-option-arrow" aria-hidden="true">›</span>
+            </button>
+
+            <button type="button" class="repository-option" [disabled]="isLoading" (click)="selectCloneOption()">
+              <span class="repository-option-icon clone-option-icon" aria-hidden="true">↓</span>
+              <span class="repository-option-copy">
+                <strong>Clonar repositório</strong>
+                <span>Baixe um projeto usando a URL e escolha onde salvá-lo.</span>
+              </span>
+              <span class="repository-option-arrow" aria-hidden="true">›</span>
+            </button>
+
+            <button type="button" class="repository-option" [disabled]="isLoading" (click)="selectGithubCloneOption()">
+              <span class="repository-option-icon github-option-icon" aria-hidden="true">◉</span>
+              <span class="repository-option-copy">
+                <strong>Clonar do GitHub</strong>
+                <span>Escolha um repositório de uma das suas contas conectadas.</span>
+              </span>
+              <span class="repository-option-arrow" aria-hidden="true">›</span>
+            </button>
+          </div>
+        } @else {
+          <button type="button" class="modal-back-button" [disabled]="isLoading" (click)="addRepositoryMode = 'options'">
+            <span aria-hidden="true">←</span>
+            Voltar às opções
+          </button>
+
+          <form class="clone-form" (submit)="$event.preventDefault(); cloneRepository()">
+            <div class="clone-source-tabs" role="tablist" aria-label="Origem do repositório">
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="cloneSource === 'url'"
+                [class.active]="cloneSource === 'url'"
+                [disabled]="isLoading"
+                (click)="selectCloneSource('url')"
+              >
+                Usar URL
+              </button>
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="cloneSource === 'github'"
+                [class.active]="cloneSource === 'github'"
+                [disabled]="isLoading || githubConnections().length === 0"
+                (click)="selectCloneSource('github')"
+              >
+                GitHub conectado
+              </button>
+            </div>
+
+            @if (cloneSource === "github") {
+              <div class="github-clone-panel">
+                <label class="clone-field">
+                  <span>Conta GitHub</span>
+                  <select
+                    [value]="selectedGithubUserId ?? ''"
+                    [disabled]="isLoading || githubRepositoriesLoading"
+                    (change)="selectGithubAccountFromEvent($event)"
+                  >
+                    @for (connection of githubConnections(); track connection.id) {
+                      <option [value]="connection.id">@{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}</option>
+                    }
+                  </select>
+                </label>
+
+                <div class="github-repositories-heading">
+                  <div>
+                    <span>Repositório</span>
+                    <small>Selecione um projeto acessível por esta conta.</small>
+                  </div>
+                  <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" title="Atualizar repositórios">
+                    ↻
+                  </button>
+                </div>
+
+                @if (githubRepositoriesLoading) {
+                  <div class="github-repositories-loading" aria-live="polite">
+                    <span class="clone-spinner" aria-hidden="true"></span>
+                    Buscando repositórios do GitHub...
+                  </div>
+                } @else if (githubRepositoriesError) {
+                  <div class="github-repositories-error" role="alert">
+                    <span>{{ githubRepositoriesError }}</span>
+                    <div class="github-repositories-error-actions">
+                      <button type="button" class="text-action-button" (click)="loadGithubRepositories()">Tentar novamente</button>
+                      <button type="button" class="text-action-button" (click)="goToIntegrations()">Reconectar conta</button>
+                    </div>
+                  </div>
+                } @else if (githubRepositories.length > 0) {
+                  <div class="github-repository-list" role="listbox" aria-label="Repositórios do GitHub">
+                    @for (repository of githubRepositories; track repository.id) {
+                      <button
+                        type="button"
+                        class="github-repository-option"
+                        [class.selected]="selectedGithubRepositoryId === repository.id"
+                        [attr.aria-selected]="selectedGithubRepositoryId === repository.id"
+                        (click)="selectGithubRepository(repository)"
+                      >
+                        <span class="github-repository-icon" aria-hidden="true">{{ repository.private ? "▣" : "◌" }}</span>
+                        <span class="github-repository-copy">
+                          <strong>{{ repository.fullName }}</strong>
+                          <small>{{ repository.description || "Sem descrição" }}</small>
+                        </span>
+                        @if (selectedGithubRepositoryId === repository.id) {
+                          <span class="github-repository-check" aria-hidden="true">✓</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <div class="github-repositories-empty">
+                    Nenhum repositório acessível foi encontrado para esta conta.
+                  </div>
+                }
+              </div>
+            } @else {
+              <label class="clone-field">
+                <span>URL do repositório</span>
+                <input
+                  type="text"
+                  [value]="cloneUrl"
+                  (input)="cloneUrl = $any($event.target).value"
+                  placeholder="https://github.com/usuario/projeto.git"
+                  autocomplete="off"
+                  required
+                  [disabled]="isLoading"
+                />
+              </label>
+            }
+
+            <div class="clone-field">
+              <span>Pasta de destino</span>
+              <div class="destination-picker">
+                <input
+                  type="text"
+                  [value]="cloneDestination"
+                  placeholder="Escolha uma pasta vazia"
+                  readonly
+                  [disabled]="isLoading"
+                />
+                <button type="button" class="destination-button" [disabled]="isLoading" (click)="chooseCloneDestination()">
+                  Escolher pasta
+                </button>
+              </div>
+            </div>
+
+            <p class="clone-hint">
+              A pasta escolhida precisa estar vazia. O Git criará o repositório dentro dela.
+              @if (cloneSource === "github") {
+                <span> A autenticação será feita com a conta GitHub selecionada.</span>
+              }
+            </p>
+
+            @if (isLoading) {
+              <div class="clone-progress" aria-live="polite">
+                <div class="clone-progress-heading">
+                  <div class="clone-progress-copy">
+                    <span class="clone-spinner" aria-hidden="true"></span>
+                    <span>
+                      <strong>{{ cloneStage }}</strong>
+                      <small>{{ cloneDetail }}</small>
+                    </span>
+                  </div>
+                  <strong>{{ cloneProgress }}%</strong>
+                </div>
+                <div class="clone-progress-track" aria-hidden="true">
+                  <span [style.width.%]="cloneProgress"></span>
+                </div>
+                <button type="button" class="clone-cancel-button" [disabled]="cloneCancelRequested" (click)="cancelClone()">
+                  {{ cloneCancelRequested ? "Cancelando..." : "Cancelar clonagem" }}
+                </button>
+              </div>
+            }
+
+            <footer class="repository-modal-actions">
+              <button type="button" class="modal-secondary-button" [disabled]="isLoading" (click)="closeAddRepositoryModal()">
+                Cancelar
+              </button>
+              <button type="submit" class="modal-primary-button" [disabled]="isLoading || (cloneSource === 'github' ? !selectedGithubRepositoryId : !cloneUrl.trim()) || !cloneDestination.trim()">
+                {{ isLoading ? "Clonando..." : "Clonar repositório" }}
+              </button>
+            </footer>
+          </form>
+        }
+      </section>
     </div>
   }
 </section>

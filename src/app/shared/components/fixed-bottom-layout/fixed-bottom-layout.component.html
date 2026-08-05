@@ -1,0 +1,9 @@
+<div class="fixed-layout">
+  <div class="fixed-layout-content">
+    <ng-content select="[fixed-layout-content]"></ng-content>
+  </div>
+
+  <div class="fixed-layout-panel" [class.fixed-layout-panel-bleed]="bleed">
+    <ng-content select="[fixed-layout-panel]"></ng-content>
+  </div>
+</div>

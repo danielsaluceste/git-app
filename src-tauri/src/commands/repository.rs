@@ -1,16 +1,43 @@
+use crate::commands::github;
 use crate::models::repository::{
     CommitFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile, RepositoryReferences,
     RepositoryStatus,
 };
+use serde::Serialize;
+use std::collections::HashMap;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter, State};
 
 const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+
+#[derive(Default)]
+pub struct CloneProcessState {
+    processes: Mutex<HashMap<String, Arc<CloneProcess>>>,
+}
+
+struct CloneProcess {
+    child: Mutex<std::process::Child>,
+    cancelled: AtomicBool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CloneProgressPayload {
+    operation_id: String,
+    progress: u8,
+    stage: String,
+    detail: String,
+    finished: bool,
+    cancelled: bool,
+}
 
 #[tauri::command]
 pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
@@ -32,6 +59,240 @@ pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
         .to_string();
 
     Ok(LocalRepositoryInfo { name, path })
+}
+
+#[tauri::command]
+pub fn clone_repository(
+    app: AppHandle,
+    state: State<'_, CloneProcessState>,
+    github_state: State<'_, github::GithubCredentialState>,
+    url: String,
+    destination: String,
+    operation_id: String,
+    workspace_id: Option<String>,
+    github_user_id: Option<u64>,
+) -> Result<LocalRepositoryInfo, String> {
+    let remote_url = url.trim();
+    if remote_url.is_empty() || remote_url.chars().any(char::is_control) {
+        return Err("Informe uma URL válida para o repositório.".to_string());
+    }
+
+    let destination_path = PathBuf::from(destination.trim());
+    if destination_path.as_os_str().is_empty() {
+        return Err("Escolha uma pasta de destino para o repositório.".to_string());
+    }
+
+    if destination_path.exists() {
+        if !destination_path.is_dir() {
+            return Err("O local escolhido não é uma pasta válida.".to_string());
+        }
+
+        let has_entries = std::fs::read_dir(&destination_path)
+            .map_err(|error| format!("Não foi possível acessar a pasta de destino: {error}"))?
+            .next()
+            .is_some();
+        if has_entries {
+            return Err("Escolha uma pasta vazia para clonar o repositório.".to_string());
+        }
+    }
+
+    let parent = destination_path
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    if !parent.is_dir() {
+        return Err("A pasta onde o repositório será criado não existe.".to_string());
+    }
+
+    let folder_name = destination_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "Escolha um nome de pasta válido para o repositório.".to_string())?;
+    let parent_path = parent.to_string_lossy().to_string();
+    let args = vec![
+        "clone".to_string(),
+        "--progress".to_string(),
+        remote_url.to_string(),
+        folder_name.to_string(),
+    ];
+
+    let github_access_token = match (workspace_id.as_deref(), github_user_id) {
+        (Some(workspace_id), Some(user_id)) => Some(github::get_access_token(
+            &github_state,
+            workspace_id,
+            user_id,
+        )?),
+        (_, None) => None,
+        _ => return Err("A conta do GitHub selecionada está incompleta.".to_string()),
+    };
+    let askpass = github_access_token
+        .as_deref()
+        .map(AskpassGuard::new)
+        .transpose()?;
+
+    emit_clone_progress(
+        &app,
+        &operation_id,
+        0,
+        "Preparando clonagem",
+        "Conectando ao repositório remoto...",
+        false,
+        false,
+    );
+
+    let mut command = Command::new("git");
+    if askpass.is_some() {
+        command.arg("-c").arg("credential.helper=");
+    }
+    command
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(&parent_path)
+        .args(&args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let (Some(askpass), Some(access_token)) = (askpass.as_ref(), github_access_token.as_deref())
+    {
+        command
+            .env("GIT_ASKPASS", askpass.path())
+            .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
+    }
+    let child = command
+        .spawn()
+        .map_err(|error| format!("Não foi possível iniciar o clone: {error}"))?;
+    let process = Arc::new(CloneProcess {
+        child: Mutex::new(child),
+        cancelled: AtomicBool::new(false),
+    });
+
+    state
+        .processes
+        .lock()
+        .map_err(|_| "Não foi possível controlar a operação de clone.".to_string())?
+        .insert(operation_id.clone(), Arc::clone(&process));
+
+    let (stdout, stderr) = {
+        let mut child = process
+            .child
+            .lock()
+            .map_err(|_| "Não foi possível ler a saída do clone.".to_string())?;
+        (child.stdout.take(), child.stderr.take())
+    };
+    let stdout_thread = thread::spawn(move || drain_output(stdout));
+    let stderr_output = Arc::new(Mutex::new(String::new()));
+    let stderr_thread = spawn_clone_progress_reader(
+        app.clone(),
+        operation_id.clone(),
+        stderr,
+        Arc::clone(&stderr_output),
+    );
+
+    let started_at = Instant::now();
+    let status = loop {
+        let process_status = process
+            .child
+            .lock()
+            .map_err(|_| "Não foi possível acompanhar o clone.".to_string())?
+            .try_wait()
+            .map_err(|error| format!("Não foi possível acompanhar o clone: {error}"))?;
+
+        if let Some(status) = process_status {
+            break status;
+        }
+
+        if started_at.elapsed() >= GIT_NETWORK_TIMEOUT {
+            let _ = process.child.lock().map(|mut child| child.kill());
+            let _ = stdout_thread.join();
+            let _ = stderr_thread.join();
+            state
+                .processes
+                .lock()
+                .ok()
+                .and_then(|mut processes| processes.remove(&operation_id));
+            return Err(
+                "O clone demorou muito para responder. Verifique a conexão e tente novamente."
+                    .to_string(),
+            );
+        }
+
+        thread::sleep(Duration::from_millis(40));
+    };
+
+    let _ = stdout_thread.join();
+    let _ = stderr_thread.join();
+    let was_cancelled = process.cancelled.load(Ordering::Relaxed);
+    state
+        .processes
+        .lock()
+        .ok()
+        .and_then(|mut processes| processes.remove(&operation_id));
+
+    if was_cancelled {
+        emit_clone_progress(
+            &app,
+            &operation_id,
+            0,
+            "Clonagem cancelada",
+            "A operação foi interrompida.",
+            true,
+            true,
+        );
+        return Err("A clonagem foi cancelada.".to_string());
+    }
+
+    if !status.success() {
+        let error = stderr_output
+            .lock()
+            .map(|output| output.trim().to_string())
+            .unwrap_or_default();
+        emit_clone_progress(
+            &app,
+            &operation_id,
+            0,
+            "Falha na clonagem",
+            "Não foi possível concluir o clone.",
+            true,
+            false,
+        );
+        return Err(if error.is_empty() {
+            "O Git não conseguiu clonar o repositório.".to_string()
+        } else {
+            error
+        });
+    }
+
+    emit_clone_progress(
+        &app,
+        &operation_id,
+        100,
+        "Clone concluído",
+        "Finalizando e verificando o repositório...",
+        true,
+        false,
+    );
+    inspect_repository(destination_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn cancel_clone(
+    state: State<'_, CloneProcessState>,
+    operation_id: String,
+) -> Result<(), String> {
+    let process = state
+        .processes
+        .lock()
+        .map_err(|_| "Não foi possível cancelar a clonagem.".to_string())?
+        .get(&operation_id)
+        .cloned()
+        .ok_or_else(|| "A clonagem já foi finalizada.".to_string())?;
+
+    process.cancelled.store(true, Ordering::Relaxed);
+    if let Ok(mut child) = process.child.lock() {
+        let _ = child.kill();
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -632,20 +893,50 @@ pub fn get_commit_file_diff(
 }
 
 #[tauri::command]
-pub fn fetch_repository(path: String) -> Result<(), String> {
+pub fn fetch_repository(
+    path: String,
+    github_state: State<'_, github::GithubCredentialState>,
+    workspace_id: Option<String>,
+    github_user_id: Option<u64>,
+) -> Result<(), String> {
     ensure_repository(&path)?;
-    run_git_with_timeout(&path, &["fetch", "--all", "--prune"], GIT_NETWORK_TIMEOUT).map(|_| ())
+    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    run_git_with_access_token(
+        &path,
+        &["fetch", "--all", "--prune"],
+        GIT_NETWORK_TIMEOUT,
+        access_token.as_deref(),
+    )
+    .map(|_| ())
 }
 
 #[tauri::command]
-pub fn pull_repository(path: String) -> Result<(), String> {
+pub fn pull_repository(
+    path: String,
+    github_state: State<'_, github::GithubCredentialState>,
+    workspace_id: Option<String>,
+    github_user_id: Option<u64>,
+) -> Result<(), String> {
     ensure_repository(&path)?;
-    run_git_with_timeout(&path, &["pull", "--ff-only"], GIT_NETWORK_TIMEOUT).map(|_| ())
+    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    run_git_with_access_token(
+        &path,
+        &["pull", "--ff-only"],
+        GIT_NETWORK_TIMEOUT,
+        access_token.as_deref(),
+    )
+    .map(|_| ())
 }
 
 #[tauri::command]
-pub fn push_repository(path: String) -> Result<(), String> {
+pub fn push_repository(
+    path: String,
+    github_state: State<'_, github::GithubCredentialState>,
+    workspace_id: Option<String>,
+    github_user_id: Option<u64>,
+) -> Result<(), String> {
     ensure_repository(&path)?;
+    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
 
     let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).map_err(|_| {
         "Não é possível fazer push enquanto o repositório estiver em detached HEAD.".to_string()
@@ -662,16 +953,37 @@ pub fn push_repository(path: String) -> Result<(), String> {
     )
     .is_ok()
     {
-        return run_git_with_timeout(&path, &["push"], GIT_NETWORK_TIMEOUT).map(|_| ());
+        return run_git_with_access_token(
+            &path,
+            &["push"],
+            GIT_NETWORK_TIMEOUT,
+            access_token.as_deref(),
+        )
+        .map(|_| ());
     }
 
     let remote = preferred_push_remote(&path)?;
-    run_git_with_timeout(
+    run_git_with_access_token(
         &path,
         &["push", "--set-upstream", &remote, &current_branch],
         GIT_NETWORK_TIMEOUT,
+        access_token.as_deref(),
     )
     .map(|_| ())
+}
+
+fn sync_access_token(
+    state: &github::GithubCredentialState,
+    workspace_id: Option<String>,
+    github_user_id: Option<u64>,
+) -> Result<Option<String>, String> {
+    match (workspace_id, github_user_id) {
+        (Some(workspace_id), Some(user_id)) => {
+            github::get_access_token(state, &workspace_id, user_id).map(Some)
+        }
+        (None, None) => Ok(None),
+        _ => Err("A autenticação GitHub deste repositório está incompleta.".to_string()),
+    }
 }
 
 #[tauri::command]
@@ -905,6 +1217,183 @@ fn preferred_push_remote(path: &str) -> Result<String, String> {
         .ok_or_else(|| "Nenhum repositório remoto foi configurado para este projeto.".to_string())
 }
 
+fn drain_output<R: Read>(stream: Option<R>) {
+    let Some(mut stream) = stream else {
+        return;
+    };
+
+    let mut buffer = [0u8; 4096];
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+    }
+}
+
+fn spawn_clone_progress_reader<R: Read + Send + 'static>(
+    app: AppHandle,
+    operation_id: String,
+    stream: Option<R>,
+    output: Arc<Mutex<String>>,
+) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let Some(mut stream) = stream else {
+            return;
+        };
+
+        let mut buffer = [0u8; 1024];
+        let mut pending = String::new();
+        let mut last_progress = 0;
+
+        loop {
+            let read = match stream.read(&mut buffer) {
+                Ok(0) | Err(_) => break,
+                Ok(read) => read,
+            };
+            let chunk = String::from_utf8_lossy(&buffer[..read]);
+            if let Ok(mut current_output) = output.lock() {
+                current_output.push_str(&chunk);
+            }
+            pending.push_str(&chunk);
+
+            let mut segments: Vec<String> =
+                pending.split(['\r', '\n']).map(ToOwned::to_owned).collect();
+            pending = segments.pop().unwrap_or_default();
+            for segment in segments {
+                emit_clone_progress_line(&app, &operation_id, &segment, &mut last_progress);
+            }
+        }
+
+        if !pending.trim().is_empty() {
+            emit_clone_progress_line(&app, &operation_id, &pending, &mut last_progress);
+        }
+    })
+}
+
+fn emit_clone_progress_line(
+    app: &AppHandle,
+    operation_id: &str,
+    line: &str,
+    last_progress: &mut u8,
+) {
+    let detail = line.trim();
+    if detail.is_empty() {
+        return;
+    }
+
+    if let Some(progress) = clone_progress_from_line(detail) {
+        *last_progress = (*last_progress).max(progress);
+    }
+
+    let stage = if detail.contains("Receiving objects") {
+        "Baixando objetos"
+    } else if detail.contains("Resolving deltas") {
+        "Resolvendo alterações"
+    } else if detail.contains("Updating files") {
+        "Atualizando arquivos"
+    } else if detail.contains("Cloning into") {
+        "Criando repositório"
+    } else {
+        "Clonando repositório"
+    };
+
+    emit_clone_progress(
+        app,
+        operation_id,
+        *last_progress,
+        stage,
+        detail,
+        false,
+        false,
+    );
+}
+
+fn clone_progress_from_line(line: &str) -> Option<u8> {
+    line.split_whitespace().find_map(|part| {
+        part.strip_suffix('%')
+            .and_then(|value| value.parse::<u8>().ok())
+    })
+}
+
+fn emit_clone_progress(
+    app: &AppHandle,
+    operation_id: &str,
+    progress: u8,
+    stage: &str,
+    detail: &str,
+    finished: bool,
+    cancelled: bool,
+) {
+    let _ = app.emit(
+        "clone-progress",
+        CloneProgressPayload {
+            operation_id: operation_id.to_string(),
+            progress,
+            stage: stage.to_string(),
+            detail: detail.to_string(),
+            finished,
+            cancelled,
+        },
+    );
+}
+
+struct AskpassGuard {
+    path: PathBuf,
+}
+
+impl AskpassGuard {
+    fn new(_access_token: &str) -> Result<Self, String> {
+        let extension = if cfg!(target_os = "windows") {
+            "cmd"
+        } else {
+            "sh"
+        };
+        let unique_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let path = std::env::temp_dir().join(format!(
+            "orangit-git-askpass-{}-{unique_id}.{extension}",
+            std::process::id()
+        ));
+        let contents = if cfg!(target_os = "windows") {
+            "@echo off\r\necho %~1 | findstr /I \"username\" >nul\r\nif not errorlevel 1 (\r\n  echo x-access-token\r\n) else (\r\n  echo %ORANGIT_GITHUB_ASKPASS_TOKEN%\r\n)\r\n"
+        } else {
+            "#!/bin/sh\ncase \"$1\" in\n  *[Uu]sername*) printf '%s\\n' 'x-access-token' ;;\n  *) printf '%s\\n' \"$ORANGIT_GITHUB_ASKPASS_TOKEN\" ;;\nesac\n"
+        };
+
+        std::fs::write(&path, contents)
+            .map_err(|error| format!("Não foi possível preparar a autenticação do Git: {error}"))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&path)
+                .map_err(|error| {
+                    format!("Não foi possível preparar a autenticação do Git: {error}")
+                })?
+                .permissions();
+            permissions.set_mode(0o700);
+            std::fs::set_permissions(&path, permissions).map_err(|error| {
+                format!("Não foi possível proteger a autenticação do Git: {error}")
+            })?;
+        }
+
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for AskpassGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
 fn run_git(path: &str, args: &[&str]) -> Result<String, String> {
     run_git_with_timeout(path, args, GIT_COMMAND_TIMEOUT)
 }
@@ -918,14 +1407,56 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,
 {
-    let mut child = Command::new("git")
+    let mut command = Command::new("git");
+    command
         .arg("--no-optional-locks")
         .arg("-C")
         .arg(path)
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    run_git_process(command, timeout)
+}
+
+fn run_git_with_access_token<I, S>(
+    path: &str,
+    args: I,
+    timeout: Duration,
+    access_token: Option<&str>,
+) -> Result<String, String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<std::ffi::OsStr>,
+{
+    let askpass = access_token.map(AskpassGuard::new).transpose()?;
+    let mut command = Command::new("git");
+
+    if askpass.is_some() {
+        command.arg("-c").arg("credential.helper=");
+    }
+
+    command
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(path)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let (Some(askpass), Some(access_token)) = (askpass.as_ref(), access_token) {
+        command
+            .env("GIT_ASKPASS", askpass.path())
+            .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
+    }
+
+    run_git_process(command, timeout)
+}
+
+fn run_git_process(mut command: Command, timeout: Duration) -> Result<String, String> {
+    let mut child = command
         .spawn()
         .map_err(|error| format!("Não foi possível executar o Git: {error}"))?;
 

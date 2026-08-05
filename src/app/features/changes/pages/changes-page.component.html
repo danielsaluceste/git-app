@@ -46,7 +46,8 @@
     @if (isLoading()) {
       <div class="panel loading-state">Lendo o status do Git...</div>
     } @else if (status(); as repositoryStatus) {
-      <div class="changes-layout">
+      <app-fixed-bottom-layout>
+        <div fixed-layout-content class="changes-layout">
         <section class="panel files-panel">
           <div class="panel-heading">
             <div>
@@ -137,7 +138,9 @@
           }
         </section>
 
-        <section class="panel commit-panel">
+        </div>
+
+        <section fixed-layout-panel class="panel commit-panel">
           <div class="panel-heading">
             <div>
               <h3>Commit</h3>
@@ -149,7 +152,7 @@
               [ngModel]="commitMessage()"
               (ngModelChange)="commitMessage.set($event)"
               [disabled]="isSaving() || aiLoadingModel() || aiGenerating()"
-              rows="5"
+              rows="3"
               placeholder="Descreva o que foi alterado..."
             ></textarea>
             @if (aiEnabled() && aiSupported()) {
@@ -207,7 +210,7 @@
             </button>
           </div>
         </section>
-      </div>
+      </app-fixed-bottom-layout>
     }
   } @else {
     <p class="eyebrow">Working tree</p>

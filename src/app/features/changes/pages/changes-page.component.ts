@@ -9,10 +9,11 @@ import { SettingsService } from "../../../core/services/settings.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
+import { FixedBottomLayoutComponent } from "../../../shared/components/fixed-bottom-layout/fixed-bottom-layout.component";
 
 @Component({
   selector: "app-changes-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, FormsModule],
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })

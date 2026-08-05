@@ -7,14 +7,25 @@
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
 
+    </header>
+
+    <div class="overview-action-bar" [class.is-scrolled]="actionBarScrolled()">
+      <div class="overview-summary">
+        <span class="branch-pill"><span aria-hidden="true">⑂</span>{{ currentBranch() }}</span>
+        <span class="summary-copy">Histórico visual do repositório</span>
+      </div>
+
       <div class="sync-toolbar" aria-label="Sincronização do repositório">
         <button type="button" class="sync-button fetch-button app-tooltip" data-tooltip="Atualizar referências remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('fetch')">
           <span aria-hidden="true">↓</span>
           {{ syncLabel("fetch") }}
         </button>
-        <button type="button" class="sync-button app-tooltip" data-tooltip="Baixar e aplicar alterações remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('pull')">
+        <button type="button" class="sync-button pull-button app-tooltip" data-tooltip="Baixar e aplicar alterações remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('pull')">
           <span aria-hidden="true">↓</span>
           {{ syncLabel("pull") }}
+          @if (behindCount() > 0) {
+            <span class="pending-badge" [attr.aria-label]="behindCount() + ' commits para baixar'">{{ behindCount() }}</span>
+          }
         </button>
         <button type="button" class="sync-button push-button app-tooltip" data-tooltip="Enviar commits para o remoto" [disabled]="isLoading() || !!syncAction()" (click)="runSync('push')">
           <span aria-hidden="true">↑</span>
@@ -28,11 +39,6 @@
           Atualizar
         </button>
       </div>
-    </header>
-
-    <div class="overview-summary">
-      <span class="branch-pill"><span aria-hidden="true">⑂</span>{{ currentBranch() }}</span>
-      <span class="summary-copy">Histórico visual do repositório</span>
     </div>
 
     @if (isLoading()) {
@@ -81,7 +87,7 @@
           </div>
         </section>
 
-        <aside class="panel commit-details">
+        <aside class="panel commit-details" [class.is-scroll-offset]="actionBarScrolled()">
           @if (selectedCommit(); as commit) {
             <div class="details-heading">
               <span class="details-eyebrow">Commit selecionado</span>
