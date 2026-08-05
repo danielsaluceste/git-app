@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, effect, inject, OnInit, signal, untracked } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
@@ -33,6 +33,21 @@ export class BranchesPageComponent implements OnInit {
   readonly pendingCreateBranch = signal<{ name: string; startPoint?: string } | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingDeleteBranch = signal<string | undefined>(undefined);
+  private observedRepositoryPath = "";
+  private readonly activeRepositoryEffect = effect(() => {
+    const repository = this.activeRepository();
+    const repositoryPath = repository
+      ? `${repository.workspaceId}:${repository.path.replaceAll("\\", "/").toLowerCase()}`
+      : "";
+
+    if (!repository || !this.observedRepositoryPath || this.observedRepositoryPath === repositoryPath) {
+      this.observedRepositoryPath = repositoryPath;
+      return;
+    }
+
+    this.observedRepositoryPath = repositoryPath;
+    untracked(() => void this.loadReferences());
+  });
 
   ngOnInit(): void {
     const commitHash = this.route.snapshot.queryParamMap.get("from") || undefined;

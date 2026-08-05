@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.repository-tabs {
+  display: flex;
+  min-height: 2.55rem;
+  align-items: flex-end;
+  gap: 0.2rem;
+  overflow-x: auto;
+  border-bottom: 1px solid #263244;
+  padding: 0 0.75rem;
+  background: #0f172a;
+  scrollbar-width: none;
+}
+
+.repository-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.repository-tab {
+  display: flex;
+  min-width: 9rem;
+  max-width: 15rem;
+  height: 2.3rem;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 1 auto;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 0.6rem 0.6rem 0 0;
+  padding: 0 0.4rem 0 0.7rem;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.repository-tab:hover {
+  background: #172033;
+  color: #e5e7eb;
+}
+
+.repository-tab.active {
+  border-color: #334155;
+  background: #1a2538;
+  color: #f9fafb;
+}
+
+.repository-tab-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #64748b;
+  box-shadow: 0 0 0 0.2rem rgba(100, 116, 139, 0.12);
+}
+
+.repository-tab.active .repository-tab-dot {
+  background: #f97316;
+  box-shadow: 0 0 0 0.2rem rgba(249, 115, 22, 0.14);
+}
+
+.repository-tab-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.05rem;
+}
+
+.repository-tab-copy strong,
+.repository-tab-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repository-tab-copy strong {
+  color: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.repository-tab-copy small {
+  color: #64748b;
+  font-size: 0.62rem;
+}
+
+.repository-tab.active .repository-tab-copy small {
+  color: #94a3b8;
+}
+
+.repository-tab-close {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.35rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.repository-tab-close:hover,
+.repository-tab-close:focus-visible {
+  outline: none;
+  background: #334155;
+  color: #f9fafb;
+}
+
+.repository-tab-close span {
+  position: relative;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.repository-tab-close span::before,
+.repository-tab-close span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.7rem;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.repository-tab-close span::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.repository-tab-close span::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+@media (max-width: 700px) {
+  .repository-tab {
+    min-width: 8rem;
+  }
+}

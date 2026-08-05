@@ -307,7 +307,7 @@ export class RepositoriesPageComponent {
   }
 
   openRepository(repository: Repository): void {
-    this.repositoryService.setActive(repository);
+    this.repositoryService.openRepository(repository);
     this.layoutService.closeMainSidebar();
     void this.router.navigate(["/overview"]);
   }

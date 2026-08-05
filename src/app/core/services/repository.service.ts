@@ -16,11 +16,13 @@ const STORAGE_KEY = "git-app.repositories";
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
+  private readonly openRepositoriesState = signal<Repository[]>([]);
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
   private readonly repositoryStatusState = signal<RepositoryStatus | undefined>(undefined);
   private readonly repositoryReferencesState = signal<RepositoryReferences | undefined>(undefined);
 
   readonly repositories = this.repositoriesState.asReadonly();
+  readonly openRepositories = this.openRepositoriesState.asReadonly();
   readonly activeRepository = this.activeRepositoryState.asReadonly();
   readonly repositoryStatus = this.repositoryStatusState.asReadonly();
   readonly repositoryReferences = this.repositoryReferencesState.asReadonly();
@@ -51,13 +53,17 @@ export class RepositoryService {
 
   async getReferences(path: string): Promise<RepositoryReferences> {
     const references = await invoke<RepositoryReferences>("get_repository_references", { path });
-    this.repositoryReferencesState.set(references);
+    if (this.isActiveRepositoryPath(path)) {
+      this.repositoryReferencesState.set(references);
+    }
     return references;
   }
 
   async getStatus(path: string): Promise<RepositoryStatus> {
     const status = await invoke<RepositoryStatus>("get_repository_status", { path });
-    this.repositoryStatusState.set(status);
+    if (this.isActiveRepositoryPath(path)) {
+      this.repositoryStatusState.set(status);
+    }
     return status;
   }
 
@@ -234,6 +240,9 @@ export class RepositoryService {
     );
 
     this.setRepositories(repositories);
+    this.openRepositoriesState.update((items) =>
+      items.map((item) => (this.isSameRepository(item, repository) ? updatedRepository : item)),
+    );
     if (this.activeRepositoryState()?.path === repository.path) {
       this.activeRepositoryState.set(updatedRepository);
     }
@@ -257,11 +266,25 @@ export class RepositoryService {
   }
 
   remove(workspaceId: string, path: string): void {
+    const removed = this.repositoriesState().find(
+      (repository) =>
+        repository.workspaceId === workspaceId &&
+        this.normalizeRepositoryPath(repository.path) === this.normalizeRepositoryPath(path),
+    );
+
     this.setRepositories(
       this.repositoriesState().filter(
-        (repository) => !(repository.workspaceId === workspaceId && repository.path === path),
+        (repository) =>
+          !(
+            repository.workspaceId === workspaceId &&
+            this.normalizeRepositoryPath(repository.path) === this.normalizeRepositoryPath(path)
+          ),
       ),
     );
+
+    if (removed) {
+      this.closeOpenRepository(removed);
+    }
   }
 
   getActive(): Repository | undefined {
@@ -272,6 +295,66 @@ export class RepositoryService {
     this.activeRepositoryState.set(repository);
     this.repositoryStatusState.set(undefined);
     this.repositoryReferencesState.set(undefined);
+  }
+
+  openRepository(repository: Repository): void {
+    const existing = this.openRepositoriesState().find((item) =>
+      this.isSameRepository(item, repository),
+    );
+
+    if (!existing) {
+      this.openRepositoriesState.update((items) => [...items, repository]);
+    } else {
+      this.openRepositoriesState.update((items) =>
+        items.map((item) => (this.isSameRepository(item, repository) ? repository : item)),
+      );
+    }
+
+    this.setActive(repository);
+  }
+
+  closeOpenRepository(repository: Repository): Repository | undefined {
+    const openRepositories = this.openRepositoriesState();
+    const index = openRepositories.findIndex((item) => this.isSameRepository(item, repository));
+
+    if (index < 0) {
+      return undefined;
+    }
+
+    const sameWorkspaceRepositories = openRepositories.filter(
+      (item) => item.workspaceId === repository.workspaceId && !this.isSameRepository(item, repository),
+    );
+    const nextRepository = sameWorkspaceRepositories.length
+      ? sameWorkspaceRepositories[Math.min(index, sameWorkspaceRepositories.length - 1)]
+      : undefined;
+
+    this.openRepositoriesState.set(
+      openRepositories.filter((item) => !this.isSameRepository(item, repository)),
+    );
+
+    if (this.isSameRepository(this.activeRepositoryState(), repository)) {
+      this.setActive(nextRepository);
+    }
+
+    return nextRepository;
+  }
+
+  private isSameRepository(
+    first: Repository | undefined,
+    second: Repository | undefined,
+  ): boolean {
+    return !!first && !!second && first.workspaceId === second.workspaceId &&
+      this.normalizeRepositoryPath(first.path) === this.normalizeRepositoryPath(second.path);
+  }
+
+  private normalizeRepositoryPath(path: string): string {
+    return path.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
+  }
+
+  private isActiveRepositoryPath(path: string): boolean {
+    const activeRepository = this.activeRepositoryState();
+    return !!activeRepository &&
+      this.normalizeRepositoryPath(activeRepository.path) === this.normalizeRepositoryPath(path);
   }
 
   private loadRepositories(): Repository[] {

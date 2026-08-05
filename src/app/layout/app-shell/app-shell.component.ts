@@ -3,6 +3,7 @@ import { RouterOutlet } from "@angular/router";
 import { LayoutService } from "../../core/services/layout.service";
 import { RepositoryService } from "../../core/services/repository.service";
 import { RepositorySidebarComponent } from "../repository-sidebar/repository-sidebar.component";
+import { RepositoryTabsComponent } from "../repository-tabs/repository-tabs.component";
 import { SidebarComponent } from "../sidebar/sidebar.component";
 import { TopbarComponent } from "../topbar/topbar.component";
 import { ToastContainerComponent } from "../../shared/components/toast-container/toast-container.component";
@@ -11,6 +12,7 @@ import { ToastContainerComponent } from "../../shared/components/toast-container
   selector: "app-shell",
   imports: [
     RepositorySidebarComponent,
+    RepositoryTabsComponent,
     RouterOutlet,
     SidebarComponent,
     TopbarComponent,

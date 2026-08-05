@@ -1,0 +1,32 @@
+@if (repositories().length > 0) {
+  <nav class="repository-tabs" aria-label="Repositórios abertos">
+    @for (repository of repositories(); track trackRepository($index, repository)) {
+      <button
+        type="button"
+        class="repository-tab"
+        [class.active]="isSameRepository(activeRepository(), repository)"
+        [attr.aria-current]="isSameRepository(activeRepository(), repository) ? 'page' : null"
+        [title]="repository.path"
+        (click)="selectRepository(repository)"
+      >
+        <span class="repository-tab-dot" aria-hidden="true"></span>
+        <span class="repository-tab-copy">
+          <strong>{{ repository.name }}</strong>
+          <small>{{ repositoryLocation(repository) }}</small>
+        </span>
+        <span
+          class="repository-tab-close"
+          role="button"
+          tabindex="0"
+          aria-label="Fechar {{ repository.name }}"
+          title="Fechar repositório"
+          (click)="closeRepository(repository, $event)"
+          (keydown.enter)="closeRepository(repository, $event)"
+          (keydown.space)="closeRepository(repository, $event)"
+        >
+          <span aria-hidden="true"></span>
+        </span>
+      </button>
+    }
+  </nav>
+}

@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject, Input, OnInit, signal } from "@angular/core";
+import { Component, computed, HostListener, inject, Input, OnChanges, OnInit, signal, SimpleChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink, RouterLinkActive } from "@angular/router";
 import { LayoutService } from "../../core/services/layout.service";
@@ -42,7 +42,7 @@ const EMPTY_REFERENCES: RepositoryReferences = {
   templateUrl: "./repository-sidebar.component.html",
   styleUrl: "./repository-sidebar.component.css",
 })
-export class RepositorySidebarComponent implements OnInit {
+export class RepositorySidebarComponent implements OnInit, OnChanges {
   @Input({ required: true }) repository!: Repository;
 
   private readonly repositoryService = inject(RepositoryService);
@@ -88,6 +88,13 @@ export class RepositorySidebarComponent implements OnInit {
       await this.repositoryService.getStatus(this.repository.path);
     } catch {
       // A página de alterações exibirá o erro detalhado se o status falhar.
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes["repository"] && !changes["repository"].firstChange) {
+      this.isLoadingReferences.set(true);
+      void this.ngOnInit();
     }
   }
 
@@ -340,8 +347,15 @@ export class RepositorySidebarComponent implements OnInit {
   }
 
   closeRepository(): void {
-    this.repositoryService.setActive(undefined);
+    const nextRepository = this.repositoryService.closeOpenRepository(this.repository);
     this.layoutService.openMainSidebar();
+
+    if (nextRepository) {
+      this.layoutService.closeMainSidebar();
+      void this.router.navigate(["/overview"]);
+      return;
+    }
+
     void this.router.navigate(["/repositories"]);
   }
 

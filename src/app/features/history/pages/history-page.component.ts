@@ -3,11 +3,12 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   HostListener,
   inject,
-  OnInit,
   signal,
+  untracked,
   ViewChild,
 } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -40,7 +41,7 @@ interface CommitContextMenu {
   templateUrl: "./history-page.component.html",
   styleUrl: "./history-page.component.css",
 })
-export class HistoryPageComponent implements OnInit, AfterViewInit {
+export class HistoryPageComponent implements AfterViewInit {
   private readonly historyPageSize = 100;
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
@@ -84,6 +85,11 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
     ),
   );
   private historyOffset = 0;
+  private overviewLoadVersion = 0;
+  private readonly activeRepositoryEffect = effect(() => {
+    const repository = this.activeRepository();
+    untracked(() => void this.loadOverview(repository));
+  });
   readonly filteredCommits = computed(() => {
     const query = this.historyQuery().trim().toLocaleLowerCase("pt-BR");
     const author = this.authorFilter();
@@ -116,10 +122,6 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
   });
   @ViewChild("historySearch") historySearch?: ElementRef<HTMLInputElement>;
 
-  ngOnInit(): void {
-    void this.loadOverview();
-  }
-
   ngAfterViewInit(): void {
     const scrollContainer = this.elementRef.nativeElement.closest(".content") as HTMLElement | null;
     if (!scrollContainer) {
@@ -132,14 +134,14 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
       .subscribe(() => this.actionBarScrolled.set(scrollContainer.scrollTop > 8));
   }
 
-  async loadOverview(): Promise<void> {
-    const repository = this.activeRepository();
+  async loadOverview(repository = this.activeRepository()): Promise<void> {
     if (!repository) {
       this.isLoading.set(false);
       this.hasMoreCommits.set(false);
       return;
     }
 
+    const loadVersion = ++this.overviewLoadVersion;
     this.isLoading.set(true);
     try {
       const [commits, references, status] = await Promise.all([
@@ -153,6 +155,10 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
         this.repositoryService.getStatus(repository.path),
       ]);
       const commitsWithAvatars = await this.enrichCommitAvatars(commits);
+      if (loadVersion !== this.overviewLoadVersion || !this.isSameRepository(repository, this.activeRepository())) {
+        return;
+      }
+
       this.commits.set(commitsWithAvatars);
       this.historyOffset = commits.length;
       this.hasMoreCommits.set(commits.length === this.historyPageSize);
@@ -164,14 +170,28 @@ export class HistoryPageComponent implements OnInit, AfterViewInit {
         this.selectedCommitFiles.set([]);
       }
     } catch (error: unknown) {
+      if (loadVersion !== this.overviewLoadVersion) {
+        return;
+      }
+
       this.hasMoreCommits.set(false);
       this.toastService.error(
         "Não foi possível carregar o histórico deste repositório.",
         "Visão geral",
       );
     } finally {
-      this.isLoading.set(false);
+      if (loadVersion === this.overviewLoadVersion) {
+        this.isLoading.set(false);
+      }
     }
+  }
+
+  private isSameRepository(
+    first: Repository | undefined,
+    second: Repository | undefined,
+  ): boolean {
+    return !!first && !!second && first.workspaceId === second.workspaceId &&
+      first.path.replaceAll("\\", "/").toLowerCase() === second.path.replaceAll("\\", "/").toLowerCase();
   }
 
   selectCommit(commit: Commit): void {

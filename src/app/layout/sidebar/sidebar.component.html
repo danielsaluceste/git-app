@@ -37,7 +37,12 @@
   </nav>
 
   <div class="sidebar-footer">
-    <a routerLink="/settings" routerLinkActive="active" data-tooltip="Configurações">
+    <a
+      routerLink="/settings"
+      routerLinkActive="active"
+      data-tooltip="Configurações"
+      (click)="closeCurrentRepository()"
+    >
       <span class="nav-icon" aria-hidden="true">⚙</span>
       <span class="nav-label">Configurações</span>
     </a>
