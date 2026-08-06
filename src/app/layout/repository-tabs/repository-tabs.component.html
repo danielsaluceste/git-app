@@ -5,14 +5,18 @@
         type="button"
         class="repository-tab"
         [class.active]="isSameRepository(activeRepository(), repository)"
+        [class.dragging]="isSameRepository(draggingRepository(), repository)"
+        [class.drag-over]="isSameRepository(dragOverRepository(), repository)"
+        [class.drag-over-after]="isSameRepository(dragOverRepository(), repository) && dragOverAfter()"
+        [attr.data-repository-tab-index]="$index"
         [attr.aria-current]="isSameRepository(activeRepository(), repository) ? 'page' : null"
         [title]="repository.path"
         (click)="selectRepository(repository)"
+        (pointerdown)="startPointerDrag(repository, $event)"
       >
         <span class="repository-tab-dot" aria-hidden="true"></span>
         <span class="repository-tab-copy">
           <strong>{{ repository.name }}</strong>
-          <small>{{ repositoryLocation(repository) }}</small>
         </span>
         <span
           class="repository-tab-close"

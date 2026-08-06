@@ -22,6 +22,21 @@ interface BranchDeletionRequest {
   type: BranchReferenceType;
 }
 
+type BranchOperationKind = "merge" | "rebase";
+
+interface BranchOperationMenu {
+  source: string;
+  target: string;
+  x: number;
+  y: number;
+}
+
+interface BranchOperationRequest {
+  kind: BranchOperationKind;
+  source: string;
+  target: string;
+}
+
 interface StashContextMenu {
   stashRef: string;
   label: string;
@@ -65,6 +80,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   readonly pendingDeleteBranch = signal<BranchDeletionRequest | undefined>(undefined);
   readonly pendingDeleteStash = signal<string | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
+  readonly branchOperationMenu = signal<BranchOperationMenu | undefined>(undefined);
+  readonly pendingBranchOperation = signal<BranchOperationRequest | undefined>(undefined);
+  readonly draggingBranch = signal<string | undefined>(undefined);
+  readonly dragOverBranch = signal<string | undefined>(undefined);
   readonly pendingCreateBranch = signal<
     { name: string; startPoint?: string } | undefined
   >(undefined);
@@ -74,6 +93,11 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     tags: false,
     stashes: false,
   };
+  private pressedBranch: string | undefined;
+  private branchDragStartX = 0;
+  private branchDragStartY = 0;
+  private suppressBranchClickUntil = 0;
+  private ignoreNextDocumentClick = false;
 
   async ngOnInit(): Promise<void> {
     try {
@@ -125,7 +149,7 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   }
 
   requestCheckout(branch: string): void {
-    if (branch === this.references().currentBranch || this.isBranchActionRunning()) {
+    if (Date.now() < this.suppressBranchClickUntil || branch === this.references().currentBranch || this.isBranchActionRunning()) {
       return;
     }
 
@@ -135,6 +159,129 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     }
 
     void this.checkoutBranch(branch);
+  }
+
+  startBranchPointerDrag(branch: string, event: PointerEvent): void {
+    if (event.button !== 0 || this.isBranchActionRunning()) {
+      return;
+    }
+
+    this.pressedBranch = branch;
+    this.branchDragStartX = event.clientX;
+    this.branchDragStartY = event.clientY;
+    this.draggingBranch.set(undefined);
+    this.dragOverBranch.set(undefined);
+    this.closeBranchContextMenu();
+    this.closeBranchOperationMenu();
+  }
+
+  @HostListener("document:pointermove", ["$event"])
+  onBranchPointerMove(event: PointerEvent): void {
+    const pressedBranch = this.pressedBranch;
+    if (!pressedBranch) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      event.clientX - this.branchDragStartX,
+      event.clientY - this.branchDragStartY,
+    );
+    if (!this.draggingBranch() && distance < 6) {
+      return;
+    }
+
+    if (!this.draggingBranch()) {
+      this.draggingBranch.set(pressedBranch);
+    }
+
+    event.preventDefault();
+    const targetBranch = this.localBranchAtPoint(event.clientX, event.clientY);
+    this.dragOverBranch.set(targetBranch && targetBranch !== pressedBranch ? targetBranch : undefined);
+  }
+
+  @HostListener("document:pointerup", ["$event"])
+  onBranchPointerUp(event: PointerEvent): void {
+    const sourceBranch = this.draggingBranch();
+    const targetBranch = this.dragOverBranch();
+
+    if (sourceBranch && targetBranch) {
+      this.openBranchOperationMenu(sourceBranch, targetBranch, event.clientX, event.clientY);
+      this.suppressBranchClickUntil = Date.now() + 300;
+    }
+
+    this.finishBranchPointerDrag();
+  }
+
+  @HostListener("document:pointercancel")
+  onBranchPointerCancel(): void {
+    this.finishBranchPointerDrag();
+  }
+
+  finishBranchPointerDrag(): void {
+    this.pressedBranch = undefined;
+    this.draggingBranch.set(undefined);
+    this.dragOverBranch.set(undefined);
+  }
+
+  private localBranchAtPoint(clientX: number, clientY: number): string | undefined {
+    const element = document.elementFromPoint(clientX, clientY);
+    const branchElement = element instanceof Element
+      ? element.closest<HTMLElement>("[data-local-branch-index]")
+      : null;
+    const index = branchElement ? Number(branchElement.dataset["localBranchIndex"]) : -1;
+
+    return Number.isInteger(index) && index >= 0
+      ? this.references().localBranches[index]
+      : undefined;
+  }
+
+  private openBranchOperationMenu(source: string, target: string, clientX: number, clientY: number): void {
+    const menuWidth = 292;
+    const menuHeight = 190;
+    this.branchOperationMenu.set({
+      source,
+      target,
+      x: Math.max(8, Math.min(clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(clientY, window.innerHeight - menuHeight - 8)),
+    });
+    this.ignoreNextDocumentClick = true;
+    window.setTimeout(() => {
+      this.ignoreNextDocumentClick = false;
+    }, 300);
+  }
+
+  closeBranchOperationMenu(): void {
+    this.branchOperationMenu.set(undefined);
+  }
+
+  chooseBranchOperation(kind: BranchOperationKind): void {
+    const menu = this.branchOperationMenu();
+    this.closeBranchOperationMenu();
+
+    if (!menu || this.isBranchActionRunning()) {
+      return;
+    }
+
+    const request = { kind, source: menu.source, target: menu.target };
+    if (this.isDirty()) {
+      this.pendingBranchOperation.set(request);
+      return;
+    }
+
+    void this.executeBranchOperation(request);
+  }
+
+  cancelBranchOperation(): void {
+    this.pendingBranchOperation.set(undefined);
+  }
+
+  async confirmBranchOperation(): Promise<void> {
+    const request = this.pendingBranchOperation();
+    this.pendingBranchOperation.set(undefined);
+
+    if (request) {
+      await this.executeBranchOperation(request);
+    }
   }
 
   cancelCheckout(): void {
@@ -312,14 +459,22 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
   @HostListener("document:click")
   handleDocumentClick(): void {
+    if (this.ignoreNextDocumentClick) {
+      this.ignoreNextDocumentClick = false;
+      return;
+    }
+
     this.closeBranchContextMenu();
     this.closeStashContextMenu();
+    this.closeBranchOperationMenu();
   }
 
   @HostListener("document:keydown.escape")
   handleEscape(): void {
     this.closeBranchContextMenu();
     this.closeStashContextMenu();
+    this.closeBranchOperationMenu();
+    this.cancelBranchOperation();
   }
 
   cancelCreateBranch(): void {
@@ -377,6 +532,17 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   private async checkoutBranch(branch: string): Promise<void> {
     this.isBranchActionRunning.set(true);
     try {
+      try {
+        const syncCredentials = this.getSyncCredentials();
+        await this.repositoryService.fetch(
+          this.repository.path,
+          syncCredentials.workspaceId,
+          syncCredentials.githubUserId,
+        );
+      } catch {
+        // A troca de branch local continua mesmo quando o remoto está indisponível.
+      }
+
       await this.repositoryService.checkoutBranch(this.repository.path, branch);
       await this.refreshRepositoryData();
       this.toastService.success(`Branch "${branch}" ativada.`, "Branch atualizada");
@@ -411,6 +577,46 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
       this.repositoryService.getReferences(this.repository.path),
       this.repositoryService.getStatus(this.repository.path),
     ]);
+  }
+
+  private async executeBranchOperation(request: BranchOperationRequest): Promise<void> {
+    this.isBranchActionRunning.set(true);
+
+    try {
+      if (request.kind === "merge") {
+        await this.repositoryService.mergeBranch(
+          this.repository.path,
+          request.source,
+          request.target,
+        );
+        this.toastService.success(
+          `Merge de "${request.source}" em "${request.target}" concluído.`,
+          "Merge concluído",
+        );
+      } else {
+        await this.repositoryService.rebaseBranch(
+          this.repository.path,
+          request.source,
+          request.target,
+        );
+        this.toastService.success(
+          `Rebase de "${request.source}" sobre "${request.target}" concluído.`,
+          "Rebase concluído",
+        );
+      }
+    } catch (error: unknown) {
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        request.kind === "merge" ? "Falha no Merge" : "Falha no Rebase",
+      );
+    } finally {
+      try {
+        await this.refreshRepositoryData();
+      } catch {
+        // A tela pode exibir o erro detalhado no próximo carregamento.
+      }
+      this.isBranchActionRunning.set(false);
+    }
   }
 
   private getSyncCredentials(): { workspaceId?: string; githubUserId?: number } {

@@ -90,9 +90,13 @@
               type="button"
               class="reference-item"
               [class.current]="branch === references().currentBranch"
+              [class.branch-dragging]="draggingBranch() === branch"
+              [class.branch-drop-target]="dragOverBranch() === branch"
+              [attr.data-local-branch-index]="$index"
               [disabled]="isBranchActionRunning()"
               [title]="branch === references().currentBranch ? 'Branch atual' : 'Trocar para ' + branch"
               (click)="requestCheckout(branch)"
+              (pointerdown)="startBranchPointerDrag(branch, $event)"
               (contextmenu)="openBranchContextMenu($event, branch, 'local')"
             >
               <span class="branch-dot" aria-hidden="true"></span>
@@ -224,6 +228,35 @@
   </section>
 </aside>
 
+@if (branchOperationMenu(); as menu) {
+  <div
+    class="branch-context-menu branch-operation-menu"
+    role="menu"
+    [style.left.px]="menu.x"
+    [style.top.px]="menu.y"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="branch-context-heading">
+      <span class="branch-context-kicker">OPERAR BRANCHES</span>
+      <strong [title]="menu.source + ' → ' + menu.target">{{ menu.source }} → {{ menu.target }}</strong>
+    </div>
+    <button type="button" role="menuitem" (click)="chooseBranchOperation('merge')">
+      <span class="context-menu-icon" aria-hidden="true">↗</span>
+      <span>
+        <strong>Merge {{ menu.source }} em {{ menu.target }}</strong>
+        <small>Mesclar a origem na branch de destino</small>
+      </span>
+    </button>
+    <button type="button" role="menuitem" (click)="chooseBranchOperation('rebase')">
+      <span class="context-menu-icon rebase-context-icon" aria-hidden="true">↻</span>
+      <span>
+        <strong>Rebase {{ menu.source }} sobre {{ menu.target }}</strong>
+        <small>Reaplicar os commits da origem sobre o destino</small>
+      </span>
+    </button>
+  </div>
+}
+
 @if (contextMenu(); as menu) {
   <div
     class="branch-context-menu"
@@ -344,5 +377,17 @@
     [destructive]="true"
     (confirmed)="confirmDeleteStash()"
     (cancelled)="cancelDeleteStash()"
+  />
+}
+
+@if (pendingBranchOperation(); as request) {
+  <app-confirm-dialog
+    [title]="request.kind === 'merge' ? 'Executar Merge com alterações pendentes?' : 'Executar Rebase com alterações pendentes?'"
+    [message]="request.kind === 'merge' ? 'Existem alterações não commitadas. O Merge de ' + request.source + ' em ' + request.target + ' pode exigir um working tree limpo. Deseja continuar?' : 'Existem alterações não commitadas. O Rebase de ' + request.source + ' sobre ' + request.target + ' pode exigir um working tree limpo. Deseja continuar?'"
+    [messageHighlight]="request.source"
+    [confirmLabel]="request.kind === 'merge' ? 'Executar Merge' : 'Executar Rebase'"
+    cancelLabel="Cancelar"
+    (confirmed)="confirmBranchOperation()"
+    (cancelled)="cancelBranchOperation()"
   />
 }

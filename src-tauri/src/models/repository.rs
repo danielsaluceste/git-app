@@ -18,6 +18,20 @@ pub struct RepositoryReferences {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RepositoryRemote {
+    pub name: Option<String>,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryOperation {
+    pub kind: String,
+    pub current_branch: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RepositoryStatus {
     pub current_branch: Option<String>,
     pub is_dirty: bool,

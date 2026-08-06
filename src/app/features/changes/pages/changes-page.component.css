@@ -143,6 +143,138 @@ h3 {
   background: linear-gradient(135deg, #332313, #241c18);
 }
 
+.operation-banner {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid #b45309;
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, #3a2615, #281c19);
+  box-shadow: inset 0 0 0 1px rgb(251 146 60 / 8%);
+}
+
+.operation-banner.rebase-operation {
+  border-color: #7c3aed;
+  background: linear-gradient(135deg, #2e1b4f, #201a35);
+  box-shadow: inset 0 0 0 1px rgb(167 139 250 / 8%);
+}
+
+.operation-banner-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.operation-banner-icon {
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.5rem;
+  background: #f97316;
+  color: #111827;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.rebase-operation .operation-banner-icon {
+  background: #a78bfa;
+}
+
+.operation-banner-heading strong {
+  color: #fed7aa;
+  font-size: 0.82rem;
+}
+
+.rebase-operation .operation-banner-heading strong {
+  color: #ddd6fe;
+}
+
+.operation-banner-heading p {
+  margin-top: 0.2rem;
+  color: #d1d5db;
+  font-size: 0.72rem;
+}
+
+.operation-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: 0.45rem;
+}
+
+.operation-banner-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.operation-banner-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.operation-resolve-button {
+  border-color: #b45309 !important;
+  background: #4a2d14;
+  color: #fed7aa;
+}
+
+.operation-resolve-button span {
+  display: inline-grid;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 0.3rem;
+  background: #f97316;
+  color: #111827;
+  font-size: 0.64rem;
+}
+
+.rebase-operation .operation-resolve-button {
+  border-color: #7c3aed !important;
+  background: #3b1f55;
+  color: #ede9fe;
+}
+
+.rebase-operation .operation-resolve-button span {
+  background: #a78bfa;
+}
+
+.operation-continue-button {
+  border-color: #15803d !important;
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+.operation-abort-button {
+  border-color: #7f1d1d !important;
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.operation-ready {
+  margin-right: auto;
+  color: #86efac;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.operation-banner-actions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
 .conflict-panel-heading {
   display: flex;
   align-items: center;

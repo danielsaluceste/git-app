@@ -3,13 +3,16 @@ import { Router } from "@angular/router";
 import {
   Repository,
   RepositoryAuthenticationSource,
+  RepositoryRemote,
 } from "../../../core/models/repository.model";
 import { GithubService } from "../../../core/services/github.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 
 @Component({
   selector: "app-repository-settings-page",
+  imports: [ConfirmDialogComponent],
   templateUrl: "./repository-settings-page.component.html",
   styleUrl: "./repository-settings-page.component.css",
 })
@@ -25,11 +28,87 @@ export class RepositorySettingsPageComponent {
   selectedSource: RepositoryAuthenticationSource = "system";
   selectedGithubConnectionId: number | undefined;
   isSaving = false;
+  remote: RepositoryRemote = {};
+  remoteUrl = "";
+  isLoadingRemote = true;
+  isSavingRemote = false;
+  pendingRemoteUrl = "";
 
   constructor() {
     const repository = this.activeRepository();
     this.selectedSource = repository?.authenticationSource ?? "system";
     this.selectedGithubConnectionId = repository?.githubConnectionId;
+    void this.loadRemote();
+  }
+
+  async loadRemote(): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository) {
+      this.isLoadingRemote = false;
+      return;
+    }
+
+    try {
+      this.remote = await this.repositoryService.getRemote(repository.path);
+      this.remoteUrl = this.remote.url ?? "";
+    } catch (error: unknown) {
+      this.toastService.error(
+        typeof error === "string" ? error : "Não foi possível ler o remoto deste repositório.",
+        "Remoto Git",
+      );
+    } finally {
+      this.isLoadingRemote = false;
+    }
+  }
+
+  updateRemoteUrl(event: Event): void {
+    this.remoteUrl = (event.target as HTMLInputElement).value;
+  }
+
+  requestSaveRemoteUrl(): void {
+    const normalizedUrl = this.remoteUrl.trim();
+    if (!normalizedUrl) {
+      this.toastService.warning("Informe uma URL Git válida.", "Remoto Git");
+      return;
+    }
+
+    if (normalizedUrl === (this.remote.url ?? "").trim()) {
+      this.toastService.info("A URL do remoto já está atualizada.", "Remoto Git");
+      return;
+    }
+
+    this.pendingRemoteUrl = normalizedUrl;
+  }
+
+  cancelSaveRemoteUrl(): void {
+    this.pendingRemoteUrl = "";
+  }
+
+  async confirmSaveRemoteUrl(): Promise<void> {
+    const repository = this.activeRepository();
+    const url = this.pendingRemoteUrl;
+    this.pendingRemoteUrl = "";
+
+    if (!repository || !url) {
+      return;
+    }
+
+    this.isSavingRemote = true;
+    try {
+      this.remote = await this.repositoryService.setRemoteUrl(repository.path, url);
+      this.remoteUrl = this.remote.url ?? url;
+      this.toastService.success(
+        `O remoto ${this.remote.name ?? "origin"} foi atualizado.`,
+        "Remoto Git atualizado",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(
+        typeof error === "string" ? error : "Não foi possível atualizar a URL do remoto.",
+        "Remoto Git",
+      );
+    } finally {
+      this.isSavingRemote = false;
+    }
   }
 
   selectSource(source: RepositoryAuthenticationSource): void {

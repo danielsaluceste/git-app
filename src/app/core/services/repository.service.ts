@@ -3,6 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   LocalRepositoryInfo,
   Repository,
+  RepositoryOperation,
+  RepositoryOperationKind,
+  RepositoryRemote,
   RepositoryStatus,
   RepositoryReferences,
   RepositoryAuthenticationSource,
@@ -12,11 +15,18 @@ import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
 
 const STORAGE_KEY = "git-app.repositories";
+const OPEN_REPOSITORIES_KEY = "git-app.open-repositories";
+const ACTIVE_REPOSITORY_KEY = "git-app.active-repository";
+
+interface StoredRepositoryReference {
+  workspaceId: string;
+  path: string;
+}
 
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
-  private readonly openRepositoriesState = signal<Repository[]>([]);
+  private readonly openRepositoriesState = signal<Repository[]>(this.loadOpenRepositories());
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
   private readonly repositoryStatusState = signal<RepositoryStatus | undefined>(undefined);
   private readonly repositoryReferencesState = signal<RepositoryReferences | undefined>(undefined);
@@ -57,6 +67,26 @@ export class RepositoryService {
       this.repositoryReferencesState.set(references);
     }
     return references;
+  }
+
+  async getRemote(path: string): Promise<RepositoryRemote> {
+    return invoke<RepositoryRemote>("get_repository_remote", { path });
+  }
+
+  async setRemoteUrl(path: string, url: string): Promise<RepositoryRemote> {
+    return invoke<RepositoryRemote>("set_repository_remote_url", { path, url });
+  }
+
+  async getOperation(path: string): Promise<RepositoryOperation | null> {
+    return invoke<RepositoryOperation | null>("get_repository_operation", { path });
+  }
+
+  async continueOperation(path: string, operation: RepositoryOperationKind): Promise<void> {
+    await invoke("continue_repository_operation", { path, operation });
+  }
+
+  async abortOperation(path: string, operation: RepositoryOperationKind): Promise<void> {
+    await invoke("abort_repository_operation", { path, operation });
   }
 
   async getStatus(path: string): Promise<RepositoryStatus> {
@@ -199,6 +229,14 @@ export class RepositoryService {
     await invoke("checkout_branch", { path, branch });
   }
 
+  async mergeBranch(path: string, sourceBranch: string, targetBranch: string): Promise<void> {
+    await invoke("merge_branch", { path, sourceBranch, targetBranch });
+  }
+
+  async rebaseBranch(path: string, sourceBranch: string, targetBranch: string): Promise<void> {
+    await invoke("rebase_branch", { path, sourceBranch, targetBranch });
+  }
+
   async checkoutCommit(path: string, commitHash: string): Promise<void> {
     await invoke("checkout_commit", { path, commitHash });
   }
@@ -243,6 +281,7 @@ export class RepositoryService {
     this.openRepositoriesState.update((items) =>
       items.map((item) => (this.isSameRepository(item, repository) ? updatedRepository : item)),
     );
+    this.persistOpenRepositories();
     if (this.activeRepositoryState()?.path === repository.path) {
       this.activeRepositoryState.set(updatedRepository);
     }
@@ -295,6 +334,7 @@ export class RepositoryService {
     this.activeRepositoryState.set(repository);
     this.repositoryStatusState.set(undefined);
     this.repositoryReferencesState.set(undefined);
+    this.persistActiveRepository(repository);
   }
 
   openRepository(repository: Repository): void {
@@ -310,7 +350,23 @@ export class RepositoryService {
       );
     }
 
+    this.persistOpenRepositories();
     this.setActive(repository);
+  }
+
+  restoreActiveRepository(): Repository | undefined {
+    const reference = this.loadActiveRepositoryReference();
+    const repository = reference
+      ? this.openRepositoriesState().find((item) => this.isSameRepositoryReference(item, reference))
+      : undefined;
+
+    if (repository) {
+      this.setActive(repository);
+      return repository;
+    }
+
+    this.clearStoredActiveRepository();
+    return undefined;
   }
 
   closeOpenRepository(repository: Repository): Repository | undefined {
@@ -331,12 +387,60 @@ export class RepositoryService {
     this.openRepositoriesState.set(
       openRepositories.filter((item) => !this.isSameRepository(item, repository)),
     );
+    this.persistOpenRepositories();
 
     if (this.isSameRepository(this.activeRepositoryState(), repository)) {
       this.setActive(nextRepository);
     }
 
     return nextRepository;
+  }
+
+  reorderOpenRepository(
+    source: Repository,
+    target: Repository,
+    placeAfter = false,
+  ): void {
+    if (this.isSameRepository(source, target)) {
+      return;
+    }
+
+    const openRepositories = this.openRepositoriesState();
+    const workspaceIndexes = openRepositories
+      .map((item, index) => (item.workspaceId === source.workspaceId ? index : -1))
+      .filter((index) => index >= 0);
+    const sourceIndex = workspaceIndexes.findIndex((index) =>
+      this.isSameRepository(openRepositories[index], source),
+    );
+    const targetIndex = workspaceIndexes.findIndex((index) =>
+      this.isSameRepository(openRepositories[index], target),
+    );
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    if ((!placeAfter && sourceIndex < targetIndex) || (placeAfter && sourceIndex > targetIndex)) {
+      return;
+    }
+
+    const workspaceRepositories = workspaceIndexes.map((index) => openRepositories[index]);
+    const [movedRepository] = workspaceRepositories.splice(sourceIndex, 1);
+    const targetIndexAfterRemoval = workspaceRepositories.findIndex((item) =>
+      this.isSameRepository(item, target),
+    );
+    workspaceRepositories.splice(
+      targetIndexAfterRemoval + (placeAfter ? 1 : 0),
+      0,
+      movedRepository,
+    );
+
+    const reorderedRepositories = [...openRepositories];
+    workspaceIndexes.forEach((index, position) => {
+      reorderedRepositories[index] = workspaceRepositories[position];
+    });
+    this.openRepositoriesState.set(reorderedRepositories);
+    this.persistOpenRepositories();
   }
 
   private isSameRepository(
@@ -369,6 +473,95 @@ export class RepositoryService {
     } catch {
       return [];
     }
+  }
+
+  private loadOpenRepositories(): Repository[] {
+    if (typeof localStorage === "undefined") {
+      return [];
+    }
+
+    try {
+      const saved = localStorage.getItem(OPEN_REPOSITORIES_KEY);
+      const parsed = saved ? (JSON.parse(saved) as unknown) : [];
+
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter((item): item is StoredRepositoryReference => this.isStoredRepositoryReference(item))
+        .map((reference) =>
+          this.repositoriesState().find((repository) =>
+            this.isSameRepositoryReference(repository, reference),
+          ),
+        )
+        .filter((repository): repository is Repository => !!repository);
+    } catch {
+      return [];
+    }
+  }
+
+  private loadActiveRepositoryReference(): StoredRepositoryReference | undefined {
+    if (typeof localStorage === "undefined") {
+      return undefined;
+    }
+
+    try {
+      const saved = localStorage.getItem(ACTIVE_REPOSITORY_KEY);
+      const parsed = saved ? (JSON.parse(saved) as unknown) : undefined;
+      return this.isStoredRepositoryReference(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private persistOpenRepositories(): void {
+    if (typeof localStorage !== "undefined") {
+      const references = this.openRepositoriesState().map((repository) => ({
+        workspaceId: repository.workspaceId,
+        path: repository.path,
+      }));
+      localStorage.setItem(OPEN_REPOSITORIES_KEY, JSON.stringify(references));
+    }
+  }
+
+  private persistActiveRepository(repository: Repository | undefined): void {
+    if (typeof localStorage === "undefined") {
+      return;
+    }
+
+    if (!repository) {
+      this.clearStoredActiveRepository();
+      return;
+    }
+
+    localStorage.setItem(
+      ACTIVE_REPOSITORY_KEY,
+      JSON.stringify({ workspaceId: repository.workspaceId, path: repository.path }),
+    );
+  }
+
+  private clearStoredActiveRepository(): void {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(ACTIVE_REPOSITORY_KEY);
+    }
+  }
+
+  private isStoredRepositoryReference(value: unknown): value is StoredRepositoryReference {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const reference = value as Partial<StoredRepositoryReference>;
+    return typeof reference.workspaceId === "string" && typeof reference.path === "string";
+  }
+
+  private isSameRepositoryReference(
+    repository: Repository,
+    reference: StoredRepositoryReference,
+  ): boolean {
+    return repository.workspaceId === reference.workspaceId &&
+      this.normalizeRepositoryPath(repository.path) === this.normalizeRepositoryPath(reference.path);
   }
 
   private setRepositories(repositories: Repository[]): void {

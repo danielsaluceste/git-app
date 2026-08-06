@@ -2,7 +2,7 @@ import { Component, HostListener, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
-import { RepositoryStatus } from "../../../core/models/repository.model";
+import { RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { SettingsService } from "../../../core/services/settings.service";
@@ -28,6 +28,7 @@ export class ChangesPageComponent implements OnInit {
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
+  readonly operation = signal<RepositoryOperation | undefined>(undefined);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly isLoadingAmendMessage = signal(false);
@@ -49,6 +50,8 @@ export class ChangesPageComponent implements OnInit {
   readonly fileDiff = signal("");
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
+  readonly isOperationActionRunning = signal(false);
+  readonly pendingAbortOperation = signal(false);
   private pendingAiDiff = "";
 
   ngOnInit(): void {
@@ -78,12 +81,19 @@ export class ChangesPageComponent implements OnInit {
     if (!repository) {
       this.isLoading.set(false);
       this.status.set(undefined);
+      this.operation.set(undefined);
       return false;
     }
 
     this.isLoading.set(true);
+    this.operation.set(undefined);
     try {
-      this.status.set(await this.repositoryService.getStatus(repository.path));
+      const [repositoryStatus, operation] = await Promise.all([
+        this.repositoryService.getStatus(repository.path),
+        this.repositoryService.getOperation(repository.path).catch(() => null),
+      ]);
+      this.status.set(repositoryStatus);
+      this.operation.set(operation ?? undefined);
       return true;
     } catch {
       this.toastService.error("Não foi possível carregar o status deste repositório.", "Status do Git");
@@ -116,6 +126,89 @@ export class ChangesPageComponent implements OnInit {
   async onConflictResolved(): Promise<void> {
     this.closeConflictResolver();
     await this.loadStatus();
+  }
+
+  operationTitle(): string {
+    return this.operation()?.kind === "rebase"
+      ? "Rebase em andamento"
+      : "Merge em andamento";
+  }
+
+  operationDescription(): string {
+    const branch = this.operation()?.currentBranch;
+    return branch
+      ? `A branch ${branch} está aguardando a resolução dos conflitos e a continuação da operação.`
+      : "Resolva os conflitos e continue ou aborte a operação Git.";
+  }
+
+  openFirstConflict(): void {
+    const conflict = this.conflictFiles(this.status()?.files ?? [])[0];
+    if (conflict) {
+      this.openConflictResolver(conflict);
+    }
+  }
+
+  async continueOperation(): Promise<void> {
+    const repository = this.activeRepository();
+    const operation = this.operation();
+    const conflicts = this.conflictFiles(this.status()?.files ?? []);
+
+    if (!repository || !operation || this.isOperationActionRunning()) {
+      return;
+    }
+    if (conflicts.length > 0) {
+      this.toastService.warning("Resolva todos os conflitos antes de continuar.", "Operação Git");
+      this.openFirstConflict();
+      return;
+    }
+
+    this.isOperationActionRunning.set(true);
+    try {
+      await this.repositoryService.continueOperation(repository.path, operation.kind);
+      this.toastService.success(
+        operation.kind === "merge" ? "O Merge foi concluído." : "O Rebase foi concluído.",
+        operation.kind === "merge" ? "Merge concluído" : "Rebase concluído",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Continuar operação");
+    } finally {
+      await this.loadStatus();
+      this.isOperationActionRunning.set(false);
+    }
+  }
+
+  requestAbortOperation(): void {
+    if (this.operation() && !this.isOperationActionRunning()) {
+      this.pendingAbortOperation.set(true);
+    }
+  }
+
+  cancelAbortOperation(): void {
+    this.pendingAbortOperation.set(false);
+  }
+
+  async confirmAbortOperation(): Promise<void> {
+    const repository = this.activeRepository();
+    const operation = this.operation();
+    this.pendingAbortOperation.set(false);
+
+    if (!repository || !operation || this.isOperationActionRunning()) {
+      return;
+    }
+
+    this.isOperationActionRunning.set(true);
+    try {
+      await this.repositoryService.abortOperation(repository.path, operation.kind);
+      this.toastService.success(
+        operation.kind === "merge" ? "O Merge foi abortado." : "O Rebase foi abortado.",
+        operation.kind === "merge" ? "Merge abortado" : "Rebase abortado",
+      );
+    } catch (error: unknown) {
+      this.toastService.error(this.getGitErrorMessage(error), "Abortar operação");
+    } finally {
+      await this.loadStatus();
+      this.isOperationActionRunning.set(false);
+    }
   }
 
   async openFileDiff(file: GitFile): Promise<void> {

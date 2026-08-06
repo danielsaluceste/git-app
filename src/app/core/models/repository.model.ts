@@ -27,6 +27,18 @@ export interface RepositoryReferences {
   stashes: string[];
 }
 
+export interface RepositoryRemote {
+  name?: string;
+  url?: string;
+}
+
+export type RepositoryOperationKind = "merge" | "rebase";
+
+export interface RepositoryOperation {
+  kind: RepositoryOperationKind;
+  currentBranch?: string;
+}
+
 export interface RepositoryStatus {
   currentBranch?: string;
   isDirty: boolean;

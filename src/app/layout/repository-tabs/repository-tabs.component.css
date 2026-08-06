@@ -5,6 +5,7 @@
 
 .repository-tabs {
   display: flex;
+  position: relative;
   min-height: 2.55rem;
   align-items: flex-end;
   gap: 0.2rem;
@@ -35,13 +36,40 @@
   color: #9ca3af;
   cursor: pointer;
   font: inherit;
+  touch-action: none;
   text-align: left;
+  user-select: none;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .repository-tab:hover {
   background: #172033;
   color: #e5e7eb;
+}
+
+.repository-tab.dragging {
+  opacity: 0.42;
+  cursor: grabbing;
+}
+
+.repository-tab.drag-over {
+  border-left-color: #f97316;
+}
+
+.repository-tab.drag-over::after {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: -0.15rem;
+  width: 0.15rem;
+  border-radius: 999px;
+  background: #f97316;
+  content: "";
+}
+
+.repository-tab.drag-over-after::after {
+  right: -0.15rem;
+  left: auto;
 }
 
 .repository-tab.active {
@@ -68,11 +96,9 @@
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: 0.05rem;
 }
 
-.repository-tab-copy strong,
-.repository-tab-copy small {
+.repository-tab-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -82,15 +108,6 @@
   color: inherit;
   font-size: 0.74rem;
   font-weight: 700;
-}
-
-.repository-tab-copy small {
-  color: #64748b;
-  font-size: 0.62rem;
-}
-
-.repository-tab.active .repository-tab-copy small {
-  color: #94a3b8;
 }
 
 .repository-tab-close {

@@ -1,7 +1,7 @@
 use crate::commands::github;
 use crate::models::repository::{
     CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
-    RepositoryReferences, RepositoryStatus,
+    RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
 };
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -16,6 +16,7 @@ use tauri::{AppHandle, Emitter, State};
 
 const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(45);
+const GIT_BRANCH_OPERATION_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Default)]
@@ -341,6 +342,88 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
         tags,
         stashes,
     })
+}
+
+#[tauri::command]
+pub fn get_repository_remote(path: String) -> Result<RepositoryRemote, String> {
+    ensure_repository(&path)?;
+    let name = preferred_configured_remote(&path);
+    let url = name
+        .as_ref()
+        .and_then(|remote| run_git(&path, &["remote", "get-url", remote]).ok());
+
+    Ok(RepositoryRemote { name, url })
+}
+
+#[tauri::command]
+pub fn set_repository_remote_url(path: String, url: String) -> Result<RepositoryRemote, String> {
+    ensure_repository(&path)?;
+    let normalized_url = url.trim();
+
+    if normalized_url.is_empty() || normalized_url.chars().any(char::is_control) {
+        return Err("Informe uma URL Git valida para o repositorio remoto.".to_string());
+    }
+
+    let remote = preferred_configured_remote(&path).unwrap_or_else(|| "origin".to_string());
+    if preferred_configured_remote(&path).is_some() {
+        run_git_with_timeout(
+            &path,
+            &["remote", "set-url", &remote, normalized_url],
+            GIT_COMMAND_TIMEOUT,
+        )?;
+    } else {
+        run_git_with_timeout(
+            &path,
+            &["remote", "add", &remote, normalized_url],
+            GIT_COMMAND_TIMEOUT,
+        )?;
+    }
+
+    Ok(RepositoryRemote {
+        name: Some(remote),
+        url: Some(normalized_url.to_string()),
+    })
+}
+
+#[tauri::command]
+pub fn get_repository_operation(path: String) -> Result<Option<RepositoryOperation>, String> {
+    ensure_repository(&path)?;
+    let Some(kind) = detect_repository_operation(&path) else {
+        return Ok(None);
+    };
+
+    Ok(Some(RepositoryOperation {
+        kind: kind.to_string(),
+        current_branch: run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok(),
+    }))
+}
+
+#[tauri::command]
+pub fn continue_repository_operation(path: String, operation: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_repository_operation(&path, &operation)?;
+
+    let args: &[&str] = match operation.as_str() {
+        "merge" => &["-c", "core.editor=true", "commit", "--no-edit"],
+        "rebase" => &["-c", "core.editor=true", "rebase", "--continue"],
+        _ => return Err("A operação Git informada não é válida.".to_string()),
+    };
+
+    run_git_with_timeout(&path, args, GIT_BRANCH_OPERATION_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn abort_repository_operation(path: String, operation: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_repository_operation(&path, &operation)?;
+
+    let args: &[&str] = match operation.as_str() {
+        "merge" => &["merge", "--abort"],
+        "rebase" => &["rebase", "--abort"],
+        _ => return Err("A operação Git informada não é válida.".to_string()),
+    };
+
+    run_git_with_timeout(&path, args, GIT_BRANCH_OPERATION_TIMEOUT).map(|_| ())
 }
 
 #[tauri::command]
@@ -1232,7 +1315,7 @@ pub fn pull_repository(
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
     run_git_with_access_token(
         &path,
-        &["pull", "--ff-only"],
+        &["pull", "--rebase"],
         GIT_NETWORK_TIMEOUT,
         access_token.as_deref(),
     )
@@ -1302,6 +1385,52 @@ pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &branch)?;
     run_git_with_timeout(&path, &["checkout", &branch], GIT_COMMAND_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn merge_branch(path: String, source_branch: String, target_branch: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &source_branch)?;
+    validate_branch_name(&path, &target_branch)?;
+
+    if source_branch == target_branch {
+        return Err("A branch de origem e a branch de destino precisam ser diferentes.".to_string());
+    }
+
+    run_git_with_timeout(
+        &path,
+        &["checkout", &target_branch],
+        GIT_BRANCH_OPERATION_TIMEOUT,
+    )?;
+    run_git_with_timeout(
+        &path,
+        &["merge", "--no-edit", &source_branch],
+        GIT_BRANCH_OPERATION_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn rebase_branch(path: String, source_branch: String, target_branch: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_branch_name(&path, &source_branch)?;
+    validate_branch_name(&path, &target_branch)?;
+
+    if source_branch == target_branch {
+        return Err("A branch de origem e a branch de destino precisam ser diferentes.".to_string());
+    }
+
+    run_git_with_timeout(
+        &path,
+        &["checkout", &source_branch],
+        GIT_BRANCH_OPERATION_TIMEOUT,
+    )?;
+    run_git_with_timeout(
+        &path,
+        &["rebase", &target_branch],
+        GIT_BRANCH_OPERATION_TIMEOUT,
+    )
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -1649,6 +1778,54 @@ fn get_ahead_behind(path: &str) -> (usize, usize) {
         .filter_map(|value| value.parse::<usize>().ok());
 
     (counts.next().unwrap_or(0), counts.next().unwrap_or(0))
+}
+
+fn preferred_configured_remote(path: &str) -> Option<String> {
+    let remotes = run_git_lines(path, &["remote"]).ok()?;
+
+    remotes
+        .iter()
+        .find(|remote| remote.as_str() == "origin")
+        .cloned()
+        .or_else(|| remotes.first().cloned())
+}
+
+fn detect_repository_operation(path: &str) -> Option<&'static str> {
+    if git_path_exists(path, "MERGE_HEAD") {
+        return Some("merge");
+    }
+
+    if git_path_exists(path, "rebase-merge") || git_path_exists(path, "rebase-apply") {
+        return Some("rebase");
+    }
+
+    None
+}
+
+fn validate_repository_operation(path: &str, operation: &str) -> Result<(), String> {
+    let current_operation = detect_repository_operation(path)
+        .ok_or_else(|| "Não existe uma operação Merge ou Rebase em andamento.".to_string())?;
+
+    if current_operation != operation {
+        return Err(format!(
+            "A operação em andamento é {current_operation}, não {operation}."
+        ));
+    }
+
+    Ok(())
+}
+
+fn git_path_exists(path: &str, git_path: &str) -> bool {
+    let Ok(resolved_path) = run_git(path, &["rev-parse", "--git-path", git_path]) else {
+        return false;
+    };
+
+    let resolved_path = PathBuf::from(resolved_path.trim());
+    if resolved_path.is_absolute() {
+        resolved_path.exists()
+    } else {
+        PathBuf::from(path).join(resolved_path).exists()
+    }
 }
 
 fn preferred_push_remote(path: &str) -> Result<String, String> {

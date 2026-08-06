@@ -1,28 +1,15 @@
-name: Build desktop apps
+name: Build Linux
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Build ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows
-            os: windows-latest
-            command: npm run build:windows
-          - name: Linux
-            os: ubuntu-24.04
-            command: npm run build:linux
-          - name: macOS
-            os: macos-latest
-            command: npm run build:mac
+  build-linux:
+    name: Build Linux installers
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -38,7 +25,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential curl wget file libssl-dev libxdo-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
@@ -47,10 +33,10 @@ jobs:
         run: npm ci
 
       - name: Build installers
-        run: ${{ matrix.command }}
+        run: npm run build:linux
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: git-app-${{ matrix.name }}
+          name: git-app-linux
           path: src-tauri/target/release/bundle/**

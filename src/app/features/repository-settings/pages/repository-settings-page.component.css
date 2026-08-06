@@ -122,6 +122,64 @@ h3 {
   font-size: 1.25rem;
 }
 
+.remote-settings-icon {
+  border-color: #1d4ed8;
+  background: #172554;
+  color: #93c5fd;
+}
+
+.remote-form {
+  padding: 1rem 1.35rem;
+}
+
+.remote-url-field {
+  display: grid;
+  gap: 0.45rem;
+  color: #d1d5db;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.remote-url-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #374151;
+  border-radius: 0.55rem;
+  padding: 0.72rem 0.8rem;
+  outline: 0;
+  background: #111827;
+  color: #f9fafb;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.remote-url-field input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 14%);
+}
+
+.remote-url-field input:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.remote-url-field small,
+.remote-loading {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.remote-url-field small strong {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.remote-loading {
+  padding: 0.35rem 0;
+}
+
 .current-auth {
   display: flex;
   align-items: center;

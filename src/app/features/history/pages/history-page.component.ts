@@ -90,6 +90,18 @@ export class HistoryPageComponent implements AfterViewInit {
     const repository = this.activeRepository();
     untracked(() => void this.loadOverview(repository));
   });
+  private readonly repositoryStatusEffect = effect(() => {
+    const status = this.repositoryService.repositoryStatus();
+    if (!status) {
+      return;
+    }
+
+    untracked(() => {
+      this.currentBranch.set(status.currentBranch || "HEAD destacado");
+      this.aheadCount.set(status.aheadCount);
+      this.behindCount.set(status.behindCount);
+    });
+  });
   readonly filteredCommits = computed(() => {
     const query = this.historyQuery().trim().toLocaleLowerCase("pt-BR");
     const author = this.authorFilter();
@@ -685,6 +697,20 @@ export class HistoryPageComponent implements AfterViewInit {
 
       await this.loadOverview();
     } catch (error: unknown) {
+      if (action === "pull") {
+        const operation = await this.repositoryService.getOperation(repository.path).catch(() => null);
+
+        if (operation) {
+          const operationName = operation.kind === "rebase" ? "Rebase" : "Merge";
+          this.toastService.warning(
+            `O Pull encontrou conflitos durante o ${operationName}. Resolva os arquivos para continuar.`,
+            "Conflitos durante o Pull",
+          );
+          await this.router.navigate(["/changes"]);
+          return;
+        }
+      }
+
       this.toastService.error(this.getSyncErrorMessage(error), "Sincronização");
     } finally {
       this.syncAction.set("");

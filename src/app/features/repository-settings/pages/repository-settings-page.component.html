@@ -11,6 +11,50 @@
       <button type="button" class="back-button" (click)="goBack()">Voltar à visão geral</button>
     </header>
 
+    <section class="settings-card" aria-labelledby="remote-title">
+      <div class="settings-card-heading">
+        <div class="settings-icon remote-settings-icon" aria-hidden="true">↗</div>
+        <div>
+          <h3 id="remote-title">Repositório remoto</h3>
+          <p>Defina para onde o fetch, pull e push deste projeto devem apontar.</p>
+        </div>
+      </div>
+
+      <div class="remote-form">
+        @if (isLoadingRemote) {
+          <div class="remote-loading">Lendo a configuração do remoto...</div>
+        } @else {
+          <label class="remote-url-field">
+            <span>URL Git</span>
+            <input
+              type="text"
+              [value]="remoteUrl"
+              placeholder="https://github.com/usuario/projeto.git"
+              autocomplete="off"
+              spellcheck="false"
+              [disabled]="isSavingRemote"
+              (input)="updateRemoteUrl($event)"
+            />
+            <small>
+              Remoto usado: <strong>{{ remote.name ?? "origin (será criado ao salvar)" }}</strong>
+            </small>
+          </label>
+        }
+      </div>
+
+      <footer class="settings-actions">
+        <span>A URL pode ser alterada usando qualquer tipo de credencial.</span>
+        <button
+          type="button"
+          class="save-button"
+          [disabled]="isLoadingRemote || isSavingRemote"
+          (click)="requestSaveRemoteUrl()"
+        >
+          {{ isSavingRemote ? "Salvando..." : "Salvar URL" }}
+        </button>
+      </footer>
+    </section>
+
     <section class="settings-card" aria-labelledby="authentication-title">
       <div class="settings-card-heading">
         <div class="settings-icon" aria-hidden="true">⌁</div>
@@ -101,6 +145,17 @@
       <span aria-hidden="true">●</span>
       O token do GitHub permanece protegido no armazenamento seguro do sistema.
     </p>
+    @if (pendingRemoteUrl) {
+      <app-confirm-dialog
+        title="Alterar repositório remoto?"
+        [message]="'As próximas operações Git usarão este endereço: ' + pendingRemoteUrl + '. Deseja continuar?'"
+        [messageHighlight]="pendingRemoteUrl"
+        confirmLabel="Alterar URL"
+        cancelLabel="Manter atual"
+        (confirmed)="confirmSaveRemoteUrl()"
+        (cancelled)="cancelSaveRemoteUrl()"
+      />
+    }
   } @else {
     <section class="empty-state">
       <h3>Nenhum repositório aberto</h3>

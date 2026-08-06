@@ -34,6 +34,49 @@
     @if (isLoading()) {
       <div class="panel loading-state">Lendo o status do Git...</div>
     } @else if (status(); as repositoryStatus) {
+      @if (operation(); as activeOperation) {
+        <section class="operation-banner" [class.rebase-operation]="activeOperation.kind === 'rebase'" aria-live="polite">
+          <div class="operation-banner-heading">
+            <div class="operation-banner-icon" aria-hidden="true">!</div>
+            <div>
+              <strong>{{ operationTitle() }}</strong>
+              <p>{{ operationDescription() }}</p>
+            </div>
+          </div>
+          <div class="operation-banner-actions">
+            @if (conflictFiles(repositoryStatus.files).length > 0) {
+              <button
+                type="button"
+                class="operation-resolve-button"
+                [disabled]="isSaving() || isOperationActionRunning()"
+                (click)="openFirstConflict()"
+              >
+                Resolver conflitos
+                <span>{{ conflictFiles(repositoryStatus.files).length }}</span>
+              </button>
+            } @else {
+              <span class="operation-ready">Nenhum conflito pendente</span>
+            }
+            <button
+              type="button"
+              class="operation-continue-button"
+              [disabled]="isSaving() || isOperationActionRunning() || conflictFiles(repositoryStatus.files).length > 0"
+              (click)="continueOperation()"
+            >
+              {{ isOperationActionRunning() ? "Continuando..." : "Continuar " + (activeOperation.kind === "merge" ? "Merge" : "Rebase") }}
+            </button>
+            <button
+              type="button"
+              class="operation-abort-button"
+              [disabled]="isSaving() || isOperationActionRunning()"
+              (click)="requestAbortOperation()"
+            >
+              Abortar
+            </button>
+          </div>
+        </section>
+      }
+
       @if (conflictFiles(repositoryStatus.files).length > 0) {
         <section class="conflict-panel" aria-live="polite">
           <div class="conflict-panel-heading">
@@ -282,6 +325,18 @@
       cancelLabel="Agora não"
       (confirmed)="confirmAiDownload()"
       (cancelled)="cancelAiDownload()"
+    />
+  }
+
+  @if (pendingAbortOperation()) {
+    <app-confirm-dialog
+      title="Abortar operação Git?"
+      [message]="operation()?.kind === 'merge' ? 'As alterações e conflitos desta operação de Merge serão descartados. Deseja continuar?' : 'As alterações e conflitos desta operação de Rebase serão descartados. Deseja continuar?'"
+      confirmLabel="Abortar operação"
+      cancelLabel="Continuar resolvendo"
+      [destructive]="true"
+      (confirmed)="confirmAbortOperation()"
+      (cancelled)="cancelAbortOperation()"
     />
   }
 
