@@ -1287,7 +1287,7 @@ pub fn get_commit_file_diff(
 }
 
 #[tauri::command]
-pub fn fetch_repository(
+pub async fn fetch_repository(
     path: String,
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
@@ -1295,17 +1295,23 @@ pub fn fetch_repository(
 ) -> Result<(), String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
-    run_git_with_access_token(
-        &path,
-        &["fetch", "--all", "--prune"],
-        GIT_NETWORK_TIMEOUT,
-        access_token.as_deref(),
-    )
-    .map(|_| ())
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        run_git_with_access_token(
+            &path,
+            &["fetch", "--all", "--prune"],
+            GIT_NETWORK_TIMEOUT,
+            access_token.as_deref(),
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(|error| format!("Falha ao executar o Fetch em segundo plano: {error}"))?;
+
+    result
 }
 
 #[tauri::command]
-pub fn pull_repository(
+pub async fn pull_repository(
     path: String,
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
@@ -1313,17 +1319,23 @@ pub fn pull_repository(
 ) -> Result<(), String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
-    run_git_with_access_token(
-        &path,
-        &["pull", "--rebase"],
-        GIT_NETWORK_TIMEOUT,
-        access_token.as_deref(),
-    )
-    .map(|_| ())
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        run_git_with_access_token(
+            &path,
+            &["pull", "--rebase"],
+            GIT_NETWORK_TIMEOUT,
+            access_token.as_deref(),
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(|error| format!("Falha ao executar o Pull em segundo plano: {error}"))?;
+
+    result
 }
 
 #[tauri::command]
-pub fn push_repository(
+pub async fn push_repository(
     path: String,
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
@@ -1347,23 +1359,35 @@ pub fn push_repository(
     )
     .is_ok()
     {
-        return run_git_with_access_token(
-            &path,
-            &["push"],
-            GIT_NETWORK_TIMEOUT,
-            access_token.as_deref(),
-        )
-        .map(|_| ());
+        let result = tauri::async_runtime::spawn_blocking(move || {
+            run_git_with_access_token(
+                &path,
+                &["push"],
+                GIT_NETWORK_TIMEOUT,
+                access_token.as_deref(),
+            )
+            .map(|_| ())
+        })
+        .await
+        .map_err(|error| format!("Falha ao executar o Push em segundo plano: {error}"))?;
+
+        return result;
     }
 
     let remote = preferred_push_remote(&path)?;
-    run_git_with_access_token(
-        &path,
-        &["push", "--set-upstream", &remote, &current_branch],
-        GIT_NETWORK_TIMEOUT,
-        access_token.as_deref(),
-    )
-    .map(|_| ())
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        run_git_with_access_token(
+            &path,
+            &["push", "--set-upstream", &remote, &current_branch],
+            GIT_NETWORK_TIMEOUT,
+            access_token.as_deref(),
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(|error| format!("Falha ao executar o Push em segundo plano: {error}"))?;
+
+    result
 }
 
 fn sync_access_token(

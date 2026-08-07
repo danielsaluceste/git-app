@@ -1,4 +1,4 @@
-import { Component, computed, effect, HostListener, inject, OnInit, signal } from "@angular/core";
+import { Component, computed, effect, HostListener, inject, OnInit, signal, untracked } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { CommitFile } from "../../../core/models/commit-file.model";
@@ -35,6 +35,11 @@ export class StashesPageComponent implements OnInit {
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
   private fileDiffRequestId = 0;
+  private readonly activeRepositoryEffect = effect(() => {
+    const repository = this.activeRepository();
+    this.repositoryService.repositoryRefreshVersion();
+    untracked(() => void this.loadReferences(repository));
+  });
 
   private readonly closeMissingSelection = effect(() => {
     const references = this.references();
@@ -49,7 +54,6 @@ export class StashesPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    void this.loadReferences();
     this.route.queryParamMap.subscribe((params) => {
       const stashRef = params.get("stash") ?? undefined;
       if (!stashRef) {
@@ -60,14 +64,14 @@ export class StashesPageComponent implements OnInit {
     });
   }
 
-  async loadReferences(): Promise<void> {
-    const repository = this.activeRepository();
+  async loadReferences(repository = this.activeRepository()): Promise<void> {
     if (!repository) {
       this.isLoading.set(false);
       return;
     }
 
-    this.isLoading.set(true);
+    const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
+    this.isLoading.set(!cachedReferences);
     try {
       await this.repositoryService.getReferences(repository.path);
     } catch (error: unknown) {

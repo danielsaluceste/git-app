@@ -23,6 +23,14 @@ interface StoredRepositoryReference {
   path: string;
 }
 
+interface RepositoryCache {
+  status?: RepositoryStatus;
+  references?: RepositoryReferences;
+  operation?: RepositoryOperation | null;
+  commitsCurrent?: Commit[];
+  commitsAll?: Commit[];
+}
+
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
@@ -30,12 +38,16 @@ export class RepositoryService {
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
   private readonly repositoryStatusState = signal<RepositoryStatus | undefined>(undefined);
   private readonly repositoryReferencesState = signal<RepositoryReferences | undefined>(undefined);
+  private readonly repositoryRefreshVersionState = signal(0);
+  private readonly repositoryCache = new Map<string, RepositoryCache>();
+  private readonly backgroundRefreshes = new Set<string>();
 
   readonly repositories = this.repositoriesState.asReadonly();
   readonly openRepositories = this.openRepositoriesState.asReadonly();
   readonly activeRepository = this.activeRepositoryState.asReadonly();
   readonly repositoryStatus = this.repositoryStatusState.asReadonly();
   readonly repositoryReferences = this.repositoryReferencesState.asReadonly();
+  readonly repositoryRefreshVersion = this.repositoryRefreshVersionState.asReadonly();
 
   async inspectLocalRepository(path: string): Promise<LocalRepositoryInfo> {
     return invoke<LocalRepositoryInfo>("inspect_repository", { path });
@@ -63,6 +75,7 @@ export class RepositoryService {
 
   async getReferences(path: string): Promise<RepositoryReferences> {
     const references = await invoke<RepositoryReferences>("get_repository_references", { path });
+    this.cacheFor(path).references = references;
     if (this.isActiveRepositoryPath(path)) {
       this.repositoryReferencesState.set(references);
     }
@@ -78,7 +91,9 @@ export class RepositoryService {
   }
 
   async getOperation(path: string): Promise<RepositoryOperation | null> {
-    return invoke<RepositoryOperation | null>("get_repository_operation", { path });
+    const operation = await invoke<RepositoryOperation | null>("get_repository_operation", { path });
+    this.cacheFor(path).operation = operation;
+    return operation;
   }
 
   async continueOperation(path: string, operation: RepositoryOperationKind): Promise<void> {
@@ -91,6 +106,7 @@ export class RepositoryService {
 
   async getStatus(path: string): Promise<RepositoryStatus> {
     const status = await invoke<RepositoryStatus>("get_repository_status", { path });
+    this.cacheFor(path).status = status;
     if (this.isActiveRepositoryPath(path)) {
       this.repositoryStatusState.set(status);
     }
@@ -185,12 +201,20 @@ export class RepositoryService {
     skip = 0,
     limit = 100,
   ): Promise<Commit[]> {
-    return invoke<Commit[]>("get_repository_commits", {
+    const commits = await invoke<Commit[]>("get_repository_commits", {
       path,
       allBranches,
       skip,
       limit,
     });
+    if (skip === 0) {
+      if (allBranches) {
+        this.cacheFor(path).commitsAll = commits;
+      } else {
+        this.cacheFor(path).commitsCurrent = commits;
+      }
+    }
+    return commits;
   }
 
   async getCommitFiles(path: string, commitHash: string): Promise<CommitFile[]> {
@@ -223,6 +247,52 @@ export class RepositoryService {
       workspaceId: workspaceId ?? null,
       githubUserId: githubUserId ?? null,
     });
+  }
+
+  getCachedReferences(path: string): RepositoryReferences | undefined {
+    return this.cacheFor(path).references;
+  }
+
+  getCachedStatus(path: string): RepositoryStatus | undefined {
+    return this.cacheFor(path).status;
+  }
+
+  getCachedOperation(path: string): RepositoryOperation | null | undefined {
+    return this.cacheFor(path).operation;
+  }
+
+  getCachedCommits(path: string, allBranches: boolean): Commit[] | undefined {
+    return allBranches ? this.cacheFor(path).commitsAll : this.cacheFor(path).commitsCurrent;
+  }
+
+  async refreshAfterRepositoryOpened(repository: Repository): Promise<void> {
+    const cacheKey = this.normalizeRepositoryPath(repository.path);
+    if (this.backgroundRefreshes.has(cacheKey)) {
+      return;
+    }
+
+    this.backgroundRefreshes.add(cacheKey);
+    try {
+      try {
+        const syncCredentials = this.getSyncCredentials(repository);
+        await this.fetch(
+          repository.path,
+          syncCredentials.workspaceId,
+          syncCredentials.githubUserId,
+        );
+      } catch {
+        // Os dados locais continuam sendo atualizados mesmo sem conexão remota.
+      }
+
+      await Promise.allSettled([
+        this.getReferences(repository.path),
+        this.getStatus(repository.path),
+        this.getOperation(repository.path),
+      ]);
+      this.repositoryRefreshVersionState.update((version) => version + 1);
+    } finally {
+      this.backgroundRefreshes.delete(cacheKey);
+    }
   }
 
   async checkoutBranch(path: string, branch: string): Promise<void> {
@@ -332,8 +402,8 @@ export class RepositoryService {
 
   setActive(repository: Repository | undefined): void {
     this.activeRepositoryState.set(repository);
-    this.repositoryStatusState.set(undefined);
-    this.repositoryReferencesState.set(undefined);
+    this.repositoryStatusState.set(repository ? this.getCachedStatus(repository.path) : undefined);
+    this.repositoryReferencesState.set(repository ? this.getCachedReferences(repository.path) : undefined);
     this.persistActiveRepository(repository);
   }
 
@@ -453,6 +523,32 @@ export class RepositoryService {
 
   private normalizeRepositoryPath(path: string): string {
     return path.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
+  }
+
+  private cacheFor(path: string): RepositoryCache {
+    const cacheKey = this.normalizeRepositoryPath(path);
+    let cache = this.repositoryCache.get(cacheKey);
+
+    if (!cache) {
+      cache = {};
+      this.repositoryCache.set(cacheKey, cache);
+    }
+
+    return cache;
+  }
+
+  private getSyncCredentials(repository: Repository): {
+    workspaceId?: string;
+    githubUserId?: number;
+  } {
+    if (repository.authenticationSource !== "github" || repository.githubConnectionId === undefined) {
+      return {};
+    }
+
+    return {
+      workspaceId: repository.workspaceId,
+      githubUserId: repository.githubConnectionId,
+    };
   }
 
   private isActiveRepositoryPath(path: string): boolean {

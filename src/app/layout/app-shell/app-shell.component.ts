@@ -81,7 +81,11 @@ export class AppShellComponent {
     this.layoutService.closeMainSidebar();
 
     if (this.router.url !== lastRoute) {
-      void this.router.navigateByUrl(lastRoute);
+      void this.router.navigateByUrl(lastRoute)
+        .then(() => this.repositoryService.refreshAfterRepositoryOpened(repository))
+        .catch(() => undefined);
+    } else {
+      void this.repositoryService.refreshAfterRepositoryOpened(repository).catch(() => undefined);
     }
   }
 }

@@ -1,8 +1,8 @@
-import { Component, HostListener, inject, OnInit, signal } from "@angular/core";
+import { Component, effect, HostListener, inject, OnDestroy, OnInit, signal, untracked } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
-import { RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
+import { Repository, RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { SettingsService } from "../../../core/services/settings.service";
@@ -19,7 +19,7 @@ import { StashDialogComponent } from "../../../shared/dialogs/stash-dialog/stash
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
-export class ChangesPageComponent implements OnInit {
+export class ChangesPageComponent implements OnInit, OnDestroy {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly settingsService = inject(SettingsService);
@@ -53,9 +53,36 @@ export class ChangesPageComponent implements OnInit {
   readonly isOperationActionRunning = signal(false);
   readonly pendingAbortOperation = signal(false);
   private pendingAiDiff = "";
+  private statusLoadVersion = 0;
+  private statusRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  private statusRefreshInFlight = false;
+  private readonly activeRepositoryEffect = effect(() => {
+    const repository = this.activeRepository();
+    this.repositoryService.repositoryRefreshVersion();
+    this.repositoryService.repositoryStatus();
+    untracked(() => void this.loadStatus(repository, true));
+  });
 
   ngOnInit(): void {
-    void this.loadStatus();
+    this.statusRefreshTimer = setInterval(() => this.refreshStatusIfVisible(), 30_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.statusRefreshTimer !== undefined) {
+      clearInterval(this.statusRefreshTimer);
+    }
+  }
+
+  @HostListener("window:focus")
+  onWindowFocus(): void {
+    this.refreshStatusIfVisible();
+  }
+
+  @HostListener("document:visibilitychange")
+  onVisibilityChange(): void {
+    if (document.visibilityState === "visible") {
+      this.refreshStatusIfVisible();
+    }
   }
 
   @HostListener("window:keydown", ["$event"])
@@ -76,8 +103,12 @@ export class ChangesPageComponent implements OnInit {
     }
   }
 
-  async loadStatus(): Promise<boolean> {
-    const repository = this.activeRepository();
+  async loadStatus(
+    repository = this.activeRepository(),
+    cachedOnly = false,
+  ): Promise<boolean> {
+    const loadVersion = ++this.statusLoadVersion;
+
     if (!repository) {
       this.isLoading.set(false);
       this.status.set(undefined);
@@ -85,22 +116,72 @@ export class ChangesPageComponent implements OnInit {
       return false;
     }
 
-    this.isLoading.set(true);
-    this.operation.set(undefined);
+    const cachedStatus = this.repositoryService.getCachedStatus(repository.path);
+    const cachedOperation = this.repositoryService.getCachedOperation(repository.path);
+    const hasCachedData = !!cachedStatus || cachedOperation !== undefined;
+
+    if (cachedStatus) {
+      this.status.set(cachedStatus);
+    }
+    if (cachedOperation !== undefined) {
+      this.operation.set(cachedOperation ?? undefined);
+    } else {
+      this.operation.set(undefined);
+    }
+    this.isLoading.set(!hasCachedData);
+
+    if (cachedOnly) {
+      return hasCachedData;
+    }
+
     try {
       const [repositoryStatus, operation] = await Promise.all([
         this.repositoryService.getStatus(repository.path),
         this.repositoryService.getOperation(repository.path).catch(() => null),
       ]);
+      if (!this.isCurrentStatusLoad(repository, loadVersion)) {
+        return false;
+      }
       this.status.set(repositoryStatus);
       this.operation.set(operation ?? undefined);
       return true;
     } catch {
+      if (!this.isCurrentStatusLoad(repository, loadVersion)) {
+        return false;
+      }
+
       this.toastService.error("Não foi possível carregar o status deste repositório.", "Status do Git");
       return false;
     } finally {
-      this.isLoading.set(false);
+      if (this.isCurrentStatusLoad(repository, loadVersion)) {
+        this.isLoading.set(false);
+      }
     }
+  }
+
+  private refreshStatusIfVisible(): void {
+    if (document.visibilityState === "hidden" || this.statusRefreshInFlight) {
+      return;
+    }
+
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.statusRefreshInFlight = true;
+    void this.loadStatus(repository).finally(() => {
+      this.statusRefreshInFlight = false;
+    });
+  }
+
+  private isCurrentStatusLoad(repository: Repository, loadVersion: number): boolean {
+    const activeRepository = this.activeRepository();
+    return loadVersion === this.statusLoadVersion &&
+      !!activeRepository &&
+      activeRepository.workspaceId === repository.workspaceId &&
+      activeRepository.path.replaceAll("\\", "/").toLowerCase() ===
+        repository.path.replaceAll("\\", "/").toLowerCase();
   }
 
   stagedFiles(files: GitFile[]): GitFile[] {

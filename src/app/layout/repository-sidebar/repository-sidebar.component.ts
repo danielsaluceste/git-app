@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject, Input, OnChanges, OnInit, signal, SimpleChanges } from "@angular/core";
+import { Component, computed, effect, HostListener, inject, Input, OnChanges, OnInit, signal, SimpleChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink, RouterLinkActive } from "@angular/router";
 import { LayoutService } from "../../core/services/layout.service";
@@ -98,10 +98,21 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   private branchDragStartY = 0;
   private suppressBranchClickUntil = 0;
   private ignoreNextDocumentClick = false;
+  private repositoryLoadVersion = 0;
+  private readonly repositoryRefreshEffect = effect(() => {
+    this.repositoryService.repositoryRefreshVersion();
+    const repository = this.repository;
+
+    if (repository && this.repositoryService.getCachedReferences(repository.path)) {
+      this.isLoadingReferences.set(false);
+    }
+  });
 
   async ngOnInit(): Promise<void> {
+    await this.loadRepositoryData(this.repository);
+    return;
+
     try {
-      await this.repositoryService.getReferences(this.repository.path);
     } catch {
       this.toastService.error("Não foi possível carregar as referências do Git.", "Referências do Git");
     } finally {
@@ -117,9 +128,46 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["repository"] && !changes["repository"].firstChange) {
-      this.isLoadingReferences.set(true);
-      void this.ngOnInit();
+      void this.loadRepositoryData(this.repository, true);
     }
+  }
+
+  private async loadRepositoryData(repository: Repository, cachedOnly = false): Promise<void> {
+    const loadVersion = ++this.repositoryLoadVersion;
+    const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
+    this.isLoadingReferences.set(!cachedReferences);
+
+    if (cachedOnly) {
+      return;
+    }
+
+    try {
+      await Promise.all([
+        this.repositoryService.getReferences(repository.path),
+        this.repositoryService.getStatus(repository.path).catch(() => undefined),
+      ]);
+
+      if (!this.isCurrentRepositoryLoad(repository, loadVersion)) {
+        return;
+      }
+    } catch {
+      if (!this.isCurrentRepositoryLoad(repository, loadVersion)) {
+        return;
+      }
+
+      this.toastService.error("Falha ao carregar as referencias do Git.", "Referencias do Git");
+    } finally {
+      if (this.isCurrentRepositoryLoad(repository, loadVersion)) {
+        this.isLoadingReferences.set(false);
+      }
+    }
+  }
+
+  private isCurrentRepositoryLoad(repository: Repository, loadVersion: number): boolean {
+    return loadVersion === this.repositoryLoadVersion &&
+      this.repository.workspaceId === repository.workspaceId &&
+      this.repository.path.replaceAll("\\", "/").toLowerCase() ===
+        repository.path.replaceAll("\\", "/").toLowerCase();
   }
 
   toggleSection(section: ReferenceSection): void {

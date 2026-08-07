@@ -26,6 +26,8 @@ export class RepositoryTabsComponent {
   private dragStartX = 0;
   private dragStartY = 0;
   private suppressClickUntil = 0;
+  private navigationVersion = 0;
+  private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   readonly repositories = computed(() => {
     const workspaceId = this.workspaceService.activeWorkspace()?.id;
 
@@ -41,7 +43,13 @@ export class RepositoryTabsComponent {
 
     this.repositoryService.setActive(repository);
     this.layoutService.closeMainSidebar();
-    void this.router.navigateByUrl(this.sessionService.routeFor(repository) ?? "/overview");
+    this.cancelScheduledRefresh();
+    const navigationVersion = ++this.navigationVersion;
+    void this.navigateAndRefresh(
+      repository,
+      this.sessionService.routeFor(repository) ?? "/overview",
+      navigationVersion,
+    );
   }
 
   closeRepository(repository: Repository, event: Event): void {
@@ -56,11 +64,65 @@ export class RepositoryTabsComponent {
 
     if (nextRepository) {
       this.layoutService.closeMainSidebar();
-      void this.router.navigateByUrl(this.sessionService.routeFor(nextRepository) ?? "/overview");
+      this.cancelScheduledRefresh();
+      const navigationVersion = ++this.navigationVersion;
+      void this.navigateAndRefresh(
+        nextRepository,
+        this.sessionService.routeFor(nextRepository) ?? "/overview",
+        navigationVersion,
+      );
     } else {
+      ++this.navigationVersion;
+      this.cancelScheduledRefresh();
       this.layoutService.openMainSidebar();
       void this.router.navigate(["/repositories"]);
     }
+  }
+
+  private async navigateAndRefresh(
+    repository: Repository,
+    route: string,
+    navigationVersion: number,
+  ): Promise<void> {
+    try {
+      const currentRoute = this.router.url.split(/[?#]/, 1)[0] || "/";
+      if (currentRoute !== route) {
+        await this.router.navigateByUrl(route);
+      }
+
+      if (!this.isCurrentNavigation(repository, navigationVersion)) {
+        return;
+      }
+
+      this.scheduleRefresh(repository, navigationVersion);
+    } catch {
+      // A troca da aba continua funcionando mesmo quando o remoto está indisponível.
+    }
+  }
+
+  private scheduleRefresh(repository: Repository, navigationVersion: number): void {
+    this.cancelScheduledRefresh();
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+
+      if (!this.isCurrentNavigation(repository, navigationVersion)) {
+        return;
+      }
+
+      void this.repositoryService.refreshAfterRepositoryOpened(repository).catch(() => undefined);
+    }, 500);
+  }
+
+  private cancelScheduledRefresh(): void {
+    if (this.refreshTimer !== undefined) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+  }
+
+  private isCurrentNavigation(repository: Repository, navigationVersion: number): boolean {
+    return navigationVersion === this.navigationVersion &&
+      this.isSameRepository(this.activeRepository(), repository);
   }
 
   startPointerDrag(repository: Repository, event: PointerEvent): void {

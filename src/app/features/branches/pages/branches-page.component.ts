@@ -33,20 +33,10 @@ export class BranchesPageComponent implements OnInit {
   readonly pendingCreateBranch = signal<{ name: string; startPoint?: string } | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingDeleteBranch = signal<string | undefined>(undefined);
-  private observedRepositoryPath = "";
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    const repositoryPath = repository
-      ? `${repository.workspaceId}:${repository.path.replaceAll("\\", "/").toLowerCase()}`
-      : "";
-
-    if (!repository || !this.observedRepositoryPath || this.observedRepositoryPath === repositoryPath) {
-      this.observedRepositoryPath = repositoryPath;
-      return;
-    }
-
-    this.observedRepositoryPath = repositoryPath;
-    untracked(() => void this.loadReferences());
+    this.repositoryService.repositoryRefreshVersion();
+    untracked(() => void this.loadReferences(repository));
   });
 
   ngOnInit(): void {
@@ -55,17 +45,28 @@ export class BranchesPageComponent implements OnInit {
     if (commitHash) {
       this.openCreateBranch();
     }
-    void this.loadReferences();
   }
 
-  async loadReferences(): Promise<void> {
-    const repository = this.activeRepository();
+  async loadReferences(repository = this.activeRepository()): Promise<void> {
     if (!repository) {
       this.isLoading.set(false);
       return;
     }
 
-    this.isLoading.set(true);
+    const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
+    const cachedStatus = this.repositoryService.getCachedStatus(repository.path);
+
+    if (cachedReferences) {
+      this.references.set(cachedReferences);
+    } else {
+      this.references.set(undefined);
+    }
+    if (cachedStatus) {
+      this.repositoryStatus.set(cachedStatus);
+    } else {
+      this.repositoryStatus.set(undefined);
+    }
+    this.isLoading.set(!cachedReferences && !cachedStatus);
     try {
       this.references.set(await this.repositoryService.getReferences(repository.path));
       try {

@@ -88,6 +88,7 @@ export class HistoryPageComponent implements AfterViewInit {
   private overviewLoadVersion = 0;
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
+    this.repositoryService.repositoryRefreshVersion();
     untracked(() => void this.loadOverview(repository));
   });
   private readonly repositoryStatusEffect = effect(() => {
@@ -154,12 +155,31 @@ export class HistoryPageComponent implements AfterViewInit {
     }
 
     const loadVersion = ++this.overviewLoadVersion;
-    this.isLoading.set(true);
+    const allBranches = this.historyScope() === "all";
+    const cachedCommits = this.repositoryService.getCachedCommits(repository.path, allBranches);
+    const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
+    const cachedStatus = this.repositoryService.getCachedStatus(repository.path);
+    const hasCachedData = !!cachedCommits;
+
+    if (cachedCommits) {
+      this.commits.set(cachedCommits);
+      this.historyOffset = cachedCommits.length;
+      this.hasMoreCommits.set(cachedCommits.length === this.historyPageSize);
+    }
+    if (cachedReferences) {
+      this.currentBranch.set(cachedReferences.currentBranch || "HEAD destacado");
+    }
+    if (cachedStatus) {
+      this.aheadCount.set(cachedStatus.aheadCount);
+      this.behindCount.set(cachedStatus.behindCount);
+    }
+
+    this.isLoading.set(!hasCachedData);
     try {
       const [commits, references, status] = await Promise.all([
         this.repositoryService.getCommits(
           repository.path,
-          this.historyScope() === "all",
+          allBranches,
           0,
           this.historyPageSize,
         ),
