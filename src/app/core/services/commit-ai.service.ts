@@ -10,6 +10,7 @@ export class CommitAiService {
   private enginePromise: Promise<MLCEngineInterface> | undefined;
   private worker: Worker | undefined;
   private loadedModelId: AiModelId | undefined;
+  private webllmPromise: Promise<typeof import("@mlc-ai/web-llm")> | undefined;
 
   readonly isSupported = signal(this.detectWebGpuSupport());
   readonly isLoadingModel = signal(false);
@@ -19,12 +20,18 @@ export class CommitAiService {
   readonly selectedModel = computed(() => getAiModelOption(this.settingsService.aiModel()));
   readonly modelSizeLabel = computed(() => this.selectedModel().sizeLabel);
 
+  prepareForAnalysis(): void {
+    if (this.isSupported()) {
+      void this.loadWebLlm().catch(() => undefined);
+    }
+  }
+
   async isModelCached(): Promise<boolean> {
     if (!this.isSupported()) {
       return false;
     }
 
-    const webllm = await import("@mlc-ai/web-llm");
+    const webllm = await this.loadWebLlm();
     return webllm.hasModelInCache(this.settingsService.aiModel(), webllm.prebuiltAppConfig);
   }
 
@@ -93,7 +100,7 @@ export class CommitAiService {
     });
 
     try {
-      const webllm = await import("@mlc-ai/web-llm");
+      const webllm = await this.loadWebLlm();
       const engine = await webllm.CreateWebWorkerMLCEngine(this.worker, modelId, {
         appConfig: webllm.prebuiltAppConfig,
         initProgressCallback: (report: InitProgressReport) => this.updateProgress(report),
@@ -125,6 +132,11 @@ export class CommitAiService {
     const progress = report.progress <= 1 ? report.progress * 100 : report.progress;
     this.progress.set(Math.max(0, Math.min(100, Math.round(progress))));
     this.progressText.set(report.text || "Baixando e preparando o modelo local...");
+  }
+
+  private loadWebLlm(): Promise<typeof import("@mlc-ai/web-llm")> {
+    this.webllmPromise ??= import("@mlc-ai/web-llm");
+    return this.webllmPromise;
   }
 
   private ensureBroadMessage(message: string, context: string): string {

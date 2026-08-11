@@ -40,6 +40,12 @@ struct CloneProgressPayload {
     cancelled: bool,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullResult {
+    auto_stashed: bool,
+}
+
 #[tauri::command]
 pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
     let repository_path = PathBuf::from(&path);
@@ -677,6 +683,45 @@ pub fn unstage_repository_files(path: String, files: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command]
+pub fn discard_repository_file(path: String, file_path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_repository_file_path(&file_path)?;
+
+    let is_tracked = run_git_with_timeout(
+        &path,
+        ["ls-files", "--error-unmatch", "--", file_path.as_str()],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .is_ok();
+
+    if is_tracked {
+        let args = vec![
+            "restore".to_string(),
+            "--worktree".to_string(),
+            "--".to_string(),
+            file_path,
+        ];
+        run_git_strings(&path, &args).map(|_| ())
+    } else {
+        let args = vec![
+            "clean".to_string(),
+            "-f".to_string(),
+            "-d".to_string(),
+            "--".to_string(),
+            file_path,
+        ];
+        run_git_strings(&path, &args)?;
+
+        let working_path = PathBuf::from(&path).join(relative_path);
+        if working_path.exists() {
+            return Err("O arquivo não rastreado não pôde ser removido.".to_string());
+        }
+
+        Ok(())
+    }
+}
+
+#[tauri::command]
 pub fn commit_repository(path: String, message: String, amend: bool) -> Result<(), String> {
     ensure_repository(&path)?;
 
@@ -740,8 +785,9 @@ pub fn revert_commit(path: String, commit_hash: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_repository_staged_diff(path: String) -> Result<String, String> {
+pub async fn get_repository_staged_diff(path: String) -> Result<String, String> {
     ensure_repository(&path)?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
 
     let changed_files = run_git_with_timeout(
         &path,
@@ -789,6 +835,11 @@ pub fn get_repository_staged_diff(path: String) -> Result<String, String> {
     let mut truncated: String = context.chars().take(max_chars).collect();
     truncated.push_str("\n\n[Diff truncado para gerar a mensagem do commit]");
     Ok(truncated)
+    })
+    .await
+    .map_err(|error| format!("Falha ao preparar as alterações para a IA: {error}"))?;
+
+    result
 }
 
 #[tauri::command]
@@ -1316,17 +1367,21 @@ pub async fn pull_repository(
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
-) -> Result<(), String> {
+) -> Result<PullResult, String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
     let result = tauri::async_runtime::spawn_blocking(move || {
+        let auto_stashed = !run_git(&path, &["status", "--porcelain", "--untracked-files=all"])?
+            .trim()
+            .is_empty();
+
         run_git_with_access_token(
             &path,
-            &["pull", "--rebase"],
+            &["pull", "--rebase", "--autostash"],
             GIT_NETWORK_TIMEOUT,
             access_token.as_deref(),
         )
-        .map(|_| ())
+        .map(|_| PullResult { auto_stashed })
     })
     .await
     .map_err(|error| format!("Falha ao executar o Pull em segundo plano: {error}"))?;
@@ -1412,13 +1467,19 @@ pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn merge_branch(path: String, source_branch: String, target_branch: String) -> Result<(), String> {
+pub fn merge_branch(
+    path: String,
+    source_branch: String,
+    target_branch: String,
+) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &source_branch)?;
     validate_branch_name(&path, &target_branch)?;
 
     if source_branch == target_branch {
-        return Err("A branch de origem e a branch de destino precisam ser diferentes.".to_string());
+        return Err(
+            "A branch de origem e a branch de destino precisam ser diferentes.".to_string(),
+        );
     }
 
     run_git_with_timeout(
@@ -1435,13 +1496,19 @@ pub fn merge_branch(path: String, source_branch: String, target_branch: String) 
 }
 
 #[tauri::command]
-pub fn rebase_branch(path: String, source_branch: String, target_branch: String) -> Result<(), String> {
+pub fn rebase_branch(
+    path: String,
+    source_branch: String,
+    target_branch: String,
+) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &source_branch)?;
     validate_branch_name(&path, &target_branch)?;
 
     if source_branch == target_branch {
-        return Err("A branch de origem e a branch de destino precisam ser diferentes.".to_string());
+        return Err(
+            "A branch de origem e a branch de destino precisam ser diferentes.".to_string(),
+        );
     }
 
     run_git_with_timeout(

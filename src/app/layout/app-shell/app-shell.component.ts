@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject } from "@angular/core";
+import { Component, DestroyRef, HostListener, inject, OnDestroy } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter } from "rxjs";
@@ -24,19 +24,27 @@ import { ToastContainerComponent } from "../../shared/components/toast-container
   templateUrl: "./app-shell.component.html",
   styleUrl: "./app-shell.component.css",
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnDestroy {
+  private readonly repositoryRefreshInterval = 30_000;
   private readonly layoutService = inject(LayoutService);
   private readonly repositoryService = inject(RepositoryService);
   private readonly sessionService = inject(SessionService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storedLastRoute = this.sessionService.lastRoute();
+  private readonly repositoryRefreshTimer: ReturnType<typeof setInterval>;
+  private repositoryRefreshInFlight = false;
   private sessionRestored = false;
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly mainSidebarOpen = this.layoutService.mainSidebarOpen;
 
   constructor() {
+    this.repositoryRefreshTimer = setInterval(
+      () => this.refreshActiveRepository(),
+      this.repositoryRefreshInterval,
+    );
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -57,12 +65,47 @@ export class AppShellComponent {
       });
   }
 
+  ngOnDestroy(): void {
+    clearInterval(this.repositoryRefreshTimer);
+  }
+
+  @HostListener("window:focus")
+  onWindowFocus(): void {
+    this.refreshActiveRepository();
+  }
+
+  @HostListener("document:visibilitychange")
+  onVisibilityChange(): void {
+    if (document.visibilityState === "visible") {
+      this.refreshActiveRepository();
+    }
+  }
+
   openMainSidebar(): void {
     this.layoutService.openMainSidebar();
   }
 
   closeMainSidebar(): void {
     this.layoutService.closeMainSidebar();
+  }
+
+  private refreshActiveRepository(): void {
+    if (document.visibilityState === "hidden" || this.repositoryRefreshInFlight) {
+      return;
+    }
+
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.repositoryRefreshInFlight = true;
+    void this.repositoryService
+      .refreshAfterRepositoryOpened(repository)
+      .catch(() => undefined)
+      .finally(() => {
+        this.repositoryRefreshInFlight = false;
+      });
   }
 
   private restoreSession(): void {

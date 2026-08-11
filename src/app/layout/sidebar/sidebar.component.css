@@ -43,6 +43,7 @@
   place-items: center;
   border: 0;
   border-radius: 0.35rem;
+  padding: 0;
   background: transparent;
   color: #9ca3af;
   cursor: pointer;
@@ -54,6 +55,17 @@
 .collapse-button:hover {
   background: #1f2937;
   color: #f9fafb;
+}
+
+.sidebar-toggle-icon {
+  display: block;
+  width: 0.8rem;
+  height: 0.8rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .brand-mark {

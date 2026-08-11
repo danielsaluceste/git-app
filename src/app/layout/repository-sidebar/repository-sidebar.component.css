@@ -68,11 +68,23 @@
   place-items: center;
   border: 0;
   border-radius: 0.35rem;
+  padding: 0;
   background: transparent;
   color: #9ca3af;
   cursor: pointer;
   font: inherit;
-  font-size: 1.2rem;
+  line-height: 0;
+}
+
+.close-repository-icon {
+  display: block;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.6;
 }
 
 .close-repository:hover {

@@ -8,6 +8,7 @@ import {
   RepositoryRemote,
   RepositoryStatus,
   RepositoryReferences,
+  PullResult,
   RepositoryAuthenticationSource,
   ConflictFile,
 } from "../models/repository.model";
@@ -147,6 +148,10 @@ export class RepositoryService {
     await invoke("unstage_repository_files", { path, files });
   }
 
+  async discardFile(path: string, filePath: string): Promise<void> {
+    await invoke("discard_repository_file", { path, filePath });
+  }
+
   async commit(path: string, message: string, amend = false): Promise<void> {
     await invoke("commit_repository", { path, message, amend });
   }
@@ -233,8 +238,8 @@ export class RepositoryService {
     });
   }
 
-  async pull(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
-    await invoke("pull_repository", {
+  async pull(path: string, workspaceId?: string, githubUserId?: number): Promise<PullResult> {
+    return invoke<PullResult>("pull_repository", {
       path,
       workspaceId: workspaceId ?? null,
       githubUserId: githubUserId ?? null,

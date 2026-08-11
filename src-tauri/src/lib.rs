@@ -26,6 +26,7 @@ pub fn run() {
             commands::repository::resolve_repository_conflict_side,
             commands::repository::stage_repository_files,
             commands::repository::unstage_repository_files,
+            commands::repository::discard_repository_file,
             commands::repository::commit_repository,
             commands::repository::get_last_commit_message,
             commands::repository::revert_commit,

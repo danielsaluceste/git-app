@@ -13,6 +13,12 @@ import { FixedBottomLayoutComponent } from "../../../shared/components/fixed-bot
 import { ConflictResolverComponent } from "../../../shared/components/conflict-resolver/conflict-resolver.component";
 import { StashDialogComponent } from "../../../shared/dialogs/stash-dialog/stash-dialog.component";
 
+interface FileContextMenu {
+  file: GitFile;
+  x: number;
+  y: number;
+}
+
 @Component({
   selector: "app-changes-page",
   imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule],
@@ -41,6 +47,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   readonly aiSupported = this.commitAiService.isSupported;
   readonly aiLoadingModel = this.commitAiService.isLoadingModel;
   readonly aiGenerating = this.commitAiService.isGenerating;
+  readonly aiPreparing = signal(false);
   readonly aiProgress = this.commitAiService.progress;
   readonly aiProgressText = this.commitAiService.progressText;
   readonly showAiDownloadConfirm = signal(false);
@@ -52,6 +59,8 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   readonly fileDiffError = signal("");
   readonly isOperationActionRunning = signal(false);
   readonly pendingAbortOperation = signal(false);
+  readonly fileContextMenu = signal<FileContextMenu | undefined>(undefined);
+  readonly pendingDiscardFile = signal<GitFile | undefined>(undefined);
   private pendingAiDiff = "";
   private statusLoadVersion = 0;
   private statusRefreshTimer: ReturnType<typeof setInterval> | undefined;
@@ -101,6 +110,15 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     if (event.key === "Escape" && this.showStashForm() && !this.isSaving()) {
       this.closeStashForm();
     }
+
+    if (event.key === "Escape") {
+      this.closeFileContextMenu();
+    }
+  }
+
+  @HostListener("document:click")
+  onDocumentClick(): void {
+    this.closeFileContextMenu();
   }
 
   async loadStatus(
@@ -159,6 +177,15 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  private isCurrentStatusLoad(repository: Repository, loadVersion: number): boolean {
+    const activeRepository = this.activeRepository();
+    return loadVersion === this.statusLoadVersion &&
+      !!activeRepository &&
+      activeRepository.workspaceId === repository.workspaceId &&
+      activeRepository.path.replaceAll("\\", "/").toLowerCase() ===
+        repository.path.replaceAll("\\", "/").toLowerCase();
+  }
+
   private refreshStatusIfVisible(): void {
     if (document.visibilityState === "hidden" || this.statusRefreshInFlight) {
       return;
@@ -173,15 +200,6 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     void this.loadStatus(repository).finally(() => {
       this.statusRefreshInFlight = false;
     });
-  }
-
-  private isCurrentStatusLoad(repository: Repository, loadVersion: number): boolean {
-    const activeRepository = this.activeRepository();
-    return loadVersion === this.statusLoadVersion &&
-      !!activeRepository &&
-      activeRepository.workspaceId === repository.workspaceId &&
-      activeRepository.path.replaceAll("\\", "/").toLowerCase() ===
-        repository.path.replaceAll("\\", "/").toLowerCase();
   }
 
   stagedFiles(files: GitFile[]): GitFile[] {
@@ -217,6 +235,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
 
   operationDescription(): string {
     const branch = this.operation()?.currentBranch;
+    const hasConflicts = this.conflictFiles(this.status()?.files ?? []).length > 0;
+
+    if (branch && !hasConflicts) {
+      return `Os conflitos da branch ${branch} foram resolvidos. Continue ou aborte a operação.`;
+    }
+
     return branch
       ? `A branch ${branch} está aguardando a resolução dos conflitos e a continuação da operação.`
       : "Resolva os conflitos e continue ou aborte a operação Git.";
@@ -311,6 +335,82 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     } finally {
       this.fileDiffLoading.set(false);
     }
+  }
+
+  openFileContextMenu(event: MouseEvent, file: GitFile): void {
+    if (this.isSaving()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menuWidth = 220;
+    const menuHeight = this.isConflictFile(file) ? 170 : 220;
+    const margin = 8;
+    const page = (event.currentTarget as HTMLElement).closest(".changes-page");
+    const pageBounds = page?.getBoundingClientRect();
+    const pointerX = pageBounds ? event.clientX - pageBounds.left : event.clientX;
+    const pointerY = pageBounds ? event.clientY - pageBounds.top : event.clientY;
+    const availableWidth = pageBounds?.width ?? window.innerWidth;
+    const availableHeight = pageBounds?.height ?? window.innerHeight;
+    const x = Math.min(Math.max(margin, pointerX), Math.max(margin, availableWidth - menuWidth - margin));
+    const y = Math.min(Math.max(margin, pointerY), Math.max(margin, availableHeight - menuHeight - margin));
+    this.fileContextMenu.set({ file, x, y });
+  }
+
+  closeFileContextMenu(): void {
+    this.fileContextMenu.set(undefined);
+  }
+
+  openContextFileDiff(file: GitFile): void {
+    this.closeFileContextMenu();
+    void this.openFileDiff(file);
+  }
+
+  openContextConflictResolver(file: GitFile): void {
+    this.closeFileContextMenu();
+    this.openConflictResolver(file);
+  }
+
+  requestDiscardFile(file: GitFile): void {
+    this.closeFileContextMenu();
+    this.pendingDiscardFile.set(file);
+  }
+
+  cancelDiscardFile(): void {
+    this.pendingDiscardFile.set(undefined);
+  }
+
+  async confirmDiscardFile(): Promise<void> {
+    const repository = this.activeRepository();
+    const file = this.pendingDiscardFile();
+    this.pendingDiscardFile.set(undefined);
+
+    if (!repository || !file || this.isSaving()) {
+      return;
+    }
+
+    await this.runGitAction(
+      (activeRepository) => this.repositoryService.discardFile(activeRepository.path, file.path),
+      file.status === "untracked"
+        ? "Arquivo não rastreado excluído."
+        : "Alterações do arquivo descartadas.",
+    );
+  }
+
+  isConflictFile(file: GitFile): boolean {
+    return file.isConflicted === true || file.status === "conflicted";
+  }
+
+  discardFileTitle(file: GitFile): string {
+    return file.status === "untracked" ? "Excluir arquivo" : "Descartar alterações";
+  }
+
+  discardFileMessage(file: GitFile): string {
+    return file.status === "untracked"
+      ? `O arquivo não rastreado “${file.path}” será excluído permanentemente. Deseja continuar?`
+      : `As alterações locais de “${file.path}” serão descartadas e o arquivo voltará ao último estado do Git. Deseja continuar?`;
   }
 
   closeFileDiff(): void {
@@ -425,6 +525,9 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.aiPreparing.set(true);
+    this.commitAiService.prepareForAnalysis();
+
     try {
       const diff = await this.repositoryService.getStagedDiff(repository.path);
       if (!diff.trim()) {
@@ -438,9 +541,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.aiPreparing.set(false);
       await this.generateFromDiff(diff);
     } catch (error: unknown) {
       this.toastService.error(this.getAiErrorMessage(error), "IA local");
+    } finally {
+      this.aiPreparing.set(false);
     }
   }
 

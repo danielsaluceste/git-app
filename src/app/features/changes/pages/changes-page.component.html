@@ -4,7 +4,6 @@
       <div>
         <p class="eyebrow">Working tree</p>
         <h2>Alterações</h2>
-        <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
       <div class="page-heading-actions">
         <button type="button" class="stash-header-button" [disabled]="isLoading() || isSaving()" (click)="openStashForm()">
@@ -54,8 +53,6 @@
                 Resolver conflitos
                 <span>{{ conflictFiles(repositoryStatus.files).length }}</span>
               </button>
-            } @else {
-              <span class="operation-ready">Nenhum conflito pendente</span>
             }
             <button
               type="button"
@@ -73,27 +70,6 @@
             >
               Abortar
             </button>
-          </div>
-        </section>
-      }
-
-      @if (conflictFiles(repositoryStatus.files).length > 0) {
-        <section class="conflict-panel" aria-live="polite">
-          <div class="conflict-panel-heading">
-            <div class="conflict-panel-icon" aria-hidden="true">!</div>
-            <div>
-              <strong>{{ conflictFiles(repositoryStatus.files).length }} conflito(s) precisam de resolução</strong>
-              <p>Resolva os arquivos antes de preparar ou criar o commit.</p>
-            </div>
-          </div>
-          <div class="conflict-file-list">
-            @for (file of conflictFiles(repositoryStatus.files); track file.path) {
-              <button type="button" class="conflict-file-button" [disabled]="isSaving()" (click)="openConflictResolver(file)" [title]="'Resolver conflito em ' + file.path">
-                <span class="conflict-file-status">!</span>
-                <span class="conflict-file-path">{{ file.path }}</span>
-                <span class="conflict-file-arrow" aria-hidden="true">›</span>
-              </button>
-            }
           </div>
         </section>
       }
@@ -122,7 +98,7 @@
           @if (unstagedFiles(repositoryStatus.files).length > 0) {
             <div class="file-list">
               @for (file of unstagedFiles(repositoryStatus.files); track file.path) {
-                <div class="file-row">
+                <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
                   <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="'Visualizar alterações de ' + file.path">
                     <span
                       class="file-status"
@@ -135,9 +111,16 @@
                     >{{ statusCode(file.status) }}</span>
                     <span class="file-path" [title]="file.path">{{ file.path }}</span>
                   </button>
-                  <button type="button" class="file-action-button" [disabled]="isSaving() || file.isConflicted" (click)="stageFile(file)" [attr.aria-label]="file.isConflicted ? 'Resolva o conflito de ' + file.path : 'Preparar ' + file.path" [title]="file.isConflicted ? 'Resolver conflito primeiro' : 'Preparar arquivo'">
-                    <span aria-hidden="true">+</span>
-                  </button>
+                  @if (file.isConflicted || file.status === 'conflicted') {
+                    <button type="button" class="file-action-button conflict-action" [disabled]="isSaving()" (click)="openConflictResolver(file)" [attr.aria-label]="'Resolver conflito de ' + file.path" title="Resolver conflito">
+                      <span aria-hidden="true">!</span>
+                      <span>Resolver</span>
+                    </button>
+                  } @else {
+                    <button type="button" class="file-action-button" [disabled]="isSaving()" (click)="stageFile(file)" [attr.aria-label]="'Preparar ' + file.path" title="Preparar arquivo">
+                      <span aria-hidden="true">+</span>
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -171,7 +154,7 @@
           @if (stagedFiles(repositoryStatus.files).length > 0) {
             <div class="file-list">
               @for (file of stagedFiles(repositoryStatus.files); track file.path) {
-                <div class="file-row">
+                <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
                   <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="'Visualizar alterações de ' + file.path">
                     <span
                       class="file-status"
@@ -219,12 +202,14 @@
               <button
                 type="button"
                 class="ai-button"
-                [disabled]="isSaving() || aiLoadingModel() || aiGenerating() || stagedFiles(repositoryStatus.files).length === 0"
+                [disabled]="isSaving() || aiPreparing() || aiLoadingModel() || aiGenerating() || stagedFiles(repositoryStatus.files).length === 0"
                 (click)="generateCommitWithAi(repositoryStatus.files)"
                 title="Gerar mensagem com IA local"
               >
                 <span class="ai-spark" aria-hidden="true">✦</span>
-                @if (aiLoadingModel()) {
+                @if (aiPreparing()) {
+                  Preparando análise...
+                } @else if (aiLoadingModel()) {
                   Preparando IA...
                 } @else if (aiGenerating()) {
                   Gerando...
@@ -234,6 +219,13 @@
               </button>
             }
           </div>
+
+          @if (aiPreparing()) {
+            <div class="ai-preparing" aria-live="polite">
+              <span class="loading-spinner" aria-hidden="true"></span>
+              Preparando as alterações para a análise local...
+            </div>
+          }
 
           @if (aiLoadingModel()) {
             <div class="ai-progress" aria-live="polite">
@@ -294,6 +286,72 @@
       <h3>Nenhum repositório selecionado</h3>
       <p>Abra um repositório para visualizar e preparar arquivos.</p>
     </div>
+  }
+
+  @if (fileContextMenu(); as context) {
+    <div
+      class="file-context-menu"
+      [style.left.px]="context.x"
+      [style.top.px]="context.y"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="file-context-heading" [title]="context.file.path">
+        <span class="file-context-kicker">ARQUIVO</span>
+        <strong>{{ context.file.path }}</strong>
+      </div>
+      <button type="button" (click)="openContextFileDiff(context.file)">
+        <span class="context-menu-symbol" aria-hidden="true">⌕</span>
+        <span>
+          <strong>Visualizar diff</strong>
+          <small>Ver as alterações deste arquivo</small>
+        </span>
+      </button>
+      @if (isConflictFile(context.file)) {
+        <button type="button" (click)="openContextConflictResolver(context.file)">
+          <span class="context-menu-symbol conflict-symbol" aria-hidden="true">!</span>
+          <span>
+            <strong>Resolver conflito</strong>
+            <small>Abrir o resolvedor visual</small>
+          </span>
+        </button>
+      } @else if (context.file.isStaged) {
+        <button type="button" (click)="closeFileContextMenu(); unstageFile(context.file)">
+          <span class="context-menu-symbol" aria-hidden="true">−</span>
+          <span>
+            <strong>Remover do stage</strong>
+            <small>Voltar o arquivo para alterações</small>
+          </span>
+        </button>
+      } @else {
+        <button type="button" (click)="closeFileContextMenu(); stageFile(context.file)">
+          <span class="context-menu-symbol" aria-hidden="true">+</span>
+          <span>
+            <strong>Preparar arquivo</strong>
+            <small>Adicionar este arquivo ao stage</small>
+          </span>
+        </button>
+        <div class="file-context-divider"></div>
+        <button type="button" class="danger-context-action" (click)="requestDiscardFile(context.file)">
+          <span class="context-menu-symbol" aria-hidden="true">⌫</span>
+          <span>
+            <strong>{{ discardFileTitle(context.file) }}</strong>
+            <small>Remover as alterações deste arquivo</small>
+          </span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (pendingDiscardFile(); as file) {
+    <app-confirm-dialog
+      [title]="discardFileTitle(file) + '?'"
+      [message]="discardFileMessage(file)"
+      [confirmLabel]="discardFileTitle(file)"
+      cancelLabel="Cancelar"
+      [destructive]="true"
+      (confirmed)="confirmDiscardFile()"
+      (cancelled)="cancelDiscardFile()"
+    />
   }
 
   @if (selectedConflictFile(); as conflictFile) {

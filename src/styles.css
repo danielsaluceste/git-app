@@ -26,7 +26,7 @@ select {
 }
 
 .page {
-  animation: page-enter 180ms ease-out both;
+  animation: page-enter 260ms ease-out both;
 }
 
 .app-tooltip {

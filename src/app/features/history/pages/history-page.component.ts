@@ -700,12 +700,17 @@ export class HistoryPageComponent implements AfterViewInit {
         );
         this.toastService.success("Referências remotas atualizadas.", "Fetch concluído");
       } else if (action === "pull") {
-        await this.repositoryService.pull(
+        const pullResult = await this.repositoryService.pull(
           repository.path,
           syncCredentials.workspaceId,
           syncCredentials.githubUserId,
         );
-        this.toastService.success("Alterações baixadas e aplicadas.", "Pull concluído");
+        this.toastService.success(
+          pullResult.autoStashed
+            ? "As alterações locais foram guardadas em auto stash e reaplicadas após o Pull."
+            : "Alterações baixadas e aplicadas.",
+          "Pull concluído",
+        );
       } else {
         await this.repositoryService.push(
           repository.path,

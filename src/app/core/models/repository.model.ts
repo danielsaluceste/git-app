@@ -51,6 +51,10 @@ export interface RepositoryStatus {
   files: GitFile[];
 }
 
+export interface PullResult {
+  autoStashed: boolean;
+}
+
 export interface ConflictFile {
   path: string;
   base: string;

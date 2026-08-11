@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit, signal, untracked } from "@angular/core";
+import { Component, computed, effect, inject, OnInit, signal, untracked } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
@@ -24,6 +24,7 @@ export class BranchesPageComponent implements OnInit {
   readonly repositoryStatus = signal<RepositoryStatus | undefined>(undefined);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
+  readonly branchSearch = signal("");
   readonly showBranchForm = signal(false);
   readonly branchFormMode = signal<BranchFormMode>("create");
   readonly branchName = signal("");
@@ -33,6 +34,8 @@ export class BranchesPageComponent implements OnInit {
   readonly pendingCreateBranch = signal<{ name: string; startPoint?: string } | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingDeleteBranch = signal<string | undefined>(undefined);
+  readonly filteredLocalBranches = computed(() => this.filterBranches(this.references()?.localBranches ?? []));
+  readonly filteredRemoteBranches = computed(() => this.filterBranches(this.references()?.remoteBranches ?? []));
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
     this.repositoryService.repositoryRefreshVersion();
@@ -45,6 +48,19 @@ export class BranchesPageComponent implements OnInit {
     if (commitHash) {
       this.openCreateBranch();
     }
+  }
+
+  clearBranchSearch(): void {
+    this.branchSearch.set("");
+  }
+
+  private filterBranches(branches: string[]): string[] {
+    const query = this.branchSearch().trim().toLocaleLowerCase("pt-BR");
+    if (!query) {
+      return branches;
+    }
+
+    return branches.filter((branch) => branch.toLocaleLowerCase("pt-BR").includes(query));
   }
 
   async loadReferences(repository = this.activeRepository()): Promise<void> {

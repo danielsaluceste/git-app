@@ -5,6 +5,8 @@
 .dialog {
   display: grid;
   width: min(calc(100vw - 2.5rem), 27rem);
+  height: fit-content;
+  min-height: 0;
   max-height: calc(100vh - 2.5rem);
   box-sizing: border-box;
   gap: 1rem;
@@ -17,6 +19,8 @@
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
   color: #e5e7eb;
   animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  align-self: center;
+  justify-self: center;
 }
 
 .dialog::backdrop {

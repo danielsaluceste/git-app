@@ -1,4 +1,5 @@
 import { Routes } from "@angular/router";
+import { HistoryPageComponent } from "./features/history/pages/history-page.component";
 import { AppShellComponent } from "./layout/app-shell/app-shell.component";
 import { BranchesPageComponent } from "./features/branches/pages/branches-page.component";
 import { ChangesPageComponent } from "./features/changes/pages/changes-page.component";
@@ -23,13 +24,10 @@ export const routes: Routes = [
             (module) => module.StashesPageComponent,
           ),
       },
-      {
-        path: "overview",
-        loadComponent: () =>
-          import("./features/history/pages/history-page.component").then(
-            (module) => module.HistoryPageComponent,
-          ),
-      },
+  {
+    path: "overview",
+    component: HistoryPageComponent,
+  },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },
       { path: "repository-settings", component: RepositorySettingsPageComponent },
