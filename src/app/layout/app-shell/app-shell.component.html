@@ -2,6 +2,7 @@
   class="app-shell"
   [class.main-sidebar-collapsed]="!mainSidebarOpen()"
   [class.repository-open]="!!activeRepository()"
+  [class.codex-open]="codexSidebarOpen()"
 >
   <app-sidebar
     [collapsed]="!mainSidebarOpen()"
@@ -15,7 +16,10 @@
   <section class="workspace">
     <app-topbar
       [showMainSidebarButton]="!mainSidebarOpen()"
+      [showCodexButton]="!!activeRepository() && codexEnabled() && codexStatus()?.installed === true"
+      [codexOpen]="codexSidebarOpen()"
       (mainSidebarRequested)="openMainSidebar()"
+      (codexRequested)="toggleCodexSidebar()"
     />
 
     <app-repository-tabs />
@@ -24,6 +28,15 @@
       <router-outlet />
     </main>
   </section>
+
+  @if (activeRepository(); as repository) {
+    @if (codexSidebarOpen()) {
+      <app-codex-sidebar
+        [repository]="repository"
+        (closeRequested)="closeCodexSidebar()"
+      />
+    }
+  }
 
   <app-toast-container />
 </div>

@@ -85,6 +85,13 @@ h2 {
   letter-spacing: -0.05em;
 }
 
+.codex-service-mark {
+  border-color: #854d0e;
+  background: #3a2518;
+  color: #fb923c;
+  font-size: 1.1rem;
+}
+
 .service-heading-copy {
   min-width: 0;
 }
@@ -170,6 +177,114 @@ h2 {
 
 .integration-empty .primary-button {
   margin-left: auto;
+}
+
+.codex-integration-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.05rem 1.35rem 1.2rem;
+}
+
+.codex-integration-copy {
+  min-width: 0;
+}
+
+.codex-integration-copy strong {
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.codex-integration-copy p {
+  max-width: 35rem;
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.codex-integration-copy small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.66rem;
+}
+
+.codex-integration-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.integration-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.integration-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.integration-toggle-copy {
+  display: grid;
+  gap: 0.12rem;
+  text-align: right;
+}
+
+.integration-toggle-copy strong {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+}
+
+.integration-toggle-copy small {
+  color: #64748b;
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
+.integration-toggle-track {
+  display: flex;
+  width: 2.25rem;
+  height: 1.25rem;
+  align-items: center;
+  box-sizing: border-box;
+  border: 1px solid #475569;
+  border-radius: 999px;
+  padding: 0.15rem;
+  background: #1e293b;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.integration-toggle-track span {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: transform 140ms ease, background 140ms ease;
+}
+
+.integration-toggle input:checked + .integration-toggle-copy + .integration-toggle-track {
+  border-color: #c2410c;
+  background: #9a3412;
+}
+
+.integration-toggle input:checked + .integration-toggle-copy + .integration-toggle-track span {
+  background: #ffedd5;
+  transform: translateX(1rem);
+}
+
+.integration-toggle input:focus-visible + .integration-toggle-copy + .integration-toggle-track {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
 }
 
 .primary-button,

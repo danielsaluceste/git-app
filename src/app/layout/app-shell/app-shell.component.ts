@@ -1,15 +1,18 @@
-import { Component, DestroyRef, HostListener, inject, OnDestroy } from "@angular/core";
+import { Component, DestroyRef, HostListener, effect, inject, OnDestroy, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter } from "rxjs";
 import { LayoutService } from "../../core/services/layout.service";
+import { CodexService } from "../../core/services/codex.service";
 import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
+import { SettingsService } from "../../core/services/settings.service";
 import { RepositorySidebarComponent } from "../repository-sidebar/repository-sidebar.component";
 import { RepositoryTabsComponent } from "../repository-tabs/repository-tabs.component";
 import { SidebarComponent } from "../sidebar/sidebar.component";
 import { TopbarComponent } from "../topbar/topbar.component";
 import { ToastContainerComponent } from "../../shared/components/toast-container/toast-container.component";
+import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component";
 
 @Component({
   selector: "app-shell",
@@ -20,6 +23,7 @@ import { ToastContainerComponent } from "../../shared/components/toast-container
     SidebarComponent,
     TopbarComponent,
     ToastContainerComponent,
+    CodexSidebarComponent,
   ],
   templateUrl: "./app-shell.component.html",
   styleUrl: "./app-shell.component.css",
@@ -27,8 +31,10 @@ import { ToastContainerComponent } from "../../shared/components/toast-container
 export class AppShellComponent implements OnDestroy {
   private readonly repositoryRefreshInterval = 30_000;
   private readonly layoutService = inject(LayoutService);
+  private readonly codexService = inject(CodexService);
   private readonly repositoryService = inject(RepositoryService);
   private readonly sessionService = inject(SessionService);
+  private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storedLastRoute = this.sessionService.lastRoute();
@@ -38,8 +44,19 @@ export class AppShellComponent implements OnDestroy {
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly mainSidebarOpen = this.layoutService.mainSidebarOpen;
+  readonly codexStatus = this.codexService.status;
+  readonly codexEnabled = this.settingsService.codexEnabled;
+  readonly codexSidebarOpen = signal(false);
 
   constructor() {
+    void this.codexService.check();
+
+    effect(() => {
+      if (!this.activeRepository() || !this.codexEnabled() || this.codexStatus()?.installed !== true) {
+        this.codexSidebarOpen.set(false);
+      }
+    });
+
     this.repositoryRefreshTimer = setInterval(
       () => this.refreshActiveRepository(),
       this.repositoryRefreshInterval,
@@ -87,6 +104,16 @@ export class AppShellComponent implements OnDestroy {
 
   closeMainSidebar(): void {
     this.layoutService.closeMainSidebar();
+  }
+
+  toggleCodexSidebar(): void {
+    if (this.activeRepository() && this.codexEnabled() && this.codexStatus()?.installed === true) {
+      this.codexSidebarOpen.update((isOpen) => !isOpen);
+    }
+  }
+
+  closeCodexSidebar(): void {
+    this.codexSidebarOpen.set(false);
   }
 
   private refreshActiveRepository(): void {

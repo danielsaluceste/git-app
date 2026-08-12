@@ -211,8 +211,8 @@ export class HistoryPageComponent implements AfterViewInit {
 
       this.hasMoreCommits.set(false);
       this.toastService.error(
-        "Não foi possível carregar o histórico deste repositório.",
-        "Visão geral",
+        this.translationService.translate("history.overviewLoadError"),
+        this.translationService.translate("history.title"),
       );
     } finally {
       if (loadVersion === this.overviewLoadVersion) {
@@ -269,7 +269,10 @@ export class HistoryPageComponent implements AfterViewInit {
 
       await this.executeCheckoutCommit(commit, false);
     } catch (error: unknown) {
-      this.toastService.error(this.getCommitCheckoutErrorMessage(error), "Checkout do commit");
+      this.toastService.error(
+        this.getCommitCheckoutErrorMessage(error),
+        this.translationService.translate("history.checkoutTitle"),
+      );
     } finally {
       this.isCheckingOut.set(false);
     }

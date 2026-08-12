@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { SettingsService } from "./settings.service";
+import { TranslationService } from "./translation.service";
 
 export type ToastKind = "success" | "error" | "warning" | "info";
 
@@ -14,6 +15,7 @@ export interface ToastItem {
 @Injectable({ providedIn: "root" })
 export class ToastService {
   private readonly settingsService = inject(SettingsService);
+  private readonly translationService = inject(TranslationService);
   private readonly toastsState = signal<ToastItem[]>([]);
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
   private audioContext: AudioContext | null = null;
@@ -21,20 +23,20 @@ export class ToastService {
 
   readonly toasts = this.toastsState.asReadonly();
 
-  success(message: string, title = "Tudo certo"): void {
-    this.show(message, "success", title, 4200);
+  success(message: string, title?: string): void {
+    this.show(message, "success", title ?? this.translationService.translate("common.toastSuccess"), 4200);
   }
 
-  error(message: string, title = "Algo deu errado"): void {
-    this.show(message, "error", title, 7000);
+  error(message: string, title?: string): void {
+    this.show(message, "error", title ?? this.translationService.translate("common.toastError"), 7000);
   }
 
-  warning(message: string, title = "Atenção"): void {
-    this.show(message, "warning", title, 5200);
+  warning(message: string, title?: string): void {
+    this.show(message, "warning", title ?? this.translationService.translate("common.toastWarning"), 5200);
   }
 
-  info(message: string, title = "Informação"): void {
-    this.show(message, "info", title, 4200);
+  info(message: string, title?: string): void {
+    this.show(message, "info", title ?? this.translationService.translate("common.toastInfo"), 4200);
   }
 
   dismiss(id: number): void {

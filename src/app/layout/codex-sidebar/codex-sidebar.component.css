@@ -1,0 +1,516 @@
+:host {
+  display: block;
+  height: 100vh;
+  min-height: 0;
+  flex: 0 0 360px;
+  animation: codex-sidebar-in 220ms ease both;
+}
+
+.codex-sidebar {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  flex-direction: column;
+  border-left: 1px solid #263244;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+.codex-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 4.2rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid #263244;
+}
+
+.codex-title-group,
+.codex-title-copy,
+.codex-cli-status,
+.codex-composer-actions {
+  display: flex;
+  align-items: center;
+}
+
+.codex-title-group {
+  min-width: 0;
+  gap: 0.65rem;
+}
+
+.codex-mark,
+.codex-empty-icon,
+.codex-install-icon {
+  display: grid;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: #3a2518;
+  color: #fb923c;
+}
+
+.codex-mark {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.codex-title-copy {
+  min-width: 0;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.1rem;
+}
+
+.codex-title-copy strong {
+  color: #f9fafb;
+  font-size: 0.9rem;
+}
+
+.codex-title-copy span {
+  max-width: 15rem;
+  overflow: hidden;
+  color: #9ca3af;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-close-button {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 0.4rem;
+  padding: 0;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.codex-close-button:hover {
+  background: #263244;
+  color: #f9fafb;
+}
+
+.codex-close-button svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.6;
+}
+
+.codex-cli-status,
+.codex-status-card {
+  gap: 0.45rem;
+  min-height: 2.3rem;
+  box-sizing: border-box;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid #263244;
+  color: #9ca3af;
+  font-size: 0.72rem;
+}
+
+.status-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 0.2rem rgb(52 211 153 / 12%);
+}
+
+.codex-version {
+  margin-left: auto;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.66rem;
+}
+
+.codex-status-card {
+  display: flex;
+  align-items: center;
+}
+
+.codex-spinner {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: 0 0 auto;
+  border: 2px solid #374151;
+  border-top-color: #f97316;
+  border-radius: 50%;
+  animation: codex-spin 700ms linear infinite;
+}
+
+.codex-messages {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding: 1rem;
+  scrollbar-color: #374151 transparent;
+  scrollbar-width: thin;
+}
+
+.codex-empty-state,
+.codex-install-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.codex-empty-icon,
+.codex-install-icon {
+  width: 2.8rem;
+  height: 2.8rem;
+  margin-bottom: 0.8rem;
+  font-size: 1.3rem;
+}
+
+.codex-empty-state h3,
+.codex-install-state h3 {
+  margin: 0;
+  color: #f9fafb;
+  font-size: 0.95rem;
+}
+
+.codex-empty-state p,
+.codex-install-state p {
+  max-width: 18rem;
+  margin: 0.45rem 0 0;
+  color: #9ca3af;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.codex-install-hint {
+  color: #d1d5db !important;
+}
+
+.codex-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.codex-message {
+  max-width: 95%;
+  align-self: start;
+}
+
+.codex-message.user-message {
+  align-self: end;
+}
+
+.message-label {
+  margin: 0 0 0.3rem;
+  color: #6b7280;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.message-content {
+  overflow-wrap: anywhere;
+  border: 1px solid #263244;
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  background: #172033;
+  color: #d1d5db;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+:host ::ng-deep .message-content p,
+:host ::ng-deep .message-content h1,
+:host ::ng-deep .message-content h2,
+:host ::ng-deep .message-content h3,
+:host ::ng-deep .message-content ul,
+:host ::ng-deep .message-content ol,
+:host ::ng-deep .message-content blockquote,
+:host ::ng-deep .message-content pre,
+:host ::ng-deep .message-content hr {
+  margin: 0;
+}
+
+:host ::ng-deep .message-content p + p,
+:host ::ng-deep .message-content p + ul,
+:host ::ng-deep .message-content p + ol,
+:host ::ng-deep .message-content ul + p,
+:host ::ng-deep .message-content ol + p,
+:host ::ng-deep .message-content h1 + p,
+:host ::ng-deep .message-content h2 + p,
+:host ::ng-deep .message-content h3 + p {
+  margin-top: 0.7rem;
+}
+
+:host ::ng-deep .message-content h1,
+:host ::ng-deep .message-content h2,
+:host ::ng-deep .message-content h3 {
+  color: #f8fafc;
+  line-height: 1.3;
+}
+
+:host ::ng-deep .message-content h1 { font-size: 1.05rem; }
+:host ::ng-deep .message-content h2 { font-size: 0.94rem; }
+:host ::ng-deep .message-content h3 { font-size: 0.84rem; }
+
+:host ::ng-deep .message-content ul,
+:host ::ng-deep .message-content ol {
+  display: grid;
+  gap: 0.28rem;
+  padding-left: 1.15rem;
+}
+
+:host ::ng-deep .message-content li::marker {
+  color: #fb923c;
+}
+
+:host ::ng-deep .message-content strong {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+:host ::ng-deep .message-content code {
+  border: 1px solid #374151;
+  border-radius: 0.25rem;
+  padding: 0.08rem 0.28rem;
+  background: #0b1220;
+  color: #fdba74;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+:host ::ng-deep .message-content .codex-code-wrapper {
+  overflow: hidden;
+  margin: 0.7rem 0;
+  border: 1px solid #263244;
+  border-radius: 0.45rem;
+  background: #0b1220;
+}
+
+:host ::ng-deep .message-content .codex-code-language {
+  display: block;
+  padding: 0.3rem 0.55rem;
+  border-bottom: 1px solid #263244;
+  color: #94a3b8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep .message-content pre {
+  overflow-x: auto;
+  padding: 0.65rem;
+}
+
+:host ::ng-deep .message-content pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #cbd5e1;
+  white-space: pre;
+}
+
+:host ::ng-deep .message-content blockquote {
+  margin: 0.55rem 0;
+  border-left: 2px solid #f97316;
+  padding-left: 0.7rem;
+  color: #cbd5e1;
+}
+
+:host ::ng-deep .message-content a {
+  color: #fdba74;
+  text-decoration: underline;
+  text-underline-offset: 0.15rem;
+}
+
+:host ::ng-deep .message-content .codex-reference {
+  border-bottom: 1px dashed #94a3b8;
+  color: #fdba74;
+  cursor: help;
+}
+
+:host ::ng-deep .message-content hr {
+  margin: 0.8rem 0;
+  border: 0;
+  border-top: 1px solid #374151;
+}
+
+.user-message .message-content {
+  border-color: #854d0e;
+  background: #3a2518;
+  color: #ffedd5;
+}
+
+.error-message .message-content {
+  border-color: #7f1d1d;
+  background: #321b24;
+  color: #fecaca;
+}
+
+.codex-working {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #fb923c;
+  font-size: 0.74rem;
+}
+
+.codex-composer {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem 1rem;
+  border-top: 1px solid #263244;
+  background: #111827;
+}
+
+.codex-edit-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.codex-edit-toggle input {
+  margin-top: 0.15rem;
+  accent-color: #f97316;
+}
+
+.codex-edit-toggle span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.codex-edit-toggle small {
+  color: #6b7280;
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.codex-composer textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #374151;
+  border-radius: 0.55rem;
+  padding: 0.7rem;
+  outline: none;
+  background: #172033;
+  color: #f9fafb;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.codex-composer textarea:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 0.15rem rgb(249 115 22 / 12%);
+}
+
+.codex-composer textarea::placeholder {
+  color: #6b7280;
+}
+
+.codex-composer-actions {
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.codex-composer-actions > span {
+  color: #6b7280;
+  font-size: 0.65rem;
+}
+
+.codex-primary-button,
+.codex-secondary-button,
+.codex-send-button,
+.codex-stop-button {
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.codex-primary-button,
+.codex-send-button {
+  background: #f97316;
+  color: #111827;
+}
+
+.codex-primary-button:hover,
+.codex-send-button:hover:not(:disabled) {
+  background: #fb923c;
+}
+
+.codex-secondary-button,
+.codex-stop-button {
+  border-color: #374151;
+  background: #1f2937;
+  color: #d1d5db;
+}
+
+.codex-secondary-button:hover,
+.codex-stop-button:hover {
+  border-color: #6b7280;
+  background: #263244;
+  color: #f9fafb;
+}
+
+.codex-send-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.codex-send-button span {
+  font-size: 1rem;
+  line-height: 0.7;
+}
+
+.codex-send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@keyframes codex-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes codex-sidebar-in {
+  from { opacity: 0; transform: translateX(1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 900px) {
+  :host {
+    position: absolute;
+    z-index: 25;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 92vw);
+    box-shadow: -0.8rem 0 2rem rgb(3 7 18 / 28%);
+  }
+}

@@ -21,6 +21,20 @@
   <app-workspace-menu />
 
   <div class="topbar-actions">
+    @if (showCodexButton) {
+      <button
+        type="button"
+        class="codex-launch-button"
+        [class.is-active]="codexOpen"
+        [attr.aria-label]="'codex.open' | translate"
+        [title]="'codex.open' | translate"
+        (mousedown)="$event.stopPropagation()"
+        (click)="codexRequested.emit()"
+      >
+        <span aria-hidden="true">✦</span>
+      </button>
+    }
+
     <div class="window-controls" [attr.aria-label]="'window.controls' | translate">
       <button
         type="button"

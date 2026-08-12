@@ -46,6 +46,10 @@
   --repository-sidebar-width: 250px;
 }
 
+.app-shell.codex-open {
+  --codex-sidebar-width: 360px;
+}
+
 .workspace {
   display: flex;
   flex: 1;
