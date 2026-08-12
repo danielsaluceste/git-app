@@ -819,25 +819,33 @@ h3 {
 
 :host-context(:root[data-theme="neo-brutalist"]) .reference-item {
   min-height: 2.7rem;
-  border: 2px solid transparent;
+  border: 2px solid var(--app-border);
   border-radius: var(--app-small-radius);
   padding: 0.5rem 0.55rem;
   background: var(--app-surface-2);
   color: var(--app-text-strong);
+  box-shadow: 6px 6px 0 var(--app-shadow-color);
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 :host-context(:root[data-theme="neo-brutalist"]) .reference-item.current {
   border-color: var(--app-border);
   background: var(--app-accent-surface);
-  box-shadow: 3px 3px 0 var(--app-shadow-color);
 }
 
-:host-context(:root[data-theme="neo-brutalist"]) .reference-item:hover:not(.current) {
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item.pressed,
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item.current {
+  border-color: var(--app-border);
+  background: var(--app-accent-surface);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  transform: translate(4px, 4px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item:hover:not(.pressed):not(.current) {
   border-color: var(--app-border);
   background: var(--app-surface-3);
   box-shadow: 2px 2px 0 var(--app-shadow-color);
-  transform: translate(1px, 1px);
+  transform: translate(4px, 4px);
 }
 
 :host-context(:root[data-theme="neo-brutalist"]) .branch-name {

@@ -6,6 +6,8 @@
 }
 
 .page.modal-open {
+  position: relative;
+  z-index: 1300;
   animation: none;
   transform: none;
 }
@@ -189,16 +191,13 @@ button:disabled {
 
 .repository-modal-backdrop {
   position: fixed;
-  z-index: 1100;
-  top: 3rem;
-  right: 0;
-  bottom: 0;
-  left: calc(var(--main-sidebar-width, 240px) + var(--repository-sidebar-width, 0px));
+  z-index: 1;
+  inset: 0;
   display: grid;
   place-items: center;
-  padding: 2.25rem 1.25rem 1.25rem;
-    background: transparent;
-    backdrop-filter: none;
+  padding: 1.5rem;
+  background: var(--app-modal-overlay);
+  backdrop-filter: blur(var(--app-modal-blur));
   animation: repository-modal-backdrop-in 160ms ease-out both;
 }
 

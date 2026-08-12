@@ -27,14 +27,14 @@ export const THEME_OPTIONS: readonly ThemeDefinition[] = [
     name: "Neo brutalista",
     description: "Creme, coral e amarelo com bordas fortes inspiradas no portfólio.",
     preview: {
-      background: "#fff3dc",
-      accent: "#fd5b49",
+      background: "#fff0d3",
+      accent: "#d94332",
       ink: "#211e1b",
     },
   },
 ];
 
-export const DEFAULT_THEME_ID: ThemeId = "default";
+export const DEFAULT_THEME_ID: ThemeId = "neo-brutalist";
 
 export function getThemeDefinition(themeId: ThemeId): ThemeDefinition {
   return THEME_OPTIONS.find((theme) => theme.id === themeId) ?? THEME_OPTIONS[0];

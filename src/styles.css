@@ -62,25 +62,25 @@
 
 :root[data-theme="neo-brutalist"] {
   color-scheme: light;
-  --app-bg: #fff3dc;
-  --app-surface-0: #fffaf1;
-  --app-surface-1: #fffaf1;
-  --app-surface-2: #fff3dc;
-  --app-surface-3: #fff1d5;
-  --app-surface-hover: #ffe3ad;
+  --app-bg: #fff0d3;
+  --app-surface-0: #f8e7c8;
+  --app-surface-1: #fff8eb;
+  --app-surface-2: #f9dfb4;
+  --app-surface-3: #f2d09d;
+  --app-surface-hover: #ffd27d;
   --app-border: #211e1b;
   --app-border-strong: #211e1b;
-  --app-border-subtle: #d7c5a8;
-  --app-text: #433b35;
+  --app-border-subtle: #c8af8d;
+  --app-text: #51463d;
   --app-text-strong: #211e1b;
   --app-text-bright: #211e1b;
-  --app-muted: #5d534a;
-  --app-muted-strong: #6b5b4e;
-  --app-accent: #fd5b49;
-  --app-accent-hover: #d44335;
-  --app-accent-soft: #b83b2f;
-  --app-accent-pale: #8f2a20;
-  --app-accent-surface: #ffd0c6;
+  --app-muted: #6e655d;
+  --app-muted-strong: #897565;
+  --app-accent: #f0523f;
+  --app-accent-hover: #d94030;
+  --app-accent-soft: #c9362b;
+  --app-accent-pale: #98261e;
+  --app-accent-surface: #ffc3b7;
   --app-accent-border: #211e1b;
   --app-yellow: #ffc467;
   --app-ink-on-accent: #211e1b;
@@ -117,6 +117,11 @@
   --app-dark-button-shadow: #fff3dc;
   --app-modal-overlay: rgb(33 30 27 / 72%);
   --app-modal-blur: 14px;
+  --app-sidebar-bg: #d94332;
+  --app-sidebar-text: #fff8eb;
+  --app-sidebar-muted: #ffe4d6;
+  --app-sidebar-hover: rgb(33 30 27 / 15%);
+  --app-sidebar-active: #ffc467;
 }
 
 * {
@@ -144,7 +149,13 @@ body {
 
 :root[data-theme="neo-brutalist"] body {
   background:
-    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 11%) 1px, transparent 0) 0 0 / 22px 22px,
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
+    var(--app-bg);
+}
+
+:root[data-theme="neo-brutalist"] .app-shell {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
     var(--app-bg);
 }
 
@@ -353,7 +364,40 @@ a {
 }
 
 /* Camada de acabamento neo brutalista: volumes, bordas expressivas e estados com contraste semântico. */
-:root[data-theme="neo-brutalist"] .sidebar,
+:root[data-theme="neo-brutalist"] .sidebar {
+  border-right: 3px solid var(--app-border) !important;
+  background: var(--app-sidebar-bg) !important;
+  box-shadow: 4px 0 0 var(--app-shadow-color) !important;
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar .brand,
+:root[data-theme="neo-brutalist"] .sidebar .collapse-button {
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar .brand-mark {
+  background: var(--app-yellow) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a {
+  color: var(--app-sidebar-muted) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a:hover,
+:root[data-theme="neo-brutalist"] .sidebar .collapse-button:hover {
+  background: var(--app-sidebar-hover) !important;
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a.active {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-sidebar-active) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
 :root[data-theme="neo-brutalist"] .repository-sidebar {
   border-right: 3px solid var(--app-border) !important;
   background: var(--app-surface-1) !important;
@@ -448,6 +492,7 @@ a {
 :root[data-theme="neo-brutalist"] .stash-detail-panel,
 :root[data-theme="neo-brutalist"] .file-list-panel,
 :root[data-theme="neo-brutalist"] .diff-panel,
+:root[data-theme="neo-brutalist"] .commit-details,
 :root[data-theme="neo-brutalist"] .device-flow-panel,
 :root[data-theme="neo-brutalist"] .no-account-state,
 :root[data-theme="neo-brutalist"] .empty-state,
@@ -460,6 +505,132 @@ a {
   background: var(--app-surface-1) !important;
   box-shadow: var(--app-panel-shadow) !important;
   color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-modal {
+  background: var(--app-surface-1) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-modal-header {
+  border-bottom: 2px solid var(--app-border-subtle) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-2) !important;
+  box-shadow: 5px 5px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(3px, 3px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option-icon,
+:root[data-theme="neo-brutalist"] .modal-close-button,
+:root[data-theme="neo-brutalist"] .refresh-repositories-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-close-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .refresh-repositories-button:hover:not(:disabled) {
+  background: var(--app-yellow) !important;
+  color: var(--app-ink-on-accent) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-back-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.55rem 0.85rem !important;
+  background: var(--app-secondary-bg) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-secondary-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-back-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  color: var(--app-secondary-text) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .clone-cancel-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-info-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .clone-cancel-button:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-info-surface) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details {
+  background: linear-gradient(155deg, #fff8eb 0%, #f3d49f 100%) !important;
+  box-shadow: 8px 8px 0 var(--app-shadow-color), 0 0 0 1px var(--app-border) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .details-heading {
+  margin: -0.15rem -0.15rem 1rem;
+  padding: 0.15rem 0.15rem 0.85rem;
+  border-bottom: 2px solid var(--app-border-subtle);
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .details-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
+  line-height: 1;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .hash-value {
+  color: var(--app-accent-pale) !important;
+  font-weight: 700;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .branch-create-button {
+  background: var(--app-accent) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .branch-create-button span {
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details code {
+  border: 2px solid var(--app-border);
+  border-radius: 0.45rem;
+  padding: 0.28rem 0.45rem;
+  background: var(--app-yellow);
+  color: var(--app-ink-on-accent);
+  font-weight: 800;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .changed-files {
+  border: 2px solid var(--app-border-subtle);
+  border-radius: var(--app-small-radius);
+  padding: 0.85rem;
+  background: var(--app-surface-1);
+  box-shadow: 3px 3px 0 rgb(33 30 27 / 28%);
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .commit-file-row {
+  border-width: 2px;
+  border-radius: var(--app-small-radius);
 }
 
 :root[data-theme="neo-brutalist"] .settings-card-heading,
@@ -505,6 +676,7 @@ a {
 :root[data-theme="neo-brutalist"] .commit-button,
 :root[data-theme="neo-brutalist"] .connect-button,
 :root[data-theme="neo-brutalist"] .save-button,
+:root[data-theme="neo-brutalist"] .modal-primary-button,
 :root[data-theme="neo-brutalist"] .confirm-button:not(.cancel-button),
 :root[data-theme="neo-brutalist"] .stash-dialog-confirm,
 :root[data-theme="neo-brutalist"] .sidebar-confirm-button {
@@ -521,6 +693,7 @@ a {
 :root[data-theme="neo-brutalist"] .commit-button:hover:not(:disabled),
 :root[data-theme="neo-brutalist"] .connect-button:hover:not(:disabled),
 :root[data-theme="neo-brutalist"] .save-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .modal-primary-button:hover:not(:disabled),
 :root[data-theme="neo-brutalist"] .confirm-button:hover:not(:disabled),
 :root[data-theme="neo-brutalist"] .stash-dialog-confirm:hover:not(:disabled),
 :root[data-theme="neo-brutalist"] .sidebar-confirm-button:hover:not(:disabled) {
@@ -551,7 +724,6 @@ a {
   transform: translate(2px, 2px) !important;
 }
 
-:root[data-theme="neo-brutalist"] .sidebar a.active,
 :root[data-theme="neo-brutalist"] .repository-sidebar a.active {
   border: 2px solid var(--app-border) !important;
   background: var(--app-accent-surface) !important;
@@ -627,10 +799,11 @@ a {
   animation: none !important;
 }
 
-/* Mantém o elemento para click-to-dismiss, mas evita um segundo overlay. */
+/* O modal de repositório usa uma camada própria para manter o conteúdo nítido
+ * e aplicar o mesmo overlay dos demais diálogos. */
 .repository-modal-backdrop {
-  background: transparent !important;
-  backdrop-filter: none !important;
+  background: var(--app-modal-overlay) !important;
+  backdrop-filter: blur(var(--app-modal-blur)) !important;
 }
 
 /* O toast fica sempre destacado da moldura da janela, inclusive no Tauri. */

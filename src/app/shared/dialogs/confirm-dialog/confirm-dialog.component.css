@@ -5,10 +5,11 @@
 .dialog {
   display: grid;
   width: min(calc(100vw - 2.5rem), 27rem);
-  height: fit-content;
+  height: auto;
   min-height: 0;
   max-height: calc(100vh - 2.5rem);
   box-sizing: border-box;
+  align-content: start;
   gap: 1rem;
   margin: auto;
   overflow: auto;
@@ -19,8 +20,7 @@
   box-shadow: var(--app-panel-shadow);
   color: var(--app-dialog-text);
   animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  align-self: center;
-  justify-self: center;
+  place-self: center;
 }
 
 .dialog::backdrop {
@@ -55,6 +55,7 @@
   display: grid;
   width: 2.75rem;
   height: 2.75rem;
+  flex: 0 0 2.75rem;
   place-items: center;
   border: 1px solid var(--app-info);
   border-radius: 0.75rem;
@@ -62,6 +63,13 @@
   color: var(--app-info-text);
   font-size: 1.25rem;
   font-weight: 800;
+}
+
+.dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 0.85rem;
 }
 
 .dialog-icon.danger {
@@ -72,7 +80,10 @@
 
 .dialog-content {
   display: grid;
+  min-width: 0;
+  align-content: start;
   gap: 0.5rem;
+  padding-top: 0.15rem;
 }
 
 h2 {
@@ -102,9 +113,10 @@ p {
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: end;
   gap: 0.6rem;
-  margin-top: 0.5rem;
+  margin-top: 0.1rem;
 }
 
 button {
@@ -145,4 +157,15 @@ button {
 .confirm-button.danger:hover {
   background: var(--app-danger);
   transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    width: calc(100vw - 1.25rem);
+    padding: 1.15rem;
+  }
+
+  .dialog-actions > button {
+    flex: 1 1 8rem;
+  }
 }

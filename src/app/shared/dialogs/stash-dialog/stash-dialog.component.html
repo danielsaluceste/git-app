@@ -5,11 +5,13 @@
   (click)="onBackdropClick($event)"
   aria-labelledby="stash-dialog-title"
 >
-  <div class="stash-dialog-icon" aria-hidden="true">▣</div>
+  <div class="stash-dialog-heading">
+    <div class="stash-dialog-icon" aria-hidden="true">▣</div>
 
-  <div class="stash-dialog-content">
-    <h2 id="stash-dialog-title">Guardar alterações atuais</h2>
-    <p>Os arquivos rastreados e não rastreados serão removidos do working tree.</p>
+    <div class="stash-dialog-content">
+      <h2 id="stash-dialog-title">Guardar alterações atuais</h2>
+      <p>Os arquivos rastreados e não rastreados serão removidos do working tree.</p>
+    </div>
   </div>
 
   @if (files.length > 0) {

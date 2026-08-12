@@ -33,7 +33,7 @@
   transition: opacity 160ms ease, visibility 160ms ease;
 }
 
-.app-shell:has(dialog[open], .repository-modal-backdrop)::before {
+.app-shell:has(dialog[open])::before {
   opacity: 1;
   visibility: visible;
 }

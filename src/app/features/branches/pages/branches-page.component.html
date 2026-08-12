@@ -109,7 +109,11 @@
           @if (filteredLocalBranches().length > 0) {
             <div class="reference-list">
               @for (branch of filteredLocalBranches(); track branch) {
-                <div class="reference-item" [class.current]="branch === repositoryReferences.currentBranch">
+                <div
+                  class="reference-item"
+                  [class.current]="branch === repositoryReferences.currentBranch"
+                  [class.pressed]="branch === repositoryReferences.currentBranch"
+                >
                   <button type="button" class="branch-main" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestCheckout(branch)" [title]="branch === repositoryReferences.currentBranch ? 'Branch atual' : 'Trocar para ' + branch">
                     <span class="branch-dot" aria-hidden="true"></span>
                     <span class="branch-name">{{ branch }}</span>
