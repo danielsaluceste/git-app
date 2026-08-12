@@ -143,6 +143,68 @@
     }
   </section>
 
+  <section class="integration-card" aria-labelledby="codex-title">
+    <header class="integration-card-heading">
+      <div class="service-mark codex-service-mark" aria-hidden="true">✦</div>
+      <div class="service-heading-copy">
+        <div class="service-title-row">
+          <h3 id="codex-title">{{ "integrations.codexTitle" | translate }}</h3>
+          @if (codexChecking()) {
+            <span class="available-badge">{{ "integrations.checking" | translate }}</span>
+          } @else if (codexStatus()?.installed) {
+            <span class="connected-badge"><span class="status-dot"></span> {{ "integrations.installed" | translate }}</span>
+          } @else {
+            <span class="available-badge">{{ "integrations.notFound" | translate }}</span>
+          }
+        </div>
+        <p>{{ "integrations.codexDescription" | translate }}</p>
+      </div>
+    </header>
+
+    <div class="codex-integration-body">
+      <div class="codex-integration-copy">
+        @if (codexStatus()?.installed) {
+          <strong>{{ "integrations.codexReady" | translate }}</strong>
+          <p>{{ "integrations.codexReadyDescription" | translate }}</p>
+          @if (codexStatus()?.version; as version) {
+            <small>{{ version }}</small>
+          }
+        } @else {
+          <strong>{{ "integrations.codexNeedsInstall" | translate }}</strong>
+          <p>{{ "integrations.codexNeedsInstallDescription" | translate }}</p>
+        }
+      </div>
+
+      <div class="codex-integration-actions">
+        @if (!codexStatus()?.installed && !codexChecking()) {
+          <button type="button" class="secondary-button" (click)="openCodexDocumentation()">
+            {{ "integrations.installCodex" | translate }}
+            <span aria-hidden="true">↗</span>
+          </button>
+        }
+        @if (!codexStatus()?.installed) {
+          <button type="button" class="secondary-button" [disabled]="codexChecking()" (click)="checkCodex()">
+            {{ "integrations.checkCodex" | translate }}
+          </button>
+        }
+        @if (codexStatus()?.installed) {
+          <label class="integration-toggle">
+            <input
+              type="checkbox"
+              [checked]="codexEnabled()"
+              (change)="toggleCodex($event)"
+            />
+            <span class="integration-toggle-copy">
+              <strong>{{ "integrations.enableCodex" | translate }}</strong>
+              <small>{{ "integrations.enableCodexDescription" | translate }}</small>
+            </span>
+            <span class="integration-toggle-track" aria-hidden="true"><span></span></span>
+          </label>
+        }
+      </div>
+    </div>
+  </section>
+
   <p class="security-note">
     <span aria-hidden="true">⌁</span>
     {{ "integrations.security" | translate }}

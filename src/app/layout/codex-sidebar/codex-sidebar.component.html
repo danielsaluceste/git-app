@@ -1,0 +1,116 @@
+<aside class="codex-sidebar">
+  <header class="codex-header">
+    <div class="codex-title-group">
+      <div class="codex-mark" aria-hidden="true">✦</div>
+      <div class="codex-title-copy">
+        <strong>{{ "codex.title" | translate }}</strong>
+        <span [title]="repository.path">{{ repository.name }}</span>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="codex-close-button"
+      [attr.aria-label]="'codex.close' | translate"
+      [title]="'codex.close' | translate"
+      (click)="closeRequested.emit()"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M3 3l10 10M13 3 3 13" />
+      </svg>
+    </button>
+  </header>
+
+  @if (isChecking()) {
+    <div class="codex-status-card checking-state">
+      <span class="codex-spinner" aria-hidden="true"></span>
+      <span>{{ "codex.checking" | translate }}</span>
+    </div>
+  } @else if (!status()?.installed) {
+    <section class="codex-install-state">
+      <div class="codex-install-icon" aria-hidden="true">⌘</div>
+      <h3>{{ "codex.unavailableTitle" | translate }}</h3>
+      <p>{{ "codex.unavailableMessage" | translate }}</p>
+      <p class="codex-install-hint">{{ "codex.installHint" | translate }}</p>
+      <div class="codex-install-actions">
+        <button type="button" class="codex-primary-button" (click)="openDocumentation()">
+          {{ "codex.install" | translate }}
+        </button>
+        <button type="button" class="codex-secondary-button" (click)="checkCli()">
+          {{ "codex.recheck" | translate }}
+        </button>
+      </div>
+    </section>
+  } @else {
+    <div class="codex-cli-status">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span>{{ "codex.available" | translate }}</span>
+      @if (status()?.version; as version) {
+        <span class="codex-version">{{ version }}</span>
+      }
+    </div>
+
+    <section class="codex-messages" aria-live="polite">
+      @if (messages().length === 0) {
+        <div class="codex-empty-state">
+          <div class="codex-empty-icon" aria-hidden="true">✦</div>
+          <h3>{{ "codex.emptyTitle" | translate }}</h3>
+          <p>{{ "codex.emptyDescription" | translate }}</p>
+        </div>
+      } @else {
+        @for (message of messages(); track message.id) {
+          <article class="codex-message" [class.user-message]="message.role === 'user'" [class.error-message]="message.role === 'error'">
+            <div class="message-label">
+              {{ (message.role === "user" ? "codex.you" : "codex.assistant") | translate }}
+            </div>
+            <div class="message-content" [innerHTML]="formatMessage(message.content)"></div>
+          </article>
+        }
+      }
+
+      @if (isRunning()) {
+        <div class="codex-working">
+          <span class="codex-spinner" aria-hidden="true"></span>
+          <span>{{ "codex.working" | translate }}</span>
+        </div>
+      }
+    </section>
+
+    <footer class="codex-composer">
+      <label class="codex-edit-toggle">
+        <input
+          type="checkbox"
+          [checked]="allowEdits"
+          (change)="allowEdits = $any($event.target).checked"
+        />
+        <span>
+          <strong>{{ "codex.allowEdits" | translate }}</strong>
+          <small>{{ "codex.allowEditsDescription" | translate }}</small>
+        </span>
+      </label>
+
+      <textarea
+        [value]="prompt"
+        [placeholder]="'codex.placeholder' | translate"
+        [attr.aria-label]="'codex.promptLabel' | translate"
+        [disabled]="isRunning()"
+        (input)="prompt = $any($event.target).value"
+        (keydown)="onPromptKeydown($event)"
+      ></textarea>
+
+      <div class="codex-composer-actions">
+        <span>{{ "codex.shortcut" | translate }}</span>
+        @if (isRunning()) {
+          <button type="button" class="codex-stop-button" (click)="cancel()">
+            {{ "codex.stop" | translate }}
+          </button>
+        } @else {
+          <button type="button" class="codex-send-button" [disabled]="!prompt.trim()" (click)="send()">
+            <span aria-hidden="true">↑</span>
+            {{ "codex.send" | translate }}
+          </button>
+        }
+      </div>
+    </footer>
+  }
+</aside>

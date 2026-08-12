@@ -8,9 +8,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(commands::codex::CodexProcessState::default())
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
         .invoke_handler(tauri::generate_handler![
+            commands::codex::check_codex_cli,
+            commands::codex::run_codex,
+            commands::codex::cancel_codex,
             commands::repository::inspect_repository,
             commands::repository::clone_repository,
             commands::repository::cancel_clone,

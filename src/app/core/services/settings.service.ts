@@ -17,12 +17,16 @@ export class SettingsService {
   private readonly notificationSoundsState = signal(
     this.loadBoolean("git-app.notification-sounds", false),
   );
+  private readonly codexEnabledState = signal(
+    this.loadBoolean("git-app.codex-enabled", false),
+  );
 
   readonly language = this.languageState.asReadonly();
   readonly aiEnabled = this.aiEnabledState.asReadonly();
   readonly aiModel = this.aiModelState.asReadonly();
   readonly gitCommandNotifications = this.gitCommandNotificationsState.asReadonly();
   readonly notificationSounds = this.notificationSoundsState.asReadonly();
+  readonly codexEnabled = this.codexEnabledState.asReadonly();
 
   setLanguage(language: AppLanguage): void {
     this.languageState.set(language);
@@ -60,6 +64,11 @@ export class SettingsService {
   setNotificationSounds(enabled: boolean): void {
     this.notificationSoundsState.set(enabled);
     this.saveBoolean("git-app.notification-sounds", enabled);
+  }
+
+  setCodexEnabled(enabled: boolean): void {
+    this.codexEnabledState.set(enabled);
+    this.saveBoolean("git-app.codex-enabled", enabled);
   }
 
   private loadAiEnabled(): boolean {
