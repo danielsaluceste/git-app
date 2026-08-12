@@ -4,13 +4,15 @@ import { ActivatedRoute } from "@angular/router";
 import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type BranchFormMode = "create" | "rename";
 
 @Component({
   selector: "app-branches-page",
-  imports: [ConfirmDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./branches-page.component.html",
   styleUrl: "./branches-page.component.css",
 })
@@ -18,6 +20,7 @@ export class BranchesPageComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly route = inject(ActivatedRoute);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly references = signal<RepositoryReferences | undefined>(undefined);
@@ -92,8 +95,8 @@ export class BranchesPageComponent implements OnInit {
       }
     } catch {
       this.toastService.error(
-        "Não foi possível carregar as referências deste repositório.",
-        "Branches",
+        this.translationService.translate("branches.loadError"),
+        this.translationService.translate("branches.errorTitle"),
       );
     } finally {
       this.isLoading.set(false);
@@ -129,7 +132,7 @@ export class BranchesPageComponent implements OnInit {
       return;
     }
     if (!name) {
-      this.branchFormError.set("Informe um nome para a branch.");
+      this.branchFormError.set(this.translationService.translate("branches.invalidName"));
       return;
     }
     if (this.branchFormMode() === "create" && this.repositoryStatus()?.isDirty && !skipDirtyConfirmation) {
@@ -144,21 +147,25 @@ export class BranchesPageComponent implements OnInit {
       if (this.branchFormMode() === "create") {
         await this.repositoryService.createBranch(repository.path, name, this.createFromCommit());
         this.toastService.success(
-          this.createFromCommit()
-            ? `Branch "${name}" criada a partir do commit selecionado e ativada.`
-            : `Branch "${name}" criada e ativada.`,
-          "Branch criada",
+          this.translationService.translate(
+            this.createFromCommit() ? "branches.createdFromMessage" : "branches.createdMessage",
+            { name },
+          ),
+          this.translationService.translate("branches.createdTitle"),
         );
       } else {
         await this.repositoryService.renameBranch(repository.path, this.renameTarget(), name);
-        this.toastService.success(`Branch renomeada para "${name}".`, "Branch renomeada");
+        this.toastService.success(
+          this.translationService.translate("branches.renamedMessage", { name }),
+          this.translationService.translate("branches.renamedTitle"),
+        );
       }
 
       this.createFromCommit.set(undefined);
       this.closeBranchForm();
       await this.loadReferences();
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Branch");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("branches.operationErrorTitle"));
     } finally {
       this.isSaving.set(false);
     }
@@ -230,10 +237,13 @@ export class BranchesPageComponent implements OnInit {
     this.isSaving.set(true);
     try {
       await this.repositoryService.deleteBranch(repository.path, branch);
-      this.toastService.success(`Branch "${branch}" excluída.`, "Branch excluída");
+      this.toastService.success(
+        this.translationService.translate("branches.deletedMessage", { name: branch }),
+        this.translationService.translate("branches.deletedTitle"),
+      );
       await this.loadReferences();
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Branch");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("branches.operationErrorTitle"));
     } finally {
       this.isSaving.set(false);
     }
@@ -252,10 +262,13 @@ export class BranchesPageComponent implements OnInit {
     this.isSaving.set(true);
     try {
       await this.repositoryService.checkoutBranch(repository.path, branch);
-      this.toastService.success(`Branch "${branch}" ativada.`, "Branch atualizada");
+      this.toastService.success(
+        this.translationService.translate("branches.activatedMessage", { name: branch }),
+        this.translationService.translate("branches.updatedTitle"),
+      );
       await this.loadReferences();
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Branch");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("branches.operationErrorTitle"));
     } finally {
       this.isSaving.set(false);
     }
@@ -268,6 +281,6 @@ export class BranchesPageComponent implements OnInit {
     if (error instanceof Error && error.message) {
       return error.message;
     }
-    return "Não foi possível executar a operação na branch.";
+    return this.translationService.translate("branches.operationError");
   }
 }

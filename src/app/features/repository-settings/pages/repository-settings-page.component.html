@@ -2,30 +2,30 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Repositório · Configurações</p>
-        <h2>Configurações do repositório</h2>
+        <p class="eyebrow">{{ "repoSettings.eyebrow" | translate }}</p>
+        <h2>{{ "repoSettings.title" | translate }}</h2>
         <p class="description" [title]="repository.path">
-          Ajuste como o OranGIT deve autenticar as operações remotas de <strong>{{ repository.name }}</strong>.
+          {{ "repoSettings.description" | translate }} <strong>{{ repository.name }}</strong>.
         </p>
       </div>
-      <button type="button" class="back-button" (click)="goBack()">Voltar à visão geral</button>
+      <button type="button" class="back-button" (click)="goBack()">{{ "repoSettings.back" | translate }}</button>
     </header>
 
     <section class="settings-card" aria-labelledby="remote-title">
       <div class="settings-card-heading">
         <div class="settings-icon remote-settings-icon" aria-hidden="true">↗</div>
         <div>
-          <h3 id="remote-title">Repositório remoto</h3>
-          <p>Defina para onde o fetch, pull e push deste projeto devem apontar.</p>
+          <h3 id="remote-title">{{ "repoSettings.remoteTitle" | translate }}</h3>
+          <p>{{ "repoSettings.remoteDescription" | translate }}</p>
         </div>
       </div>
 
       <div class="remote-form">
         @if (isLoadingRemote) {
-          <div class="remote-loading">Lendo a configuração do remoto...</div>
+          <div class="remote-loading">{{ "repoSettings.loadingRemote" | translate }}</div>
         } @else {
           <label class="remote-url-field">
-            <span>URL Git</span>
+            <span>{{ "repoSettings.gitUrl" | translate }}</span>
             <input
               type="text"
               [value]="remoteUrl"
@@ -36,21 +36,21 @@
               (input)="updateRemoteUrl($event)"
             />
             <small>
-              Remoto usado: <strong>{{ remote.name ?? "origin (será criado ao salvar)" }}</strong>
+              {{ "repoSettings.remoteUsed" | translate }} <strong>{{ remote.name ?? ("repoSettings.originPending" | translate) }}</strong>
             </small>
           </label>
         }
       </div>
 
       <footer class="settings-actions">
-        <span>A URL pode ser alterada usando qualquer tipo de credencial.</span>
+        <span>{{ "repoSettings.urlHint" | translate }}</span>
         <button
           type="button"
           class="save-button"
           [disabled]="isLoadingRemote || isSavingRemote"
           (click)="requestSaveRemoteUrl()"
         >
-          {{ isSavingRemote ? "Salvando..." : "Salvar URL" }}
+          {{ (isSavingRemote ? "repoSettings.saving" : "repoSettings.saveUrl") | translate }}
         </button>
       </footer>
     </section>
@@ -59,13 +59,13 @@
       <div class="settings-card-heading">
         <div class="settings-icon" aria-hidden="true">⌁</div>
         <div>
-          <h3 id="authentication-title">Autenticação remota</h3>
-          <p>Escolha qual credencial será usada no fetch, pull e push deste repositório.</p>
+          <h3 id="authentication-title">{{ "repoSettings.authTitle" | translate }}</h3>
+          <p>{{ "repoSettings.authDescription" | translate }}</p>
         </div>
       </div>
 
       <div class="current-auth">
-        <span class="current-auth-label">Configuração atual</span>
+        <span class="current-auth-label">{{ "repoSettings.current" | translate }}</span>
         <strong>{{ sourceLabel(repository) }}</strong>
       </div>
 
@@ -78,8 +78,8 @@
         >
           <span class="option-icon computer-icon" aria-hidden="true">⌘</span>
           <span class="option-copy">
-            <strong>Credenciais do computador</strong>
-            <small>Usar SSH, Git Credential Manager ou a configuração local do Git.</small>
+            <strong>{{ "repoSettings.computer" | translate }}</strong>
+            <small>{{ "repoSettings.computerDescription" | translate }}</small>
           </span>
           @if (selectedSource === "system") {
             <span class="selected-check" aria-hidden="true">✓</span>
@@ -94,8 +94,8 @@
         >
           <span class="option-icon github-icon" aria-hidden="true">GH</span>
           <span class="option-copy">
-            <strong>Conta GitHub conectada</strong>
-            <small>Usar uma conta do workspace para acessar repositórios privados.</small>
+            <strong>{{ "repoSettings.github" | translate }}</strong>
+            <small>{{ "repoSettings.githubDescription" | translate }}</small>
           </span>
           @if (selectedSource === "github") {
             <span class="selected-check" aria-hidden="true">✓</span>
@@ -107,7 +107,7 @@
         <div class="github-account-picker">
           @if (githubConnections().length > 0) {
             <label>
-              <span>Conta usada neste repositório</span>
+              <span>{{ "repoSettings.accountUsed" | translate }}</span>
               <select
                 [value]="selectedGithubConnectionId ?? ''"
                 (change)="selectGithubConnectionFromEvent($event)"
@@ -122,11 +122,11 @@
           } @else {
             <div class="no-account-state">
               <div>
-                <strong>Nenhuma conta GitHub conectada neste workspace.</strong>
-                <span>Conecte uma conta para usar a autenticação do GitHub.</span>
+                <strong>{{ "repoSettings.noAccount" | translate }}</strong>
+                <span>{{ "repoSettings.connectAccount" | translate }}</span>
               </div>
               <button type="button" class="secondary-button" (click)="openIntegrations()">
-                Abrir integrações
+                {{ "repoSettings.openIntegrations" | translate }}
               </button>
             </div>
           }
@@ -134,33 +134,33 @@
       }
 
       <footer class="settings-actions">
-        <span>Essa escolha vale somente para este repositório.</span>
+        <span>{{ "repoSettings.choiceHint" | translate }}</span>
         <button type="button" class="save-button" [disabled]="isSaving" (click)="save()">
-          {{ isSaving ? "Salvando..." : "Salvar configuração" }}
+          {{ (isSaving ? "repoSettings.saving" : "repoSettings.saveConfig") | translate }}
         </button>
       </footer>
     </section>
 
     <p class="security-note">
       <span aria-hidden="true">●</span>
-      O token do GitHub permanece protegido no armazenamento seguro do sistema.
+      {{ "repoSettings.security" | translate }}
     </p>
     @if (pendingRemoteUrl) {
       <app-confirm-dialog
-        title="Alterar repositório remoto?"
-        [message]="'As próximas operações Git usarão este endereço: ' + pendingRemoteUrl + '. Deseja continuar?'"
+        [title]="'repoSettings.remoteChangeTitle' | translate"
+        [message]="'repoSettings.remoteChangeMessage' | translate: { url: pendingRemoteUrl }"
         [messageHighlight]="pendingRemoteUrl"
-        confirmLabel="Alterar URL"
-        cancelLabel="Manter atual"
+        [confirmLabel]="'repoSettings.changeUrl' | translate"
+        [cancelLabel]="'repoSettings.keepCurrent' | translate"
         (confirmed)="confirmSaveRemoteUrl()"
         (cancelled)="cancelSaveRemoteUrl()"
       />
     }
   } @else {
     <section class="empty-state">
-      <h3>Nenhum repositório aberto</h3>
-      <p>Abra um repositório para editar suas configurações de autenticação.</p>
-      <button type="button" class="save-button" (click)="goBack()">Voltar</button>
+      <h3>{{ "repoSettings.noRepository" | translate }}</h3>
+      <p>{{ "repoSettings.openRepository" | translate }}</p>
+      <button type="button" class="save-button" (click)="goBack()">{{ "repoSettings.back" | translate }}</button>
     </section>
   }
 </section>

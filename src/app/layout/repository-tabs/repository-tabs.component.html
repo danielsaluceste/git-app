@@ -1,5 +1,5 @@
 @if (repositories().length > 0) {
-  <nav class="repository-tabs" aria-label="Repositórios abertos">
+  <nav class="repository-tabs" [attr.aria-label]="'tabs.openRepositories' | translate">
     @for (repository of repositories(); track trackRepository($index, repository)) {
       <button
         type="button"
@@ -22,8 +22,8 @@
           class="repository-tab-close"
           role="button"
           tabindex="0"
-          aria-label="Fechar {{ repository.name }}"
-          title="Fechar repositório"
+          [attr.aria-label]="('tabs.closeRepository' | translate) + ' ' + repository.name"
+          [title]="'tabs.closeRepository' | translate"
           (click)="closeRepository(repository, $event)"
           (keydown.enter)="closeRepository(repository, $event)"
           (keydown.space)="closeRepository(repository, $event)"

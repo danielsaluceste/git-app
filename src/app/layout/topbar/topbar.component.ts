@@ -1,10 +1,11 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WorkspaceMenuComponent } from "../../features/workspaces/components/workspace-menu.component";
+import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-topbar",
-  imports: [WorkspaceMenuComponent],
+  imports: [WorkspaceMenuComponent, TranslatePipe],
   templateUrl: "./topbar.component.html",
   styleUrl: "./topbar.component.css",
 })

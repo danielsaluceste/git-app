@@ -1,17 +1,20 @@
-import { Component, effect, HostListener, inject, OnDestroy, OnInit, signal, untracked } from "@angular/core";
+import { Component, computed, effect, HostListener, inject, OnDestroy, OnInit, signal, untracked } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
+import { AiModelId } from "../../../core/models/ai-model.model";
 import { Repository, RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { SettingsService } from "../../../core/services/settings.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
 import { FixedBottomLayoutComponent } from "../../../shared/components/fixed-bottom-layout/fixed-bottom-layout.component";
 import { ConflictResolverComponent } from "../../../shared/components/conflict-resolver/conflict-resolver.component";
 import { StashDialogComponent } from "../../../shared/dialogs/stash-dialog/stash-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 interface FileContextMenu {
   file: GitFile;
@@ -21,7 +24,7 @@ interface FileContextMenu {
 
 @Component({
   selector: "app-changes-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
@@ -31,6 +34,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   private readonly settingsService = inject(SettingsService);
   private readonly commitAiService = inject(CommitAiService);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
@@ -51,7 +55,9 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   readonly aiProgress = this.commitAiService.progress;
   readonly aiProgressText = this.commitAiService.progressText;
   readonly showAiDownloadConfirm = signal(false);
-  readonly aiModelSize = this.commitAiService.modelSizeLabel;
+  readonly aiModelSize = computed(() => this.translationService.translate(
+    `settings.ai.model.${this.modelKey(this.commitAiService.selectedModel().id)}.size`,
+  ));
   readonly selectedFile = signal<GitFile | undefined>(undefined);
   readonly selectedConflictFile = signal<GitFile | undefined>(undefined);
   readonly fileDiff = signal("");
@@ -69,7 +75,10 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     const repository = this.activeRepository();
     this.repositoryService.repositoryRefreshVersion();
     this.repositoryService.repositoryStatus();
-    untracked(() => void this.loadStatus(repository, true));
+    untracked(() => {
+      this.restoreCommitDraft(repository);
+      void this.loadStatus(repository, true);
+    });
   });
 
   ngOnInit(): void {
@@ -168,13 +177,38 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
         return false;
       }
 
-      this.toastService.error("Não foi possível carregar o status deste repositório.", "Status do Git");
+      this.toastService.error(
+        this.translationService.translate("changes.statusLoadError"),
+        this.translationService.translate("changes.statusTitle"),
+      );
       return false;
     } finally {
       if (this.isCurrentStatusLoad(repository, loadVersion)) {
         this.isLoading.set(false);
       }
     }
+  }
+
+  private restoreCommitDraft(repository: Repository | undefined): void {
+    const draft = repository
+      ? this.repositoryService.getCachedCommitDraft(repository.path)
+      : undefined;
+
+    this.commitMessage.set(draft?.message ?? "");
+    this.amendLastCommit.set(draft?.amend ?? false);
+  }
+
+  private persistCommitDraft(): void {
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.repositoryService.setCachedCommitDraft(
+      repository.path,
+      this.commitMessage(),
+      this.amendLastCommit(),
+    );
   }
 
   private isCurrentStatusLoad(repository: Repository, loadVersion: number): boolean {
@@ -210,6 +244,11 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     return files.filter((file) => !file.isStaged);
   }
 
+  setCommitMessage(message: string): void {
+    this.commitMessage.set(message);
+    this.persistCommitDraft();
+  }
+
   conflictFiles(files: GitFile[]): GitFile[] {
     return files.filter((file) => file.isConflicted || file.status === "conflicted");
   }
@@ -229,8 +268,8 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
 
   operationTitle(): string {
     return this.operation()?.kind === "rebase"
-      ? "Rebase em andamento"
-      : "Merge em andamento";
+      ? this.translationService.translate("changes.rebaseInProgress")
+      : this.translationService.translate("changes.mergeInProgress");
   }
 
   operationDescription(): string {
@@ -238,12 +277,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     const hasConflicts = this.conflictFiles(this.status()?.files ?? []).length > 0;
 
     if (branch && !hasConflicts) {
-      return `Os conflitos da branch ${branch} foram resolvidos. Continue ou aborte a operação.`;
+      return this.translationService.translate("changes.conflictsResolved", { branch });
     }
 
     return branch
-      ? `A branch ${branch} está aguardando a resolução dos conflitos e a continuação da operação.`
-      : "Resolva os conflitos e continue ou aborte a operação Git.";
+      ? this.translationService.translate("changes.conflictsWaiting", { branch })
+      : this.translationService.translate("changes.resolveAndContinue");
   }
 
   openFirstConflict(): void {
@@ -262,7 +301,10 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (conflicts.length > 0) {
-      this.toastService.warning("Resolva todos os conflitos antes de continuar.", "Operação Git");
+      this.toastService.warning(
+        this.translationService.translate("changes.resolveBeforeContinue"),
+        this.translationService.translate("changes.gitOperation"),
+      );
       this.openFirstConflict();
       return;
     }
@@ -271,11 +313,11 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     try {
       await this.repositoryService.continueOperation(repository.path, operation.kind);
       this.toastService.success(
-        operation.kind === "merge" ? "O Merge foi concluído." : "O Rebase foi concluído.",
-        operation.kind === "merge" ? "Merge concluído" : "Rebase concluído",
+        this.translationService.translate(operation.kind === "merge" ? "changes.mergeCompleted" : "changes.rebaseCompleted"),
+        this.translationService.translate(operation.kind === "merge" ? "changes.mergeCompletedTitle" : "changes.rebaseCompletedTitle"),
       );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Continuar operação");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("changes.continueErrorTitle"));
     } finally {
       await this.loadStatus();
       this.isOperationActionRunning.set(false);
@@ -305,11 +347,11 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     try {
       await this.repositoryService.abortOperation(repository.path, operation.kind);
       this.toastService.success(
-        operation.kind === "merge" ? "O Merge foi abortado." : "O Rebase foi abortado.",
-        operation.kind === "merge" ? "Merge abortado" : "Rebase abortado",
+        this.translationService.translate(operation.kind === "merge" ? "changes.mergeAborted" : "changes.rebaseAborted"),
+        this.translationService.translate(operation.kind === "merge" ? "changes.mergeAbortedTitle" : "changes.rebaseAbortedTitle"),
       );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Abortar operação");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("changes.abortErrorTitle"));
     } finally {
       await this.loadStatus();
       this.isOperationActionRunning.set(false);
@@ -394,8 +436,8 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     await this.runGitAction(
       (activeRepository) => this.repositoryService.discardFile(activeRepository.path, file.path),
       file.status === "untracked"
-        ? "Arquivo não rastreado excluído."
-        : "Alterações do arquivo descartadas.",
+        ? this.translationService.translate("changes.deletedUntracked")
+        : this.translationService.translate("changes.discardedFile"),
     );
   }
 
@@ -404,13 +446,13 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   }
 
   discardFileTitle(file: GitFile): string {
-    return file.status === "untracked" ? "Excluir arquivo" : "Descartar alterações";
+    return this.translationService.translate(file.status === "untracked" ? "changes.deleteFile" : "changes.discardChanges");
   }
 
   discardFileMessage(file: GitFile): string {
     return file.status === "untracked"
-      ? `O arquivo não rastreado “${file.path}” será excluído permanentemente. Deseja continuar?`
-      : `As alterações locais de “${file.path}” serão descartadas e o arquivo voltará ao último estado do Git. Deseja continuar?`;
+      ? this.translationService.translate("changes.deleteFileMessage", { file: file.path })
+      : this.translationService.translate("changes.discardChangesMessage", { file: file.path });
   }
 
   closeFileDiff(): void {
@@ -423,14 +465,14 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   async stageFile(file: GitFile): Promise<void> {
     await this.runGitAction(
       (repository) => this.repositoryService.stageFiles(repository.path, [file.path]),
-      "Arquivo preparado para commit.",
+      this.translationService.translate("changes.stagedFile"),
     );
   }
 
   async unstageFile(file: GitFile): Promise<void> {
     await this.runGitAction(
       (repository) => this.repositoryService.unstageFiles(repository.path, [file.path]),
-      "Arquivo removido do stage.",
+      this.translationService.translate("changes.unstagedFile"),
     );
   }
 
@@ -442,7 +484,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
 
     await this.runGitAction(
       (repository) => this.repositoryService.stageFiles(repository.path, paths),
-      "Todos os arquivos foram preparados para commit.",
+      this.translationService.translate("changes.stagedAll"),
     );
   }
 
@@ -454,7 +496,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
 
     await this.runGitAction(
       (repository) => this.repositoryService.unstageFiles(repository.path, paths),
-      "Todos os arquivos foram removidos do stage.",
+      this.translationService.translate("changes.unstagedAll"),
     );
   }
 
@@ -467,7 +509,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     }
     if (!message) {
       if (!this.amendLastCommit()) {
-        this.toastService.warning("Digite uma mensagem para o commit.");
+        this.toastService.warning(this.translationService.translate("changes.commitMessageRequired"));
         return;
       }
     }
@@ -475,21 +517,24 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.stagedFiles(files).length === 0) {
-      this.toastService.warning("Prepare pelo menos um arquivo antes de criar o commit.");
+      this.toastService.warning(this.translationService.translate("changes.stageRequired"));
       return;
     }
     if (this.conflictFiles(files).length > 0) {
-      this.toastService.warning("Resolva todos os conflitos antes de criar o commit.");
+      this.toastService.warning(this.translationService.translate("changes.conflictRequired"));
       return;
     }
 
     const committed = await this.runGitAction(
       () => this.repositoryService.commit(repository.path, message, this.amendLastCommit()),
-      this.amendLastCommit() ? "Último commit atualizado com sucesso." : "Commit criado com sucesso.",
+      this.amendLastCommit()
+        ? this.translationService.translate("changes.amendSuccess")
+        : this.translationService.translate("changes.commitSuccess"),
     );
     if (committed) {
       this.commitMessage.set("");
       this.amendLastCommit.set(false);
+      this.repositoryService.clearCachedCommitDraft(repository.path);
       void this.router.navigate(["/overview"]);
     }
   }
@@ -497,6 +542,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   async toggleAmend(event: Event): Promise<void> {
     const enabled = (event.target as HTMLInputElement).checked;
     this.amendLastCommit.set(enabled);
+    this.persistCommitDraft();
     if (!enabled || this.commitMessage().trim()) {
       return;
     }
@@ -509,10 +555,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     this.isLoadingAmendMessage.set(true);
     try {
       this.commitMessage.set(await this.repositoryService.getLastCommitMessage(repository.path));
+      this.persistCommitDraft();
     } catch (error: unknown) {
       this.amendLastCommit.set(false);
+      this.persistCommitDraft();
       (event.target as HTMLInputElement).checked = false;
-      this.toastService.error(this.getGitErrorMessage(error), "Amend");
+      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("changes.amendErrorTitle"));
     } finally {
       this.isLoadingAmendMessage.set(false);
     }
@@ -521,7 +569,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   async generateCommitWithAi(files: GitFile[]): Promise<void> {
     const repository = this.activeRepository();
     if (!repository || this.stagedFiles(files).length === 0) {
-      this.toastService.warning("Prepare pelo menos um arquivo antes de usar a IA.");
+      this.toastService.warning(this.translationService.translate("changes.aiStageRequired"));
       return;
     }
 
@@ -531,7 +579,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     try {
       const diff = await this.repositoryService.getStagedDiff(repository.path);
       if (!diff.trim()) {
-        this.toastService.warning("Não há conteúdo staged suficiente para a IA analisar.");
+        this.toastService.warning(this.translationService.translate("changes.aiNoDiff"));
         return;
       }
 
@@ -544,7 +592,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       this.aiPreparing.set(false);
       await this.generateFromDiff(diff);
     } catch (error: unknown) {
-      this.toastService.error(this.getAiErrorMessage(error), "IA local");
+      this.toastService.error(this.getAiErrorMessage(error), this.translationService.translate("changes.aiToastTitle"));
     } finally {
       this.aiPreparing.set(false);
     }
@@ -589,11 +637,11 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     }
 
     if (this.conflictFiles(files).length > 0) {
-      this.toastService.warning("Resolva os conflitos antes de guardar um stash.");
+      this.toastService.warning(this.translationService.translate("changes.stashConflicts"));
       return;
     }
     if (files.length > 0 && selectedPaths.length === 0) {
-      this.toastService.warning("Selecione pelo menos um arquivo para guardar no stash.");
+      this.toastService.warning(this.translationService.translate("changes.stashSelection"));
       return;
     }
 
@@ -607,7 +655,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
           this.stashMessage().trim() || undefined,
           isPartial ? selectedPaths : undefined,
         ),
-      "Alterações guardadas no stash.",
+      this.translationService.translate("changes.stashSaved"),
     );
     if (saved) {
       await this.repositoryService.getReferences(repository.path);
@@ -618,17 +666,17 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   statusLabel(status: GitFileStatus): string {
     switch (status) {
       case "added":
-        return "Adicionado";
+        return this.translationService.translate("diff.added");
       case "deleted":
-        return "Excluído";
+        return this.translationService.translate("diff.deleted");
       case "renamed":
-        return "Renomeado";
+        return this.translationService.translate("diff.renamed");
       case "untracked":
-        return "Não rastreado";
+        return this.translationService.translate("diff.untracked");
       case "conflicted":
-        return "Conflito";
+        return this.translationService.translate("diff.conflicted");
       case "modified":
-        return "Modificado";
+        return this.translationService.translate("diff.modified");
     }
   }
 
@@ -652,30 +700,33 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   private async generateFromDiff(diff: string): Promise<void> {
     try {
       const generatedMessage = await this.commitAiService.generateCommitMessage(diff);
-      this.commitMessage.set(generatedMessage);
-      this.toastService.success("Mensagem sugerida pela IA local. Revise antes de criar o commit.", "IA local");
+      this.setCommitMessage(generatedMessage);
+      this.toastService.success(
+        this.translationService.translate("changes.aiSuggested"),
+        this.translationService.translate("changes.aiToastTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getAiErrorMessage(error), "IA local");
+      this.toastService.error(this.getAiErrorMessage(error), this.translationService.translate("changes.aiToastTitle"));
     }
   }
 
   private getAiErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
-      return `Não foi possível gerar a mensagem: ${error.trim()}`;
+      return this.translationService.translate("changes.aiError", { message: error.trim() });
     }
 
     if (error instanceof Error && error.message) {
-      return `Não foi possível gerar a mensagem: ${error.message}`;
+      return this.translationService.translate("changes.aiError", { message: error.message });
     }
 
     if (error && typeof error === "object" && "message" in error) {
       const message = String(error.message).trim();
       if (message) {
-        return `Não foi possível gerar a mensagem: ${message}`;
+        return this.translationService.translate("changes.aiError", { message });
       }
     }
 
-    return "Não foi possível gerar a mensagem com a IA local.";
+    return this.translationService.translate("changes.aiGenericError");
   }
 
   private getGitErrorMessage(error: unknown): string {
@@ -687,7 +738,20 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       return error.message;
     }
 
-    return "Não foi possível carregar as alterações deste arquivo.";
+    return this.translationService.translate("changes.fileLoadError");
+  }
+
+  private modelKey(modelId: AiModelId): string {
+    if (modelId.includes("0.5B")) {
+      return "qwen05";
+    }
+    if (modelId.includes("1.5B")) {
+      return "qwen15";
+    }
+    if (modelId.includes("3B")) {
+      return "qwen3";
+    }
+    return "qwen7";
   }
 
   private async runGitAction(
@@ -708,8 +772,8 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       return true;
     } catch (error: unknown) {
       this.toastService.error(
-        typeof error === "string" ? error : "Não foi possível executar a ação do Git.",
-        "Operação do Git",
+        typeof error === "string" ? error : this.translationService.translate("changes.actionError"),
+        this.translationService.translate("changes.actionErrorTitle"),
       );
       return false;
     } finally {

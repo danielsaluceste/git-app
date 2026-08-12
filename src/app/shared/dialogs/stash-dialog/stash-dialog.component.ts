@@ -1,10 +1,11 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { GitFile } from "../../../core/models/git-file.model";
+import { TranslatePipe } from "../../pipes/translate.pipe";
 
 @Component({
   selector: "app-stash-dialog",
-  imports: [FormsModule],
+  imports: [FormsModule, TranslatePipe],
   templateUrl: "./stash-dialog.component.html",
   styleUrl: "./stash-dialog.component.css",
 })

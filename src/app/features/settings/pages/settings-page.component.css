@@ -389,6 +389,83 @@ h3 {
   white-space: nowrap;
 }
 
+.language-picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.language-picker-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 10.5rem;
+  justify-content: space-between;
+  border: 1px solid #374151;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  background: #172033;
+  color: #d1d5db;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.language-picker-toggle:hover,
+.language-picker-toggle:focus-visible {
+  border-color: #f97316;
+  background: #263244;
+  color: #f9fafb;
+  outline: none;
+}
+
+.language-picker-toggle .picker-chevron {
+  flex: 0 0 auto;
+}
+
+.language-options {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  display: grid;
+  min-width: 100%;
+  gap: 0.2rem;
+  border: 1px solid #374151;
+  border-radius: 0.55rem;
+  padding: 0.35rem;
+  background: #172033;
+  box-shadow: 0 1rem 2rem rgb(0 0 0 / 30%);
+}
+
+.language-options button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  color: #d1d5db;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.language-options button:hover,
+.language-options button.selected {
+  border-color: #3b4a61;
+  background: #263754;
+  color: #f9fafb;
+}
+
+.language-options button.selected span:last-child {
+  color: #fb923c;
+}
+
 @media (max-width: 650px) {
   .model-picker,
   .settings-card-heading,

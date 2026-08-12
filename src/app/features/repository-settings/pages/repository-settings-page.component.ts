@@ -8,11 +8,13 @@ import {
 import { GithubService } from "../../../core/services/github.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-repository-settings-page",
-  imports: [ConfirmDialogComponent],
+  imports: [ConfirmDialogComponent, TranslatePipe],
   templateUrl: "./repository-settings-page.component.html",
   styleUrl: "./repository-settings-page.component.css",
 })
@@ -21,6 +23,7 @@ export class RepositorySettingsPageComponent {
   private readonly githubService = inject(GithubService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly githubConnections = this.githubService.workspaceConnections;
@@ -53,8 +56,8 @@ export class RepositorySettingsPageComponent {
       this.remoteUrl = this.remote.url ?? "";
     } catch (error: unknown) {
       this.toastService.error(
-        typeof error === "string" ? error : "Não foi possível ler o remoto deste repositório.",
-        "Remoto Git",
+        typeof error === "string" ? error : this.translationService.translate("repoSettings.remoteReadError"),
+        this.translationService.translate("repoSettings.remoteTitleShort"),
       );
     } finally {
       this.isLoadingRemote = false;
@@ -68,12 +71,18 @@ export class RepositorySettingsPageComponent {
   requestSaveRemoteUrl(): void {
     const normalizedUrl = this.remoteUrl.trim();
     if (!normalizedUrl) {
-      this.toastService.warning("Informe uma URL Git válida.", "Remoto Git");
+      this.toastService.warning(
+        this.translationService.translate("repoSettings.validUrl"),
+        this.translationService.translate("repoSettings.remoteTitleShort"),
+      );
       return;
     }
 
     if (normalizedUrl === (this.remote.url ?? "").trim()) {
-      this.toastService.info("A URL do remoto já está atualizada.", "Remoto Git");
+      this.toastService.info(
+        this.translationService.translate("repoSettings.urlUpdated"),
+        this.translationService.translate("repoSettings.remoteTitleShort"),
+      );
       return;
     }
 
@@ -98,13 +107,13 @@ export class RepositorySettingsPageComponent {
       this.remote = await this.repositoryService.setRemoteUrl(repository.path, url);
       this.remoteUrl = this.remote.url ?? url;
       this.toastService.success(
-        `O remoto ${this.remote.name ?? "origin"} foi atualizado.`,
-        "Remoto Git atualizado",
+        this.translationService.translate("repoSettings.remoteUpdated", { remote: this.remote.name ?? "origin" }),
+        this.translationService.translate("repoSettings.remoteUpdatedTitle"),
       );
     } catch (error: unknown) {
       this.toastService.error(
-        typeof error === "string" ? error : "Não foi possível atualizar a URL do remoto.",
-        "Remoto Git",
+        typeof error === "string" ? error : this.translationService.translate("repoSettings.remoteUpdateError"),
+        this.translationService.translate("repoSettings.remoteTitleShort"),
       );
     } finally {
       this.isSavingRemote = false;
@@ -144,7 +153,10 @@ export class RepositorySettingsPageComponent {
     }
 
     if (this.selectedSource === "github" && this.selectedGithubConnectionId === undefined) {
-      this.toastService.warning("Conecte ou escolha uma conta GitHub primeiro.", "Conta não selecionada");
+      this.toastService.warning(
+        this.translationService.translate("repoSettings.accountRequired"),
+        this.translationService.translate("repoSettings.accountRequiredTitle"),
+      );
       return;
     }
 
@@ -157,7 +169,10 @@ export class RepositorySettingsPageComponent {
     this.isSaving = false;
 
     if (!updated) {
-      this.toastService.error("Não foi possível salvar a autenticação deste repositório.", "Configurações");
+      this.toastService.error(
+        this.translationService.translate("repoSettings.authSaveError"),
+        this.translationService.translate("repoSettings.settingsTitle"),
+      );
       return;
     }
 
@@ -166,9 +181,9 @@ export class RepositorySettingsPageComponent {
     );
     this.toastService.success(
       this.selectedSource === "github"
-        ? `Sincronização usando @${account?.login ?? "conta GitHub"}.`
-        : "Sincronização usando as credenciais do computador.",
-      "Configurações salvas",
+        ? this.translationService.translate("repoSettings.githubSync", { login: account?.login ?? "GitHub account" })
+        : this.translationService.translate("repoSettings.computerSync"),
+      this.translationService.translate("repoSettings.savedTitle"),
     );
   }
 
@@ -177,9 +192,11 @@ export class RepositorySettingsPageComponent {
       const account = this.githubConnections().find(
         (connection) => connection.id === repository.githubConnectionId,
       );
-      return account ? `GitHub · @${account.login}` : "GitHub · conta não disponível";
+      return account
+        ? `GitHub · @${account.login}`
+        : this.translationService.translate("repoSettings.githubAccountUnavailable");
     }
 
-    return "Credenciais do computador";
+    return this.translationService.translate("repoSettings.computerCredentials");
   }
 }

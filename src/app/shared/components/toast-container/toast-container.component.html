@@ -14,7 +14,7 @@
         <strong>{{ toast.title }}</strong>
         <p>{{ toast.message }}</p>
       </div>
-      <button type="button" class="toast-close" aria-label="Fechar aviso" (click)="dismiss(toast.id)">
+      <button type="button" class="toast-close" [attr.aria-label]="'toast.close' | translate" (click)="dismiss(toast.id)">
         ×
       </button>
       <span class="toast-progress" aria-hidden="true"></span>

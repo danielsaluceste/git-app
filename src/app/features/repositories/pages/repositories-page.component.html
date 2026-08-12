@@ -1,9 +1,9 @@
 <section class="page" [class.modal-open]="isAddRepositoryModalOpen">
   <div class="page-heading">
     <div>
-      <p class="eyebrow">Workspace · {{ activeWorkspace().name }}</p>
-      <h2>Repositórios</h2>
-      <p class="description">Adicione repositórios locais, clone novos projetos ou conecte o GitHub.</p>
+      <p class="eyebrow">{{ "repositories.eyebrow" | translate }} · {{ activeWorkspace().name }}</p>
+      <h2>{{ "repositories.title" | translate }}</h2>
+      <p class="description">{{ "repositories.description" | translate }}</p>
     </div>
 
     <button
@@ -12,7 +12,7 @@
       [disabled]="isLoading"
       (click)="openAddRepositoryModal()"
     >
-      {{ isLoading ? "Adicionando..." : "Adicionar repositório" }}
+      {{ (isLoading ? "repositories.adding" : "repositories.add") | translate }}
     </button>
   </div>
 
@@ -25,17 +25,17 @@
             <h3>{{ repository.name }}</h3>
             <p>{{ repository.path }}</p>
           </div>
-          <span class="local-badge">Local</span>
+          <span class="local-badge">{{ "repositories.local" | translate }}</span>
         </article>
       }
     </div>
   } @else {
     <div class="empty-state">
       <div class="empty-icon">▣</div>
-      <h3>Nenhum repositório neste workspace</h3>
-      <p>Adicione uma pasta Git local para começar a trabalhar.</p>
+      <h3>{{ "repositories.emptyTitle" | translate }}</h3>
+      <p>{{ "repositories.emptyDescription" | translate }}</p>
       <button type="button" class="secondary-button" [disabled]="isLoading" (click)="openAddRepositoryModal()">
-        Adicionar repositório
+        {{ "repositories.add" | translate }}
       </button>
     </div>
   }
@@ -51,14 +51,14 @@
       >
         <header class="repository-modal-header">
           <div>
-            <p class="eyebrow">Novo repositório</p>
-            <h2 id="add-repository-title">Adicionar repositório</h2>
-            <p>Escolha como deseja conectar um projeto ao workspace atual.</p>
+            <p class="eyebrow">{{ "repositories.new" | translate }}</p>
+            <h2 id="add-repository-title">{{ "repositories.add" | translate }}</h2>
+            <p>{{ "repositories.chooseConnection" | translate }}</p>
           </div>
           <button
             type="button"
             class="modal-close-button"
-            aria-label="Fechar"
+            [attr.aria-label]="'repositories.close' | translate"
             [disabled]="isLoading"
             (click)="closeAddRepositoryModal()"
           >
@@ -71,8 +71,8 @@
             <button type="button" class="repository-option" [disabled]="isLoading" (click)="addLocalRepository()">
               <span class="repository-option-icon local-option-icon" aria-hidden="true">▣</span>
               <span class="repository-option-copy">
-                <strong>Selecionar repositório local</strong>
-                <span>Escolha uma pasta Git que já está neste computador.</span>
+                <strong>{{ "repositories.selectLocal" | translate }}</strong>
+                <span>{{ "repositories.selectLocalDescription" | translate }}</span>
               </span>
               <span class="repository-option-arrow" aria-hidden="true">›</span>
             </button>
@@ -80,8 +80,8 @@
             <button type="button" class="repository-option" [disabled]="isLoading" (click)="selectCloneOption()">
               <span class="repository-option-icon clone-option-icon" aria-hidden="true">↓</span>
               <span class="repository-option-copy">
-                <strong>Clonar repositório</strong>
-                <span>Baixe um projeto usando a URL e escolha onde salvá-lo.</span>
+                <strong>{{ "repositories.clone" | translate }}</strong>
+                <span>{{ "repositories.cloneDescription" | translate }}</span>
               </span>
               <span class="repository-option-arrow" aria-hidden="true">›</span>
             </button>
@@ -89,8 +89,8 @@
             <button type="button" class="repository-option" [disabled]="isLoading" (click)="selectGithubCloneOption()">
               <span class="repository-option-icon github-option-icon" aria-hidden="true">◉</span>
               <span class="repository-option-copy">
-                <strong>Clonar do GitHub</strong>
-                <span>Escolha um repositório de uma das suas contas conectadas.</span>
+                <strong>{{ "repositories.cloneGithub" | translate }}</strong>
+                <span>{{ "repositories.cloneGithubDescription" | translate }}</span>
               </span>
               <span class="repository-option-arrow" aria-hidden="true">›</span>
             </button>
@@ -98,11 +98,11 @@
         } @else {
           <button type="button" class="modal-back-button" [disabled]="isLoading" (click)="addRepositoryMode = 'options'">
             <span aria-hidden="true">←</span>
-            Voltar às opções
+            {{ "repositories.backOptions" | translate }}
           </button>
 
           <form class="clone-form" (submit)="$event.preventDefault(); cloneRepository()">
-            <div class="clone-source-tabs" role="tablist" aria-label="Origem do repositório">
+            <div class="clone-source-tabs" role="tablist" [attr.aria-label]="'repositories.source' | translate">
               <button
                 type="button"
                 role="tab"
@@ -111,7 +111,7 @@
                 [disabled]="isLoading"
                 (click)="selectCloneSource('url')"
               >
-                Usar URL
+                {{ "repositories.useUrl" | translate }}
               </button>
               <button
                 type="button"
@@ -121,14 +121,14 @@
                 [disabled]="isLoading || githubConnections().length === 0"
                 (click)="selectCloneSource('github')"
               >
-                GitHub conectado
+                {{ "repositories.connectedGithub" | translate }}
               </button>
             </div>
 
             @if (cloneSource === "github") {
               <div class="github-clone-panel">
                 <label class="clone-field">
-                  <span>Conta GitHub</span>
+                  <span>{{ "repositories.githubAccount" | translate }}</span>
                   <select
                     [value]="selectedGithubUserId ?? ''"
                     [disabled]="isLoading || githubRepositoriesLoading"
@@ -142,10 +142,10 @@
 
                 <div class="github-repositories-heading">
                   <div>
-                    <span>Repositório</span>
-                    <small>Selecione um projeto acessível por esta conta.</small>
+                    <span>{{ "repositories.repository" | translate }}</span>
+                    <small>{{ "repositories.repositoryDescription" | translate }}</small>
                   </div>
-                  <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" title="Atualizar repositórios">
+                  <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" [title]="'repositories.refresh' | translate">
                     ↻
                   </button>
                 </div>
@@ -153,18 +153,18 @@
                 @if (githubRepositoriesLoading) {
                   <div class="github-repositories-loading" aria-live="polite">
                     <span class="clone-spinner" aria-hidden="true"></span>
-                    Buscando repositórios do GitHub...
+                    {{ "repositories.loadingGithub" | translate }}
                   </div>
                 } @else if (githubRepositoriesError) {
                   <div class="github-repositories-error" role="alert">
                     <span>{{ githubRepositoriesError }}</span>
                     <div class="github-repositories-error-actions">
-                      <button type="button" class="text-action-button" (click)="loadGithubRepositories()">Tentar novamente</button>
-                      <button type="button" class="text-action-button" (click)="goToIntegrations()">Reconectar conta</button>
+                      <button type="button" class="text-action-button" (click)="loadGithubRepositories()">{{ "repositories.retry" | translate }}</button>
+                      <button type="button" class="text-action-button" (click)="goToIntegrations()">{{ "repositories.reconnect" | translate }}</button>
                     </div>
                   </div>
                 } @else if (githubRepositories.length > 0) {
-                  <div class="github-repository-list" role="listbox" aria-label="Repositórios do GitHub">
+                  <div class="github-repository-list" role="listbox" [attr.aria-label]="'repositories.title' | translate">
                     @for (repository of githubRepositories; track repository.id) {
                       <button
                         type="button"
@@ -176,7 +176,7 @@
                         <span class="github-repository-icon" aria-hidden="true">{{ repository.private ? "▣" : "◌" }}</span>
                         <span class="github-repository-copy">
                           <strong>{{ repository.fullName }}</strong>
-                          <small>{{ repository.description || "Sem descrição" }}</small>
+                            <small>{{ repository.description || ("repositories.noDescription" | translate) }}</small>
                         </span>
                         @if (selectedGithubRepositoryId === repository.id) {
                           <span class="github-repository-check" aria-hidden="true">✓</span>
@@ -186,13 +186,13 @@
                   </div>
                 } @else {
                   <div class="github-repositories-empty">
-                    Nenhum repositório acessível foi encontrado para esta conta.
+                    {{ "repositories.noGithubRepositories" | translate }}
                   </div>
                 }
               </div>
             } @else {
               <label class="clone-field">
-                <span>URL do repositório</span>
+                <span>{{ "repositories.repositoryUrl" | translate }}</span>
                 <input
                   type="text"
                   [value]="cloneUrl"
@@ -206,25 +206,25 @@
             }
 
             <div class="clone-field">
-              <span>Pasta de destino</span>
+              <span>{{ "repositories.destination" | translate }}</span>
               <div class="destination-picker">
                 <input
                   type="text"
                   [value]="cloneDestination"
-                  placeholder="Escolha uma pasta vazia"
+                  [placeholder]="'repositories.emptyFolder' | translate"
                   readonly
                   [disabled]="isLoading"
                 />
                 <button type="button" class="destination-button" [disabled]="isLoading" (click)="chooseCloneDestination()">
-                  Escolher pasta
+                  {{ "repositories.chooseFolder" | translate }}
                 </button>
               </div>
             </div>
 
             <p class="clone-hint">
-              A pasta escolhida precisa estar vazia. O Git criará o repositório dentro dela.
+              {{ "repositories.cloneHint" | translate }}
               @if (cloneSource === "github") {
-                <span> A autenticação será feita com a conta GitHub selecionada.</span>
+                <span> {{ "repositories.authSelected" | translate }}</span>
               }
             </p>
 
@@ -243,18 +243,18 @@
                 <div class="clone-progress-track" aria-hidden="true">
                   <span [style.width.%]="cloneProgress"></span>
                 </div>
-                <button type="button" class="clone-cancel-button" [disabled]="cloneCancelRequested" (click)="cancelClone()">
-                  {{ cloneCancelRequested ? "Cancelando..." : "Cancelar clonagem" }}
+                  <button type="button" class="clone-cancel-button" [disabled]="cloneCancelRequested" (click)="cancelClone()">
+                  {{ (cloneCancelRequested ? "repositories.cancelling" : "repositories.cancelClone") | translate }}
                 </button>
               </div>
             }
 
             <footer class="repository-modal-actions">
               <button type="button" class="modal-secondary-button" [disabled]="isLoading" (click)="closeAddRepositoryModal()">
-                Cancelar
+                {{ "repositories.cancel" | translate }}
               </button>
               <button type="submit" class="modal-primary-button" [disabled]="isLoading || (cloneSource === 'github' ? !selectedGithubRepositoryId : !cloneUrl.trim()) || !cloneDestination.trim()">
-                {{ isLoading ? "Clonando..." : "Clonar repositório" }}
+                {{ (isLoading ? "repositories.cloning" : "repositories.cloneAction") | translate }}
               </button>
             </footer>
           </form>

@@ -30,6 +30,10 @@ interface RepositoryCache {
   operation?: RepositoryOperation | null;
   commitsCurrent?: Commit[];
   commitsAll?: Commit[];
+  commitDraft?: {
+    message: string;
+    amend: boolean;
+  };
 }
 
 @Injectable({ providedIn: "root" })
@@ -264,6 +268,18 @@ export class RepositoryService {
 
   getCachedOperation(path: string): RepositoryOperation | null | undefined {
     return this.cacheFor(path).operation;
+  }
+
+  getCachedCommitDraft(path: string): { message: string; amend: boolean } | undefined {
+    return this.cacheFor(path).commitDraft;
+  }
+
+  setCachedCommitDraft(path: string, message: string, amend: boolean): void {
+    this.cacheFor(path).commitDraft = { message, amend };
+  }
+
+  clearCachedCommitDraft(path: string): void {
+    delete this.cacheFor(path).commitDraft;
   }
 
   getCachedCommits(path: string, allBranches: boolean): Commit[] | undefined {

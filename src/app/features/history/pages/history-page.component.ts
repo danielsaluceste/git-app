@@ -20,8 +20,10 @@ import { GitFile } from "../../../core/models/git-file.model";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type SyncAction = "fetch" | "pull" | "push" | "";
 type CommitKindFilter = "all" | "merge" | "regular";
@@ -37,7 +39,7 @@ interface CommitContextMenu {
 
 @Component({
   selector: "app-history-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, TranslatePipe],
   templateUrl: "./history-page.component.html",
   styleUrl: "./history-page.component.css",
 })
@@ -46,6 +48,7 @@ export class HistoryPageComponent implements AfterViewInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -53,7 +56,7 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly commits = signal<Commit[]>([]);
   readonly isLoading = signal(true);
   readonly selectedCommit = signal<Commit | undefined>(undefined);
-  readonly currentBranch = signal("HEAD destacado");
+  readonly currentBranch = signal(this.translationService.translate("repository.headDetached"));
   readonly aheadCount = signal(0);
   readonly behindCount = signal(0);
   readonly actionBarScrolled = signal(false);
@@ -390,12 +393,12 @@ export class HistoryPageComponent implements AfterViewInit {
     try {
       await this.repositoryService.revertCommit(repository.path, commit.hash);
       this.toastService.success(
-        `Commit ${commit.shortHash} desfeito com sucesso.`,
-        "Revert concluído",
+        this.translationService.translate("history.revertSuccess", { hash: commit.shortHash }),
+        this.translationService.translate("history.revertSuccessTitle"),
       );
       await this.loadOverview();
     } catch (error: unknown) {
-      this.toastService.error(this.getCommitRevertErrorMessage(error), "Desfazer commit");
+      this.toastService.error(this.getCommitRevertErrorMessage(error), this.translationService.translate("history.revertErrorTitle"));
     } finally {
       this.isRevertingCommit.set(false);
     }
@@ -427,8 +430,8 @@ export class HistoryPageComponent implements AfterViewInit {
       this.hasMoreCommits.set(commits.length === this.historyPageSize);
     } catch (error: unknown) {
       this.toastService.error(
-        "NÃ£o foi possÃ­vel carregar mais commits deste repositÃ³rio.",
-        "HistÃ³rico",
+        this.translationService.translate("history.loadMoreError"),
+        this.translationService.translate("history.historyTitle"),
       );
     } finally {
       this.isLoadingMore.set(false);
@@ -493,31 +496,33 @@ export class HistoryPageComponent implements AfterViewInit {
   commitKindLabel(): string {
     switch (this.commitKindFilter()) {
       case "merge":
-        return "Somente merges";
+        return this.translationService.translate("history.onlyMerges");
       case "regular":
-        return "Sem merge";
+        return this.translationService.translate("history.noMerge");
       default:
-        return "Todos";
+        return this.translationService.translate("history.all");
     }
   }
 
   commitDateLabel(): string {
     switch (this.commitDateFilter()) {
       case "7d":
-        return "Últimos 7 dias";
+        return this.translationService.translate("history.last7");
       case "30d":
-        return "Últimos 30 dias";
+        return this.translationService.translate("history.last30");
       case "year":
-        return "Último ano";
+        return this.translationService.translate("history.lastYear");
       default:
-        return "Qualquer período";
+        return this.translationService.translate("history.anyPeriod");
     }
   }
 
   historyScopeLabel(): string {
     return this.historyScope() === "all"
-      ? "Todas as branches"
-      : (this.currentBranch() === "HEAD destacado" ? "Branch atual" : this.currentBranch());
+      ? this.translationService.translate("history.allBranches")
+      : (this.currentBranch() === "HEAD destacado"
+        ? this.translationService.translate("history.currentBranch")
+        : this.currentBranch());
   }
 
   formatReference(reference: string): string {
@@ -698,7 +703,10 @@ export class HistoryPageComponent implements AfterViewInit {
           syncCredentials.workspaceId,
           syncCredentials.githubUserId,
         );
-        this.toastService.success("Referências remotas atualizadas.", "Fetch concluído");
+        this.toastService.success(
+          this.translationService.translate("history.fetchSuccess"),
+          this.translationService.translate("history.fetchSuccessTitle"),
+        );
       } else if (action === "pull") {
         const pullResult = await this.repositoryService.pull(
           repository.path,
@@ -707,9 +715,9 @@ export class HistoryPageComponent implements AfterViewInit {
         );
         this.toastService.success(
           pullResult.autoStashed
-            ? "As alterações locais foram guardadas em auto stash e reaplicadas após o Pull."
-            : "Alterações baixadas e aplicadas.",
-          "Pull concluído",
+            ? this.translationService.translate("history.pullAutoStash")
+            : this.translationService.translate("history.pullSuccess"),
+          this.translationService.translate("history.pullSuccessTitle"),
         );
       } else {
         await this.repositoryService.push(
@@ -717,7 +725,10 @@ export class HistoryPageComponent implements AfterViewInit {
           syncCredentials.workspaceId,
           syncCredentials.githubUserId,
         );
-        this.toastService.success("Alterações enviadas para o repositório remoto.", "Push concluído");
+        this.toastService.success(
+          this.translationService.translate("history.pushSuccess"),
+          this.translationService.translate("history.pushSuccessTitle"),
+        );
       }
 
       await this.loadOverview();
@@ -728,15 +739,15 @@ export class HistoryPageComponent implements AfterViewInit {
         if (operation) {
           const operationName = operation.kind === "rebase" ? "Rebase" : "Merge";
           this.toastService.warning(
-            `O Pull encontrou conflitos durante o ${operationName}. Resolva os arquivos para continuar.`,
-            "Conflitos durante o Pull",
+            this.translationService.translate("history.pullConflictMessage", { operation: operationName }),
+            this.translationService.translate("history.pullConflictTitle"),
           );
           await this.router.navigate(["/changes"]);
           return;
         }
       }
 
-      this.toastService.error(this.getSyncErrorMessage(error), "Sincronização");
+      this.toastService.error(this.getSyncErrorMessage(error), this.translationService.translate("history.syncTitle"));
     } finally {
       this.syncAction.set("");
     }
@@ -757,13 +768,13 @@ export class HistoryPageComponent implements AfterViewInit {
       await this.repositoryService.checkoutCommit(repository.path, commit.hash);
       this.toastService.success(
         saveChanges
-          ? `Alterações guardadas em stash. Checkout no commit ${commit.shortHash} concluído.`
-          : `Checkout no commit ${commit.shortHash} concluído. O repositório está em HEAD destacado.`,
-        "Checkout do commit",
+          ? this.translationService.translate("history.checkoutWithStash", { hash: commit.shortHash })
+          : this.translationService.translate("history.checkoutDetached", { hash: commit.shortHash }),
+        this.translationService.translate("history.checkoutTitle"),
       );
       await this.loadOverview();
     } catch (error: unknown) {
-      this.toastService.error(this.getCommitCheckoutErrorMessage(error), "Checkout do commit");
+      this.toastService.error(this.getCommitCheckoutErrorMessage(error), this.translationService.translate("history.checkoutTitle"));
     } finally {
       this.isCheckingOut.set(false);
     }
@@ -775,7 +786,7 @@ export class HistoryPageComponent implements AfterViewInit {
       return date;
     }
 
-    return parsedDate.toLocaleString("pt-BR", {
+    return parsedDate.toLocaleString(this.translationService.language(), {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -799,20 +810,20 @@ export class HistoryPageComponent implements AfterViewInit {
       && parsedDate.getDate() === yesterday.getDate();
 
     if (isToday) {
-      return `Hoje, ${parsedDate.toLocaleTimeString("pt-BR", {
+      return `${this.translationService.translate("history.today")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
         hour: "2-digit",
         minute: "2-digit",
       })}`;
     }
 
     if (isYesterday) {
-      return `Ontem, ${parsedDate.toLocaleTimeString("pt-BR", {
+      return `${this.translationService.translate("history.yesterday")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
         hour: "2-digit",
         minute: "2-digit",
       })}`;
     }
 
-    return parsedDate.toLocaleString("pt-BR", {
+    return parsedDate.toLocaleString(this.translationService.language(), {
       day: "2-digit",
       month: "2-digit",
       year: "2-digit",
@@ -842,22 +853,30 @@ export class HistoryPageComponent implements AfterViewInit {
 
   syncLabel(action: Exclude<SyncAction, "">): string {
     if (this.syncAction() === action) {
-      return action === "fetch" ? "Buscando..." : action === "pull" ? "Baixando..." : "Enviando...";
+      return action === "fetch"
+        ? this.translationService.translate("history.fetching")
+        : action === "pull"
+          ? this.translationService.translate("history.downloading")
+          : this.translationService.translate("history.sending");
     }
 
-    return action === "fetch" ? "Fetch" : action === "pull" ? "Pull" : "Push";
+    return action === "fetch"
+      ? this.translationService.translate("history.fetch")
+      : action === "pull"
+        ? this.translationService.translate("history.pull")
+        : this.translationService.translate("history.push");
   }
 
   private getSyncErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
-      return `Não foi possível executar a sincronização: ${error.trim()}`;
+      return this.translationService.translate("history.syncError", { message: error.trim() });
     }
 
     if (error instanceof Error && error.message) {
-      return `Não foi possível executar a sincronização: ${error.message}`;
+      return this.translationService.translate("history.syncError", { message: error.message });
     }
 
-    return "Não foi possível executar a sincronização com o repositório remoto.";
+    return this.translationService.translate("history.syncGenericError");
   }
 
   private async enrichCommitAvatars(commits: Commit[]): Promise<Commit[]> {
@@ -912,26 +931,26 @@ export class HistoryPageComponent implements AfterViewInit {
 
   private getCommitCheckoutErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
-      return `Não foi possível fazer checkout neste commit: ${error.trim()}`;
+      return this.translationService.translate("history.checkoutError", { message: error.trim() });
     }
 
     if (error instanceof Error && error.message) {
-      return `Não foi possível fazer checkout neste commit: ${error.message}`;
+      return this.translationService.translate("history.checkoutError", { message: error.message });
     }
 
-    return "Não foi possível fazer checkout neste commit.";
+    return this.translationService.translate("history.checkoutGenericError");
   }
 
   private getCommitRevertErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
-      return `Não foi possível desfazer este commit: ${error.trim()}`;
+      return this.translationService.translate("history.revertError", { message: error.trim() });
     }
 
     if (error instanceof Error && error.message) {
-      return `Não foi possível desfazer este commit: ${error.message}`;
+      return this.translationService.translate("history.revertError", { message: error.message });
     }
 
-    return "Não foi possível desfazer este commit.";
+    return this.translationService.translate("history.revertGenericError");
   }
 
   private getCommitFilesErrorMessage(error: unknown): string {
@@ -943,6 +962,6 @@ export class HistoryPageComponent implements AfterViewInit {
       return error.message;
     }
 
-    return "Não foi possível carregar os arquivos deste commit.";
+    return this.translationService.translate("history.filesError");
   }
 }

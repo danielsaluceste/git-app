@@ -8,7 +8,9 @@ import { GithubService } from "../../../core/services/github.service";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type AddRepositoryMode = "options" | "clone";
 type CloneSource = "url" | "github";
@@ -24,6 +26,7 @@ interface CloneProgress {
 
 @Component({
   selector: "app-repositories-page",
+  imports: [TranslatePipe],
   templateUrl: "./repositories-page.component.html",
   styleUrl: "./repositories-page.component.css",
 })
@@ -34,6 +37,7 @@ export class RepositoriesPageComponent {
   private readonly router = inject(Router);
   private readonly layoutService = inject(LayoutService);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
   readonly repositories = computed(() =>
@@ -55,8 +59,8 @@ export class RepositoriesPageComponent {
   selectedGithubRepositoryId: number | undefined;
   cloneOperationId = "";
   cloneProgress = 0;
-  cloneStage = "Preparando clonagem";
-  cloneDetail = "Conectando ao repositório remoto...";
+  cloneStage = this.translationService.translate("repositories.preparingClone");
+  cloneDetail = this.translationService.translate("repositories.connectingRemote");
   cloneCancelRequested = false;
   private cloneProgressUnlisten: UnlistenFn | undefined;
   readonly githubConnections = this.githubService.workspaceConnections;
@@ -153,7 +157,7 @@ export class RepositoriesPageComponent {
       this.githubRepositoriesError =
         typeof error === "string"
           ? error
-          : "Não foi possível carregar os repositórios desta conta.";
+          : this.translationService.translate("repositories.githubLoadError");
     } finally {
       this.githubRepositoriesLoading = false;
     }
@@ -164,14 +168,17 @@ export class RepositoriesPageComponent {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "Escolher pasta vazia para clonar",
+        title: this.translationService.translate("repositories.chooseCloneFolderTitle"),
       });
 
       if (typeof selected === "string") {
         this.cloneDestination = selected;
       }
     } catch {
-      this.toastService.error("Não foi possível abrir o seletor de pastas.", "Destino do clone");
+      this.toastService.error(
+        this.translationService.translate("repositories.folderPickerError"),
+        this.translationService.translate("repositories.cloneDestinationTitle"),
+      );
     }
   }
 
@@ -187,7 +194,7 @@ export class RepositoriesPageComponent {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "Adicionar repositório local",
+        title: this.translationService.translate("repositories.addLocalTitle"),
       });
 
       if (typeof selected !== "string") {
@@ -205,16 +212,22 @@ export class RepositoriesPageComponent {
       });
 
       if (!added) {
-        this.toastService.warning("Este repositório já está adicionado neste workspace.", "Repositório duplicado");
+        this.toastService.warning(
+          this.translationService.translate("repositories.alreadyAdded"),
+          this.translationService.translate("repositories.duplicateTitle"),
+        );
       } else {
-        this.toastService.success("Repositório adicionado ao workspace.", "Repositório adicionado");
+        this.toastService.success(
+          this.translationService.translate("repositories.addedMessage"),
+          this.translationService.translate("repositories.addedTitle"),
+        );
       }
     } catch (error: unknown) {
       this.toastService.error(
         typeof error === "string"
           ? error
-          : "Não foi possível adicionar a pasta. Selecione um repositório Git válido.",
-        "Repositório local",
+          : this.translationService.translate("repositories.invalidLocalError"),
+        this.translationService.translate("repositories.localErrorTitle"),
       );
     } finally {
       this.isLoading = false;
@@ -228,20 +241,26 @@ export class RepositoriesPageComponent {
     const remoteUrl = this.cloneSource === "github" ? selectedRepository?.cloneUrl ?? "" : this.cloneUrl;
 
     if (!remoteUrl.trim() || !this.cloneDestination.trim()) {
-      this.toastService.warning("Informe a URL e escolha uma pasta de destino.", "Dados incompletos");
+      this.toastService.warning(
+        this.translationService.translate("repositories.urlAndDestination"),
+        this.translationService.translate("repositories.incompleteTitle"),
+      );
       return;
     }
 
     if (this.cloneSource === "github" && !this.selectedGithubUserId) {
-      this.toastService.warning("Escolha a conta GitHub que será usada no clone.", "Conta não selecionada");
+      this.toastService.warning(
+        this.translationService.translate("repositories.accountRequired"),
+        this.translationService.translate("repositories.accountRequiredTitle"),
+      );
       return;
     }
 
     this.isLoading = true;
     this.cloneOperationId = this.createCloneOperationId();
     this.cloneProgress = 0;
-    this.cloneStage = "Preparando clonagem";
-    this.cloneDetail = "Conectando ao repositório remoto...";
+    this.cloneStage = this.translationService.translate("repositories.preparingClone");
+    this.cloneDetail = this.translationService.translate("repositories.connectingRemote");
     this.cloneCancelRequested = false;
 
     try {
@@ -266,17 +285,26 @@ export class RepositoriesPageComponent {
       this.isAddRepositoryModalOpen = false;
       this.addRepositoryMode = "options";
       if (!added) {
-        this.toastService.warning("Este repositório já está adicionado neste workspace.", "Repositório duplicado");
+        this.toastService.warning(
+          this.translationService.translate("repositories.alreadyAdded"),
+          this.translationService.translate("repositories.duplicateTitle"),
+        );
       } else {
-        this.toastService.success("Repositório clonado e adicionado ao workspace.", "Clone concluído");
+        this.toastService.success(
+          this.translationService.translate("repositories.cloneDone"),
+          this.translationService.translate("repositories.cloneDoneTitle"),
+        );
       }
     } catch (error: unknown) {
       if (this.cloneCancelRequested) {
-        this.toastService.info("A clonagem foi cancelada.", "Clone cancelado");
+        this.toastService.info(
+          this.translationService.translate("repositories.cancelled"),
+          this.translationService.translate("repositories.cancelledTitle"),
+        );
       } else {
         this.toastService.error(
-          typeof error === "string" ? error : "Não foi possível clonar o repositório.",
-          "Falha ao clonar",
+          typeof error === "string" ? error : this.translationService.translate("repositories.cloneError"),
+          this.translationService.translate("repositories.cloneErrorTitle"),
         );
       }
     } finally {
@@ -291,13 +319,16 @@ export class RepositoriesPageComponent {
     }
 
     this.cloneCancelRequested = true;
-    this.cloneStage = "Cancelando clonagem";
-    this.cloneDetail = "Interrompendo o Git com segurança...";
+    this.cloneStage = this.translationService.translate("repositories.cancelStage");
+    this.cloneDetail = this.translationService.translate("repositories.cancelDetail");
 
     try {
       await this.repositoryService.cancelClone(this.cloneOperationId);
     } catch {
-      this.toastService.warning("A clonagem já pode ter sido finalizada.", "Cancelamento");
+      this.toastService.warning(
+        this.translationService.translate("repositories.cancelWarning"),
+        this.translationService.translate("repositories.cancelWarningTitle"),
+      );
     }
   }
 
@@ -323,7 +354,7 @@ export class RepositoriesPageComponent {
       }
 
       this.cloneProgress = event.payload.progress;
-      this.cloneStage = event.payload.stage;
+      this.cloneStage = this.translateCloneStage(event.payload.stage);
       this.cloneDetail = event.payload.detail;
     });
   }
@@ -339,5 +370,18 @@ export class RepositoriesPageComponent {
     }
 
     return `clone-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  private translateCloneStage(stage: string): string {
+    const stageKey: Record<string, string> = {
+      "Preparando clonagem": "repositories.preparingClone",
+      "Baixando objetos": "repositories.downloadingObjects",
+      "Resolvendo alterações": "repositories.resolvingChanges",
+      "Atualizando arquivos": "repositories.updatingFiles",
+      "Criando repositório": "repositories.creatingRepository",
+      "Clonando repositório": "repositories.cloningRepository",
+    };
+
+    return stageKey[stage] ? this.translationService.translate(stageKey[stage]) : stage;
   }
 }

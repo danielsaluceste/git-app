@@ -2,14 +2,14 @@
   <div class="repository-heading">
     <div class="repository-mark" aria-hidden="true">▣</div>
     <div class="repository-heading-copy">
-      <span>Repositório aberto</span>
+      <span>{{ "repository.open" | translate }}</span>
       <strong [title]="repository.name">{{ repository.name }}</strong>
     </div>
     <button
       type="button"
       class="close-repository"
-      aria-label="Voltar para repositórios"
-      title="Voltar para repositórios"
+      [attr.aria-label]="'repository.back' | translate"
+      [title]="'repository.back' | translate"
       (click)="closeRepository()"
     >
       <svg class="close-repository-icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -20,13 +20,13 @@
 
   <div class="branch-summary">
     <span class="branch-icon" aria-hidden="true">⑂</span>
-    <span>{{ references().currentBranch || "HEAD destacado" }}</span>
+    <span>{{ references().currentBranch || ("repository.headDetached" | translate) }}</span>
   </div>
 
-  <nav aria-label="Navegação do repositório">
+  <nav [attr.aria-label]="'repository.open' | translate">
     <a routerLink="/overview" routerLinkActive="active">
       <span aria-hidden="true">◉</span>
-      <span>Visão geral</span>
+      <span>{{ "repository.overview" | translate }}</span>
       @if (aheadCount() > 0 || behindCount() > 0) {
         <span class="sync-badge" [title]="syncPendingLabel()">
           @if (aheadCount() > 0) {
@@ -40,30 +40,30 @@
     </a>
     <a routerLink="/changes" routerLinkActive="active">
       <span aria-hidden="true">◐</span>
-      <span>Alterações</span>
+      <span>{{ "repository.changes" | translate }}</span>
       @if (changesCount() > 0) {
-        <span class="changes-badge" [attr.aria-label]="changesCount() + ' arquivos alterados'">{{ changesCount() }}</span>
+        <span class="changes-badge" [attr.aria-label]="changesCount() + ' ' + ('repository.changedFiles' | translate)">{{ changesCount() }}</span>
       }
     </a>
     <a routerLink="/branches" routerLinkActive="active">
       <span aria-hidden="true">⑂</span>
-      Branches
+      {{ "repository.branches" | translate }}
     </a>
     <a routerLink="/repository-settings" routerLinkActive="active">
       <span aria-hidden="true">⚙</span>
-      <span>Configurações</span>
+      <span>{{ "repository.settings" | translate }}</span>
     </a>
   </nav>
 
   <section class="reference-section">
     <div class="section-heading-row">
-      <div class="section-heading">REFERÊNCIAS</div>
+      <div class="section-heading">{{ "repository.references" | translate }}</div>
       <button
         type="button"
         class="reference-sync-button"
         [disabled]="isBranchActionRunning()"
-        title="Atualizar referências remotas"
-        aria-label="Atualizar referências remotas"
+        [title]="'repository.refreshReferences' | translate"
+        [attr.aria-label]="'repository.refreshReferences' | translate"
         (click)="refreshRemoteReferences()"
       >
         ↻
@@ -71,7 +71,7 @@
     </div>
 
     @if (isLoadingReferences()) {
-      <div class="reference-status">Carregando referências...</div>
+      <div class="reference-status">{{ "repository.loadingReferences" | translate }}</div>
     }
 
     <button
@@ -81,7 +81,7 @@
       (click)="toggleSection('local')"
     >
       <span class="reference-chevron" [class.expanded]="expandedSections.local" aria-hidden="true"></span>
-      <span>Branches locais</span>
+      <span>{{ "repository.localBranches" | translate }}</span>
       <span class="reference-count">{{ references().localBranches.length }}</span>
     </button>
     @if (expandedSections.local) {
@@ -96,7 +96,7 @@
               [class.branch-drop-target]="dragOverBranch() === branch"
               [attr.data-local-branch-index]="$index"
               [disabled]="isBranchActionRunning()"
-              [title]="branch === references().currentBranch ? 'Branch atual' : 'Trocar para ' + branch"
+              [title]="branch === references().currentBranch ? ('branches.currentTitle' | translate) : ('branches.checkoutTitle' | translate: { branch: branch })"
               (click)="requestCheckout(branch)"
               (pointerdown)="startBranchPointerDrag(branch, $event)"
               (contextmenu)="openBranchContextMenu($event, branch, 'local')"
@@ -106,19 +106,19 @@
             </button>
           }
         } @else {
-          <span class="reference-empty">Nenhuma branch local</span>
+          <span class="reference-empty">{{ "repository.noLocalBranches" | translate }}</span>
         }
       </div>
     }
     @if (showCreateBranch()) {
       <form class="sidebar-branch-form" (ngSubmit)="submitCreateBranch()">
         <div class="sidebar-branch-form-heading">
-          <strong>{{ createBranchStartPoint() ? "Criar branch a partir desta" : "Nova branch" }}</strong>
+          <strong>{{ (createBranchStartPoint() ? "branchContext.createFrom" : "repository.newBranch") | translate }}</strong>
           @if (createBranchStartPoint(); as startPoint) {
-            <span [title]="startPoint">Base: {{ startPoint }}</span>
+            <span [title]="startPoint">{{ "repository.base" | translate }}: {{ startPoint }}</span>
           }
         </div>
-        <label for="sidebar-new-branch">Nome da branch</label>
+        <label for="sidebar-new-branch">{{ "repository.branchName" | translate }}</label>
         <input
           id="sidebar-new-branch"
           [ngModel]="newBranchName()"
@@ -130,10 +130,10 @@
         />
         <div class="sidebar-branch-actions">
           <button type="button" class="sidebar-cancel-button" [disabled]="isBranchActionRunning()" (click)="closeCreateBranch()">
-            Cancelar
+            {{ "repository.cancel" | translate }}
           </button>
           <button type="submit" class="sidebar-confirm-button" [disabled]="isBranchActionRunning()">
-            Criar
+            {{ "repository.create" | translate }}
           </button>
         </div>
       </form>
@@ -146,7 +146,7 @@
       (click)="toggleSection('remote')"
     >
       <span class="reference-chevron" [class.expanded]="expandedSections.remote" aria-hidden="true"></span>
-      <span>Branches remotas</span>
+      <span>{{ "repository.remoteBranches" | translate }}</span>
       <span class="reference-count">{{ references().remoteBranches.length }}</span>
     </button>
     @if (expandedSections.remote) {
@@ -155,7 +155,7 @@
           @for (branch of references().remoteBranches; track branch) {
             <div
               class="reference-item remote-reference"
-              [title]="'Clique duas vezes para trazer ' + branch + ' para o local'"
+              [title]="'repository.remoteDoubleClickBranch' | translate: { branch: branch }"
               (dblclick)="requestCreateRemoteBranch(branch)"
               (contextmenu)="openBranchContextMenu($event, branch, 'remote')"
             >
@@ -164,7 +164,7 @@
             </div>
           }
         } @else {
-          <span class="reference-empty">Nenhuma branch remota</span>
+          <span class="reference-empty">{{ "repository.noRemoteBranches" | translate }}</span>
         }
       </div>
     }
@@ -176,7 +176,7 @@
       (click)="toggleSection('tags')"
     >
       <span class="reference-chevron" [class.expanded]="expandedSections.tags" aria-hidden="true"></span>
-      <span>Tags</span>
+      <span>{{ "repository.tags" | translate }}</span>
       <span class="reference-count">{{ references().tags.length }}</span>
     </button>
     @if (expandedSections.tags) {
@@ -192,7 +192,7 @@
             </button>
           }
         } @else {
-          <span class="reference-empty">Nenhuma tag</span>
+          <span class="reference-empty">{{ "repository.noTags" | translate }}</span>
         }
       </div>
     }
@@ -204,7 +204,7 @@
       (click)="toggleSection('stashes')"
     >
       <span class="reference-chevron" [class.expanded]="expandedSections.stashes" aria-hidden="true"></span>
-      <span>Stashes</span>
+      <span>{{ "repository.stashes" | translate }}</span>
       <span class="reference-count">{{ references().stashes.length }}</span>
     </button>
     @if (expandedSections.stashes) {
@@ -214,7 +214,7 @@
             <button
               type="button"
               class="reference-item"
-              [title]="'Abrir detalhes do stash ' + stashLabel(stash)"
+              [title]="'repository.openStashDetails' | translate: { stash: stashLabel(stash) }"
               (click)="openStash(stash)"
               (contextmenu)="openStashContextMenu($event, stash)"
             >
@@ -223,7 +223,7 @@
             </button>
           }
         } @else {
-          <span class="reference-empty">Nenhum stash</span>
+          <span class="reference-empty">{{ "repository.noStashes" | translate }}</span>
         }
       </div>
     }
@@ -239,21 +239,21 @@
     (click)="$event.stopPropagation()"
   >
     <div class="branch-context-heading">
-      <span class="branch-context-kicker">OPERAR BRANCHES</span>
+      <span class="branch-context-kicker">{{ "branchContext.operate" | translate }}</span>
       <strong [title]="menu.source + ' → ' + menu.target">{{ menu.source }} → {{ menu.target }}</strong>
     </div>
     <button type="button" role="menuitem" (click)="chooseBranchOperation('merge')">
       <span class="context-menu-icon" aria-hidden="true">↗</span>
       <span>
-        <strong>Merge {{ menu.source }} em {{ menu.target }}</strong>
-        <small>Mesclar a origem na branch de destino</small>
+        <strong>{{ "branchContext.merge" | translate: { source: menu.source, target: menu.target } }}</strong>
+        <small>{{ "branchContext.mergeDescription" | translate }}</small>
       </span>
     </button>
     <button type="button" role="menuitem" (click)="chooseBranchOperation('rebase')">
       <span class="context-menu-icon rebase-context-icon" aria-hidden="true">↻</span>
       <span>
-        <strong>Rebase {{ menu.source }} sobre {{ menu.target }}</strong>
-        <small>Reaplicar os commits da origem sobre o destino</small>
+        <strong>{{ "branchContext.rebase" | translate: { source: menu.source, target: menu.target } }}</strong>
+        <small>{{ "branchContext.rebaseDescription" | translate }}</small>
       </span>
     </button>
   </div>
@@ -268,23 +268,23 @@
     (click)="$event.stopPropagation()"
   >
     <div class="branch-context-heading">
-      <span class="branch-context-kicker">BRANCH</span>
+      <span class="branch-context-kicker">{{ "branchContext.branch" | translate }}</span>
       <strong [title]="menu.branch">{{ menu.branch }}</strong>
     </div>
     @if (menu.type === "remote") {
       <button type="button" role="menuitem" (click)="bringContextBranchToLocal()">
         <span class="context-menu-icon" aria-hidden="true">↓</span>
         <span>
-          <strong>Trazer para o local</strong>
-          <small>Criar uma branch local conectada</small>
+          <strong>{{ "branchContext.bringLocal" | translate }}</strong>
+          <small>{{ "branchContext.bringLocalDescription" | translate }}</small>
         </span>
       </button>
     }
     <button type="button" role="menuitem" (click)="createBranchFromContext()">
       <span class="context-menu-icon" aria-hidden="true">＋</span>
       <span>
-        <strong>Criar uma branch a partir desta</strong>
-        <small>Usar esta referência como ponto inicial</small>
+        <strong>{{ "branchContext.createFrom" | translate }}</strong>
+        <small>{{ "branchContext.createFromDescription" | translate }}</small>
       </span>
     </button>
     @if (menu.type === "local") {
@@ -296,16 +296,16 @@
       >
         <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
         <span>
-          <strong>Excluir branch local</strong>
-          <small>{{ menu.branch === references().currentBranch ? "A branch atual não pode ser excluída" : "Remover apenas deste computador" }}</small>
+          <strong>{{ "branchContext.deleteLocal" | translate }}</strong>
+          <small>{{ (menu.branch === references().currentBranch ? "branchContext.currentCannotDelete" : "branchContext.deleteLocalDescription") | translate }}</small>
         </span>
       </button>
     } @else {
       <button type="button" role="menuitem" (click)="requestDeleteBranch(menu.branch, 'remote')">
         <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
         <span>
-          <strong>Excluir branch remota</strong>
-          <small>Remover esta branch da origem</small>
+          <strong>{{ "branchContext.deleteRemote" | translate }}</strong>
+          <small>{{ "branchContext.deleteRemoteDescription" | translate }}</small>
         </span>
       </button>
     }
@@ -321,14 +321,14 @@
     (click)="$event.stopPropagation()"
   >
     <div class="branch-context-heading">
-      <span class="branch-context-kicker">STASH</span>
+      <span class="branch-context-kicker">{{ "branchContext.stash" | translate }}</span>
       <strong [title]="menu.label">{{ menu.label }}</strong>
     </div>
     <button type="button" role="menuitem" (click)="requestDeleteStash()">
       <span class="context-menu-icon delete-context-icon" aria-hidden="true">×</span>
       <span>
-        <strong>Excluir stash</strong>
-        <small>Remover este stash do repositório</small>
+        <strong>{{ "branchContext.deleteStash" | translate }}</strong>
+        <small>{{ "branchContext.deleteStashDescription" | translate }}</small>
       </span>
     </button>
   </div>
@@ -336,10 +336,10 @@
 
 @if (pendingCheckoutBranch(); as branch) {
   <app-confirm-dialog
-    title="Trocar de branch?"
-    [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao trocar para a branch ' + branch + '. Deseja continuar?'"
-    confirmLabel="Trocar branch"
-    cancelLabel="Continuar aqui"
+    [title]="'sidebar.checkoutTitle' | translate"
+    [message]="'sidebar.checkoutMessage' | translate: { branch: branch }"
+    [confirmLabel]="'branches.checkoutConfirm' | translate"
+    [cancelLabel]="'branches.continueHere' | translate"
     (confirmed)="confirmCheckout()"
     (cancelled)="cancelCheckout()"
   />
@@ -347,10 +347,10 @@
 
 @if (pendingCreateBranch(); as request) {
   <app-confirm-dialog
-    title="Criar branch com alterações pendentes?"
-    [message]="request.startPoint ? 'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + ' a partir de ' + request.startPoint + '. Deseja continuar?' : 'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + '. Deseja continuar?'"
-    confirmLabel="Criar e ativar"
-    cancelLabel="Cancelar"
+    [title]="'sidebar.createTitle' | translate"
+    [message]="'sidebar.createMessage' | translate: { name: request.name }"
+    [confirmLabel]="'branches.createAndActivate' | translate"
+    [cancelLabel]="'workspace.cancel' | translate"
     (confirmed)="confirmCreateBranch()"
     (cancelled)="cancelCreateBranch()"
   />
@@ -358,11 +358,11 @@
 
 @if (pendingDeleteBranch(); as request) {
   <app-confirm-dialog
-    [title]="request.type === 'remote' ? 'Excluir branch remota?' : 'Excluir branch local?'"
-    [message]="request.type === 'remote' ? 'A branch ' + request.branch + ' será excluída da origem. A branch local não será apagada. Deseja continuar?' : 'A branch local ' + request.branch + ' será removida deste computador. Os commits não serão apagados imediatamente. Deseja continuar?'"
+    [title]="(request.type === 'remote' ? 'sidebar.deleteRemoteTitle' : 'sidebar.deleteLocalTitle') | translate"
+    [message]="(request.type === 'remote' ? 'sidebar.deleteRemoteMessage' : 'sidebar.deleteLocalMessage') | translate: { branch: request.branch }"
     [messageHighlight]="request.branch"
-    confirmLabel="Excluir branch"
-    cancelLabel="Manter branch"
+    [confirmLabel]="'sidebar.deleteConfirm' | translate"
+    [cancelLabel]="'sidebar.keepBranch' | translate"
     [destructive]="true"
     (confirmed)="confirmDeleteBranch()"
     (cancelled)="cancelDeleteBranch()"
@@ -371,11 +371,11 @@
 
 @if (pendingDeleteStash(); as stash) {
   <app-confirm-dialog
-    title="Excluir stash?"
-    [message]="'O stash ' + stash + ' será removido permanentemente deste repositório. Deseja continuar?'"
+    [title]="'stashes.deleteConfirmTitle' | translate"
+    [message]="'stashes.deleteConfirmMessage' | translate: { stash: stash }"
     [messageHighlight]="stash"
-    confirmLabel="Excluir stash"
-    cancelLabel="Manter stash"
+    [confirmLabel]="'stashes.deleteConfirm' | translate"
+    [cancelLabel]="'stashes.keep' | translate"
     [destructive]="true"
     (confirmed)="confirmDeleteStash()"
     (cancelled)="cancelDeleteStash()"
@@ -384,11 +384,11 @@
 
 @if (pendingBranchOperation(); as request) {
   <app-confirm-dialog
-    [title]="request.kind === 'merge' ? 'Executar Merge com alterações pendentes?' : 'Executar Rebase com alterações pendentes?'"
-    [message]="request.kind === 'merge' ? 'Existem alterações não commitadas. O Merge de ' + request.source + ' em ' + request.target + ' pode exigir um working tree limpo. Deseja continuar?' : 'Existem alterações não commitadas. O Rebase de ' + request.source + ' sobre ' + request.target + ' pode exigir um working tree limpo. Deseja continuar?'"
+    [title]="(request.kind === 'merge' ? 'sidebar.mergePendingTitle' : 'sidebar.rebasePendingTitle') | translate"
+    [message]="(request.kind === 'merge' ? 'sidebar.mergePendingMessage' : 'sidebar.rebasePendingMessage') | translate: { source: request.source, target: request.target }"
     [messageHighlight]="request.source"
-    [confirmLabel]="request.kind === 'merge' ? 'Executar Merge' : 'Executar Rebase'"
-    cancelLabel="Cancelar"
+    [confirmLabel]="(request.kind === 'merge' ? 'sidebar.executeMerge' : 'sidebar.executeRebase') | translate"
+    [cancelLabel]="'workspace.cancel' | translate"
     (confirmed)="confirmBranchOperation()"
     (cancelled)="cancelBranchOperation()"
   />

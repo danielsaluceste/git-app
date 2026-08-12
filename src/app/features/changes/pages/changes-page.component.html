@@ -2,17 +2,17 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Working tree</p>
-        <h2>Alterações</h2>
+        <p class="eyebrow">{{ "changes.eyebrow" | translate }}</p>
+        <h2>{{ "changes.title" | translate }}</h2>
       </div>
       <div class="page-heading-actions">
         <button type="button" class="stash-header-button" [disabled]="isLoading() || isSaving()" (click)="openStashForm()">
           <span aria-hidden="true">▣</span>
-          Guardar stash
+          {{ "changes.stash" | translate }}
         </button>
         <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="loadStatus()">
           <span aria-hidden="true">↻</span>
-          Atualizar
+          {{ "changes.refresh" | translate }}
         </button>
       </div>
     </header>
@@ -31,7 +31,7 @@
     }
 
     @if (isLoading()) {
-      <div class="panel loading-state">Lendo o status do Git...</div>
+      <div class="panel loading-state">{{ "changes.loading" | translate }}</div>
     } @else if (status(); as repositoryStatus) {
       @if (operation(); as activeOperation) {
         <section class="operation-banner" [class.rebase-operation]="activeOperation.kind === 'rebase'" aria-live="polite">
@@ -50,7 +50,7 @@
                 [disabled]="isSaving() || isOperationActionRunning()"
                 (click)="openFirstConflict()"
               >
-                Resolver conflitos
+                {{ "changes.resolve" | translate }}
                 <span>{{ conflictFiles(repositoryStatus.files).length }}</span>
               </button>
             }
@@ -60,7 +60,7 @@
               [disabled]="isSaving() || isOperationActionRunning() || conflictFiles(repositoryStatus.files).length > 0"
               (click)="continueOperation()"
             >
-              {{ isOperationActionRunning() ? "Continuando..." : "Continuar " + (activeOperation.kind === "merge" ? "Merge" : "Rebase") }}
+              {{ isOperationActionRunning() ? ("changes.continuing" | translate) : (activeOperation.kind === "merge" ? "changes.continueMerge" : "changes.continueRebase") | translate }}
             </button>
             <button
               type="button"
@@ -68,7 +68,7 @@
               [disabled]="isSaving() || isOperationActionRunning()"
               (click)="requestAbortOperation()"
             >
-              Abortar
+              {{ "changes.abort" | translate }}
             </button>
           </div>
         </section>
@@ -80,10 +80,10 @@
           <div class="panel-heading">
             <div>
               <div class="panel-title-row">
-                <h3>Não preparados</h3>
+                <h3>{{ "changes.unstaged" | translate }}</h3>
                 <span class="file-count">{{ unstagedFiles(repositoryStatus.files).length }}</span>
               </div>
-              <p>Alterações no working tree</p>
+              <p>{{ "changes.workingTree" | translate }}</p>
             </div>
             <button
               type="button"
@@ -91,7 +91,7 @@
               [disabled]="isSaving() || unstagedFiles(repositoryStatus.files).length === 0"
               (click)="stageAll(repositoryStatus.files)"
             >
-              Stage all
+              {{ "changes.stageAll" | translate }}
             </button>
           </div>
 
@@ -99,7 +99,7 @@
             <div class="file-list">
               @for (file of unstagedFiles(repositoryStatus.files); track file.path) {
                 <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
-                  <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="'Visualizar alterações de ' + file.path">
+                  <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="('changes.viewFileChanges' | translate) + ': ' + file.path">
                     <span
                       class="file-status"
                       [class.status-added]="file.status === 'added'"
@@ -112,12 +112,12 @@
                     <span class="file-path" [title]="file.path">{{ file.path }}</span>
                   </button>
                   @if (file.isConflicted || file.status === 'conflicted') {
-                    <button type="button" class="file-action-button conflict-action" [disabled]="isSaving()" (click)="openConflictResolver(file)" [attr.aria-label]="'Resolver conflito de ' + file.path" title="Resolver conflito">
+                    <button type="button" class="file-action-button conflict-action" [disabled]="isSaving()" (click)="openConflictResolver(file)" [attr.aria-label]="('changes.resolveConflict' | translate) + ': ' + file.path" [title]="'changes.resolveConflict' | translate">
                       <span aria-hidden="true">!</span>
-                      <span>Resolver</span>
+                      <span>{{ "changes.resolve" | translate }}</span>
                     </button>
                   } @else {
-                    <button type="button" class="file-action-button" [disabled]="isSaving()" (click)="stageFile(file)" [attr.aria-label]="'Preparar ' + file.path" title="Preparar arquivo">
+                    <button type="button" class="file-action-button" [disabled]="isSaving()" (click)="stageFile(file)" [attr.aria-label]="('changes.stageFile' | translate) + ': ' + file.path" [title]="'changes.stageFile' | translate">
                       <span aria-hidden="true">+</span>
                     </button>
                   }
@@ -127,7 +127,7 @@
           } @else {
             <div class="empty-files">
               <span class="empty-files-icon" aria-hidden="true">✓</span>
-              <span>Nenhuma alteração não preparada.</span>
+                    <span>{{ "changes.noUnstaged" | translate }}</span>
             </div>
           }
         </section>
@@ -136,10 +136,10 @@
           <div class="panel-heading">
             <div>
               <div class="panel-title-row">
-                <h3>Preparados</h3>
+                <h3>{{ "changes.staged" | translate }}</h3>
                 <span class="file-count staged-count">{{ stagedFiles(repositoryStatus.files).length }}</span>
               </div>
-              <p>Arquivos incluídos no próximo commit</p>
+              <p>{{ "changes.nextCommit" | translate }}</p>
             </div>
             <button
               type="button"
@@ -147,7 +147,7 @@
               [disabled]="isSaving() || stagedFiles(repositoryStatus.files).length === 0"
               (click)="unstageAll(repositoryStatus.files)"
             >
-              Unstage all
+              {{ "changes.unstageAll" | translate }}
             </button>
           </div>
 
@@ -155,7 +155,7 @@
             <div class="file-list">
               @for (file of stagedFiles(repositoryStatus.files); track file.path) {
                 <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
-                  <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="'Visualizar alterações de ' + file.path">
+                  <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="('changes.viewFileChanges' | translate) + ': ' + file.path">
                     <span
                       class="file-status"
                       [class.status-added]="file.status === 'added'"
@@ -167,7 +167,7 @@
                     >{{ statusCode(file.status) }}</span>
                     <span class="file-path" [title]="file.path">{{ file.path }}</span>
                   </button>
-                  <button type="button" class="file-action-button staged-action" [disabled]="isSaving()" (click)="unstageFile(file)" [attr.aria-label]="'Remover ' + file.path + ' do stage'" title="Remover do stage">
+                  <button type="button" class="file-action-button staged-action" [disabled]="isSaving()" (click)="unstageFile(file)" [attr.aria-label]="'changes.removeFileFromStage' | translate: { file: file.path }" [title]="'changes.removeFromStage' | translate">
                     <span aria-hidden="true">−</span>
                   </button>
                 </div>
@@ -176,7 +176,7 @@
           } @else {
             <div class="empty-files staged-empty">
               <span class="empty-files-icon" aria-hidden="true">✓</span>
-              <span>Nenhum arquivo preparado.</span>
+              <span>{{ "changes.noStaged" | translate }}</span>
             </div>
           }
         </section>
@@ -186,17 +186,17 @@
         <section fixed-layout-panel class="panel commit-panel">
           <div class="panel-heading">
             <div>
-              <h3>{{ amendLastCommit() ? "Atualizar último commit" : "Commit" }}</h3>
-              <p>{{ amendLastCommit() ? "Atualize o último commit com os arquivos preparados" : "Registre as alterações preparadas" }}</p>
+              <h3>{{ (amendLastCommit() ? "changes.commitUpdate" : "changes.commit") | translate }}</h3>
+              <p>{{ (amendLastCommit() ? "changes.commitUpdateDescription" : "changes.commitDescription") | translate }}</p>
             </div>
           </div>
           <div class="textarea-wrap">
             <textarea
               [ngModel]="commitMessage()"
-              (ngModelChange)="commitMessage.set($event)"
+              (ngModelChange)="setCommitMessage($event)"
               [disabled]="isSaving() || isLoadingAmendMessage() || aiLoadingModel() || aiGenerating()"
               rows="3"
-              [placeholder]="amendLastCommit() ? 'Mensagem do commit anterior...' : 'Descreva o que foi alterado...'"
+              [placeholder]="(amendLastCommit() ? 'changes.previousMessage' : 'changes.messagePlaceholder') | translate"
             ></textarea>
             @if (aiEnabled() && aiSupported()) {
               <button
@@ -204,17 +204,17 @@
                 class="ai-button"
                 [disabled]="isSaving() || aiPreparing() || aiLoadingModel() || aiGenerating() || stagedFiles(repositoryStatus.files).length === 0"
                 (click)="generateCommitWithAi(repositoryStatus.files)"
-                title="Gerar mensagem com IA local"
+                [title]="'changes.aiTitle' | translate"
               >
                 <span class="ai-spark" aria-hidden="true">✦</span>
                 @if (aiPreparing()) {
-                  Preparando análise...
+                  {{ "changes.preparingAnalysis" | translate }}
                 } @else if (aiLoadingModel()) {
-                  Preparando IA...
+                  {{ "changes.preparingAi" | translate }}
                 } @else if (aiGenerating()) {
-                  Gerando...
+                  {{ "changes.generating" | translate }}
                 } @else {
-                  Gerar com IA
+                  {{ "changes.generateAi" | translate }}
                 }
               </button>
             }
@@ -223,14 +223,14 @@
           @if (aiPreparing()) {
             <div class="ai-preparing" aria-live="polite">
               <span class="loading-spinner" aria-hidden="true"></span>
-              Preparando as alterações para a análise local...
+              {{ "changes.preparingLocal" | translate }}
             </div>
           }
 
           @if (aiLoadingModel()) {
             <div class="ai-progress" aria-live="polite">
               <div class="ai-progress-heading">
-                <span>Baixando e preparando a IA local</span>
+                <span>{{ "changes.downloadingAi" | translate }}</span>
                 <strong>{{ aiProgress() }}%</strong>
               </div>
               <div class="progress-track" aria-hidden="true">
@@ -243,11 +243,11 @@
           @if (aiGenerating()) {
             <div class="ai-generating" aria-live="polite">
               <span class="loading-spinner" aria-hidden="true"></span>
-              Analisando as alterações e gerando uma sugestão...
+              {{ "changes.analyzing" | translate }}
             </div>
           }
           <div class="commit-footer">
-            <label class="amend-option" [class.is-active]="amendLastCommit()" [title]="amendLastCommit() ? 'Atualizar o último commit' : 'Adicionar alterações ao commit anterior'">
+            <label class="amend-option" [class.is-active]="amendLastCommit()" [title]="'changes.commitUpdate' | translate">
               <input
                 type="checkbox"
                 [checked]="amendLastCommit()"
@@ -255,24 +255,24 @@
                 (change)="toggleAmend($event)"
               />
               <span class="amend-option-copy">
-                <strong>Atualizar último commit</strong>
-                <small>Adicionar estas alterações ao commit anterior</small>
+                <strong>{{ "changes.commitUpdate" | translate }}</strong>
+                <small>{{ "changes.amendDescription" | translate }}</small>
               </span>
             </label>
-            <span class="commit-file-count">{{ stagedFiles(repositoryStatus.files).length }} arquivo(s) preparado(s)</span>
+            <span class="commit-file-count">{{ stagedFiles(repositoryStatus.files).length }} {{ "changes.preparedCount" | translate }}</span>
             <button
               type="button"
               class="commit-button"
               [disabled]="isSaving() || isLoadingAmendMessage() || (!amendLastCommit() && !commitMessage().trim()) || stagedFiles(repositoryStatus.files).length === 0 || conflictFiles(repositoryStatus.files).length > 0"
               (click)="commitChanges(repositoryStatus.files)"
-              title="Criar commit (Ctrl+Enter)"
+              [title]="'changes.createCommit' | translate"
             >
               @if (isSaving()) {
-                Salvando...
+                {{ "changes.creating" | translate }}
               } @else if (amendLastCommit()) {
-                Atualizar commit
+                {{ "changes.updateCommit" | translate }}
               } @else {
-                Criar commit
+                {{ "changes.createCommit" | translate }}
               }
             </button>
           </div>
@@ -280,11 +280,11 @@
       </app-fixed-bottom-layout>
     }
   } @else {
-    <p class="eyebrow">Working tree</p>
-    <h2>Alterações</h2>
+    <p class="eyebrow">{{ "changes.eyebrow" | translate }}</p>
+    <h2>{{ "changes.title" | translate }}</h2>
     <div class="panel empty-state">
-      <h3>Nenhum repositório selecionado</h3>
-      <p>Abra um repositório para visualizar e preparar arquivos.</p>
+      <h3>{{ "changes.noRepository" | translate }}</h3>
+      <p>{{ "changes.openRepository" | translate }}</p>
     </div>
   }
 
@@ -296,38 +296,38 @@
       (click)="$event.stopPropagation()"
     >
       <div class="file-context-heading" [title]="context.file.path">
-        <span class="file-context-kicker">ARQUIVO</span>
+        <span class="file-context-kicker">{{ "changes.file" | translate }}</span>
         <strong>{{ context.file.path }}</strong>
       </div>
       <button type="button" (click)="openContextFileDiff(context.file)">
         <span class="context-menu-symbol" aria-hidden="true">⌕</span>
         <span>
-          <strong>Visualizar diff</strong>
-          <small>Ver as alterações deste arquivo</small>
+          <strong>{{ "changes.viewDiff" | translate }}</strong>
+          <small>{{ "changes.viewFileChanges" | translate }}</small>
         </span>
       </button>
       @if (isConflictFile(context.file)) {
         <button type="button" (click)="openContextConflictResolver(context.file)">
           <span class="context-menu-symbol conflict-symbol" aria-hidden="true">!</span>
           <span>
-            <strong>Resolver conflito</strong>
-            <small>Abrir o resolvedor visual</small>
+            <strong>{{ "changes.resolveConflict" | translate }}</strong>
+            <small>{{ "changes.openResolver" | translate }}</small>
           </span>
         </button>
       } @else if (context.file.isStaged) {
         <button type="button" (click)="closeFileContextMenu(); unstageFile(context.file)">
           <span class="context-menu-symbol" aria-hidden="true">−</span>
           <span>
-            <strong>Remover do stage</strong>
-            <small>Voltar o arquivo para alterações</small>
+            <strong>{{ "changes.unstageFile" | translate }}</strong>
+            <small>{{ "changes.backToChanges" | translate }}</small>
           </span>
         </button>
       } @else {
         <button type="button" (click)="closeFileContextMenu(); stageFile(context.file)">
           <span class="context-menu-symbol" aria-hidden="true">+</span>
           <span>
-            <strong>Preparar arquivo</strong>
-            <small>Adicionar este arquivo ao stage</small>
+            <strong>{{ "changes.stageFile" | translate }}</strong>
+            <small>{{ "changes.addToStage" | translate }}</small>
           </span>
         </button>
         <div class="file-context-divider"></div>
@@ -335,7 +335,7 @@
           <span class="context-menu-symbol" aria-hidden="true">⌫</span>
           <span>
             <strong>{{ discardFileTitle(context.file) }}</strong>
-            <small>Remover as alterações deste arquivo</small>
+            <small>{{ "changes.removeFileChanges" | translate }}</small>
           </span>
         </button>
       }
@@ -377,10 +377,10 @@
 
   @if (showAiDownloadConfirm()) {
     <app-confirm-dialog
-      title="Baixar IA local?"
-      [message]="'A IA será executada localmente neste computador. Na primeira utilização, será baixado um modelo de ' + aiModelSize() + '. Deseja continuar?'"
-      confirmLabel="Baixar modelo"
-      cancelLabel="Agora não"
+      [title]="'changes.aiDownloadTitle' | translate"
+      [message]="'changes.aiDownloadMessage' | translate: { size: aiModelSize() }"
+      [confirmLabel]="'changes.downloadModel' | translate"
+      [cancelLabel]="'changes.notNow' | translate"
       (confirmed)="confirmAiDownload()"
       (cancelled)="cancelAiDownload()"
     />
@@ -388,10 +388,10 @@
 
   @if (pendingAbortOperation()) {
     <app-confirm-dialog
-      title="Abortar operação Git?"
-      [message]="operation()?.kind === 'merge' ? 'As alterações e conflitos desta operação de Merge serão descartados. Deseja continuar?' : 'As alterações e conflitos desta operação de Rebase serão descartados. Deseja continuar?'"
-      confirmLabel="Abortar operação"
-      cancelLabel="Continuar resolvendo"
+      [title]="'changes.abortTitle' | translate"
+      [message]="(operation()?.kind === 'merge' ? 'changes.abortMergeMessage' : 'changes.abortRebaseMessage') | translate"
+      [confirmLabel]="'changes.abortOperation' | translate"
+      [cancelLabel]="'changes.continueResolving' | translate"
       [destructive]="true"
       (confirmed)="confirmAbortOperation()"
       (cancelled)="cancelAbortOperation()"

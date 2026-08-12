@@ -1,12 +1,16 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output, ViewChild } from "@angular/core";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
+import { TranslationService } from "../../../core/services/translation.service";
+import { TranslatePipe } from "../../pipes/translate.pipe";
 
 @Component({
   selector: "app-file-diff-dialog",
+  imports: [TranslatePipe],
   templateUrl: "./file-diff-dialog.component.html",
   styleUrl: "./file-diff-dialog.component.css",
 })
 export class FileDiffDialogComponent implements AfterViewInit {
+  private readonly translationService = inject(TranslationService);
   @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
 
   @Input() file!: GitFile;
@@ -35,17 +39,17 @@ export class FileDiffDialogComponent implements AfterViewInit {
   statusLabel(status: GitFileStatus): string {
     switch (status) {
       case "added":
-        return "Adicionado";
+        return this.translationService.translate("diff.added");
       case "deleted":
-        return "Excluído";
+        return this.translationService.translate("diff.deleted");
       case "renamed":
-        return "Renomeado";
+        return this.translationService.translate("diff.renamed");
       case "untracked":
-        return "Não rastreado";
+        return this.translationService.translate("diff.untracked");
       case "conflicted":
-        return "Conflito";
+        return this.translationService.translate("diff.conflicted");
       case "modified":
-        return "Modificado";
+        return this.translationService.translate("diff.modified");
     }
   }
 

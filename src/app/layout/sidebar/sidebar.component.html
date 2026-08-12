@@ -1,13 +1,13 @@
 <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">G</span>
-    <span class="brand-name">Git App</span>
+    <span class="brand-name">{{ "brand.name" | translate }}</span>
     @if (!collapsed) {
       <button
         type="button"
         class="collapse-button"
-        aria-label="Recolher menu principal"
-        title="Recolher menu principal"
+        [attr.aria-label]="'nav.collapse' | translate"
+        [title]="'nav.collapse' | translate"
         (click)="toggleRequested.emit()"
       >
         <svg class="sidebar-toggle-icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -17,24 +17,24 @@
     }
   </div>
 
-  <nav aria-label="Navegação principal">
+  <nav [attr.aria-label]="'nav.main' | translate">
     <a
       routerLink="/repositories"
       routerLinkActive="active"
-      data-tooltip="Repositórios"
+      [attr.data-tooltip]="'nav.repositories' | translate"
       (click)="closeCurrentRepository()"
     >
       <span class="nav-icon" aria-hidden="true">▣</span>
-      <span class="nav-label">Repositórios</span>
+      <span class="nav-label">{{ "nav.repositories" | translate }}</span>
     </a>
     <a
       routerLink="/integrations"
       routerLinkActive="active"
-      data-tooltip="Integrações"
+      [attr.data-tooltip]="'nav.integrations' | translate"
       (click)="closeCurrentRepository()"
     >
       <span class="nav-icon" aria-hidden="true">⇄</span>
-      <span class="nav-label">Integrações</span>
+      <span class="nav-label">{{ "nav.integrations" | translate }}</span>
     </a>
   </nav>
 
@@ -42,11 +42,11 @@
     <a
       routerLink="/settings"
       routerLinkActive="active"
-      data-tooltip="Configurações"
+      [attr.data-tooltip]="'nav.settings' | translate"
       (click)="closeCurrentRepository()"
     >
       <span class="nav-icon" aria-hidden="true">⚙</span>
-      <span class="nav-label">Configurações</span>
+      <span class="nav-label">{{ "nav.settings" | translate }}</span>
     </a>
   </div>
 </aside>

@@ -3,8 +3,8 @@
     <button
       type="button"
       class="main-sidebar-button"
-      aria-label="Abrir menu principal"
-      title="Abrir menu principal"
+      [attr.aria-label]="'nav.open' | translate"
+      [title]="'nav.open' | translate"
       (click)="mainSidebarRequested.emit()"
     >
       <svg class="sidebar-toggle-icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -15,18 +15,18 @@
 
   <div class="window-title" data-tauri-drag-region>
     <span class="brand-mark" data-tauri-drag-region>G</span>
-    <span class="brand-name" data-tauri-drag-region>Git App</span>
+    <span class="brand-name" data-tauri-drag-region>{{ "brand.name" | translate }}</span>
   </div>
 
   <app-workspace-menu />
 
   <div class="topbar-actions">
-    <div class="window-controls" aria-label="Controles da janela">
+    <div class="window-controls" [attr.aria-label]="'window.controls' | translate">
       <button
         type="button"
         class="window-control minimize"
-        aria-label="Minimizar"
-        title="Minimizar"
+        [attr.aria-label]="'window.minimize' | translate"
+        [title]="'window.minimize' | translate"
         (mousedown)="$event.stopPropagation()"
         (click)="minimize()"
       >
@@ -35,8 +35,8 @@
       <button
         type="button"
         class="window-control maximize"
-        aria-label="Maximizar ou restaurar"
-        title="Maximizar ou restaurar"
+        [attr.aria-label]="'window.maximize' | translate"
+        [title]="'window.maximize' | translate"
         (mousedown)="$event.stopPropagation()"
         (click)="toggleMaximize()"
       >
@@ -45,8 +45,8 @@
       <button
         type="button"
         class="window-control close"
-        aria-label="Fechar"
-        title="Fechar"
+        [attr.aria-label]="'window.close' | translate"
+        [title]="'window.close' | translate"
         (mousedown)="$event.stopPropagation()"
         (click)="close()"
       >

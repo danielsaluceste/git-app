@@ -6,6 +6,7 @@ import { Repository, RepositoryReferences } from "../../core/models/repository.m
 import { RepositoryService } from "../../core/services/repository.service";
 import { ToastService } from "../../core/services/toast.service";
 import { ConfirmDialogComponent } from "../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 type ReferenceSection = "local" | "remote" | "tags" | "stashes";
 type BranchReferenceType = "local" | "remote";
@@ -53,7 +54,7 @@ const EMPTY_REFERENCES: RepositoryReferences = {
 
 @Component({
   selector: "app-repository-sidebar",
-  imports: [ConfirmDialogComponent, FormsModule, RouterLink, RouterLinkActive],
+  imports: [ConfirmDialogComponent, FormsModule, RouterLink, RouterLinkActive, TranslatePipe],
   templateUrl: "./repository-sidebar.component.html",
   styleUrl: "./repository-sidebar.component.css",
 })

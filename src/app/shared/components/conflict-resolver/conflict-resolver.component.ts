@@ -16,18 +16,21 @@ import { ConflictFile } from "../../../core/models/repository.model";
 import { GitFile } from "../../../core/models/git-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
+import { TranslatePipe } from "../../pipes/translate.pipe";
 
 type ConflictSide = "ours" | "theirs";
 
 @Component({
   selector: "app-conflict-resolver",
-  imports: [FormsModule],
+  imports: [FormsModule, TranslatePipe],
   templateUrl: "./conflict-resolver.component.html",
   styleUrl: "./conflict-resolver.component.css",
 })
 export class ConflictResolverComponent implements AfterViewInit, OnChanges {
   private readonly repositoryService = inject(RepositoryService);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
 
@@ -117,30 +120,33 @@ export class ConflictResolverComponent implements AfterViewInit, OnChanges {
         this.resultExists(),
       )
       .then(() => {
-        this.toastService.success(`Conflito resolvido em ${this.file.path}.`, "Conflito resolvido");
+        this.toastService.success(
+          this.translationService.translate("conflict.resolvedMessage", { path: this.file.path }),
+          this.translationService.translate("conflict.resolvedTitle"),
+        );
         this.resolved.emit();
         this.closed.emit();
       })
       .catch((error: unknown) => {
-        this.toastService.error(this.getErrorMessage(error), "Resolver conflito");
+        this.toastService.error(this.getErrorMessage(error), this.translationService.translate("conflict.resolveErrorTitle"));
       })
       .finally(() => this.isSaving.set(false));
   }
 
   displayContent(content: string, exists: boolean): string {
     if (!exists) {
-      return "Arquivo excluído nesta versão.";
+      return this.translationService.translate("conflict.deletedVersion");
     }
 
-    return content || "(arquivo vazio)";
+    return content || this.translationService.translate("conflict.emptyFile");
   }
 
   sideLabel(side: ConflictSide, exists: boolean): string {
     if (!exists) {
-      return "Manter exclusão";
+      return this.translationService.translate("conflict.keepDeletion");
     }
 
-    return side === "ours" ? "Usar sua versão" : "Usar versão recebida";
+    return this.translationService.translate(side === "ours" ? "conflict.useYourVersion" : "conflict.useReceivedVersion");
   }
 
   onBackdropClick(event: MouseEvent): void {
@@ -153,11 +159,14 @@ export class ConflictResolverComponent implements AfterViewInit, OnChanges {
     this.isSaving.set(true);
     try {
       await this.repositoryService.resolveConflictSide(this.repositoryPath, this.file.path, side);
-      this.toastService.success(`Conflito resolvido em ${this.file.path}.`, "Conflito resolvido");
+      this.toastService.success(
+        this.translationService.translate("conflict.resolvedMessage", { path: this.file.path }),
+        this.translationService.translate("conflict.resolvedTitle"),
+      );
       this.resolved.emit();
       this.closed.emit();
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Resolver conflito");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("conflict.resolveErrorTitle"));
     } finally {
       this.isSaving.set(false);
     }
@@ -172,6 +181,6 @@ export class ConflictResolverComponent implements AfterViewInit, OnChanges {
       return error.message;
     }
 
-    return "Não foi possível carregar ou resolver este conflito.";
+    return this.translationService.translate("conflict.loadError");
   }
 }

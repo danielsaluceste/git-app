@@ -4,11 +4,13 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-stashes-page",
-  imports: [ConfirmDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./stashes-page.component.html",
   styleUrl: "./stashes-page.component.css",
 })
@@ -17,6 +19,7 @@ export class StashesPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly references = this.repositoryService.repositoryReferences;
@@ -75,7 +78,7 @@ export class StashesPageComponent implements OnInit {
     try {
       await this.repositoryService.getReferences(repository.path);
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Stashes");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.loadErrorTitle"));
     } finally {
       this.isLoading.set(false);
     }
@@ -89,13 +92,15 @@ export class StashesPageComponent implements OnInit {
     const description = this.rawStashDescription(stash);
     const separatorIndex = description.indexOf(":");
     const message = separatorIndex >= 0 ? description.slice(separatorIndex + 1).trim() : description;
-    return message || "Sem mensagem";
+    return message || this.translationService.translate("stashes.noMessage");
   }
 
   stashBranch(stash: string): string {
     const description = this.rawStashDescription(stash);
     const separatorIndex = description.indexOf(":");
-    return separatorIndex >= 0 ? description.slice(0, separatorIndex).trim() : "Branch desconhecida";
+    return separatorIndex >= 0
+      ? description.slice(0, separatorIndex).trim()
+      : this.translationService.translate("stashes.unknownBranch");
   }
 
   stashDescriptionByReference(stashRef: string): string {
@@ -134,9 +139,12 @@ export class StashesPageComponent implements OnInit {
     this.isApplying.set(true);
     try {
       await this.repositoryService.applyStash(repository.path, stashRef);
-      this.toastService.success("As alterações do stash foram aplicadas.", "Stash aplicado");
+      this.toastService.success(
+        this.translationService.translate("stashes.applied"),
+        this.translationService.translate("stashes.appliedTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Aplicar stash");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.applyErrorTitle"));
     } finally {
       this.isApplying.set(false);
     }
@@ -149,7 +157,7 @@ export class StashesPageComponent implements OnInit {
       return;
     }
     if (selectedPaths.length === 0) {
-      this.toastService.warning("Selecione pelo menos um arquivo para aplicar.");
+      this.toastService.warning(this.translationService.translate("stashes.selectFile"));
       return;
     }
 
@@ -162,12 +170,12 @@ export class StashesPageComponent implements OnInit {
       }
       this.toastService.success(
         selectedPaths.length === this.stashFiles().length
-          ? "As alterações do stash foram aplicadas."
-          : `${selectedPaths.length} arquivo(s) do stash foram aplicados.`,
-        "Stash aplicado",
+          ? this.translationService.translate("stashes.applied")
+          : this.translationService.translate("stashes.appliedFiles", { count: selectedPaths.length }),
+        this.translationService.translate("stashes.appliedTitle"),
       );
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Aplicar stash");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.applyErrorTitle"));
     } finally {
       this.isApplying.set(false);
     }
@@ -191,7 +199,7 @@ export class StashesPageComponent implements OnInit {
       return;
     }
     if (!message) {
-      this.toastService.warning("Digite uma mensagem para o stash.");
+      this.toastService.warning(this.translationService.translate("stashes.renameRequired"));
       return;
     }
 
@@ -200,10 +208,13 @@ export class StashesPageComponent implements OnInit {
       await this.repositoryService.renameStash(repository.path, stashRef, message);
       await this.loadReferences();
       this.closeRenameForm();
-      this.toastService.success("A mensagem do stash foi atualizada.", "Stash renomeado");
+      this.toastService.success(
+        this.translationService.translate("stashes.renamed"),
+        this.translationService.translate("stashes.renamedTitle"),
+      );
       this.openStash("stash@{0}");
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Renomear stash");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.renameErrorTitle"));
     } finally {
       this.isApplying.set(false);
     }
@@ -287,10 +298,13 @@ export class StashesPageComponent implements OnInit {
     try {
       await this.repositoryService.dropStash(repository.path, stashRef);
       await this.loadReferences();
-      this.toastService.success("O stash foi excluído.", "Stash excluído");
+      this.toastService.success(
+        this.translationService.translate("stashes.deleted"),
+        this.translationService.translate("stashes.deletedTitle"),
+      );
       this.closeDetails();
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Exclusão de stash");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.deleteErrorTitle"));
     } finally {
       this.isApplying.set(false);
     }
@@ -388,7 +402,7 @@ export class StashesPageComponent implements OnInit {
         await this.openStashFile(files[0]);
       }
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "Detalhes do stash");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("stashes.detailsErrorTitle"));
     } finally {
       this.stashLoading.set(false);
     }
@@ -419,6 +433,6 @@ export class StashesPageComponent implements OnInit {
     if (error instanceof Error && error.message) {
       return error.message;
     }
-    return "Não foi possível executar a operação do stash.";
+    return this.translationService.translate("stashes.operationError");
   }
 }

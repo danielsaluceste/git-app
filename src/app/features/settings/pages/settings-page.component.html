@@ -1,9 +1,9 @@
 <section class="page">
   <div class="page-heading">
     <div>
-      <p class="eyebrow">Aplicativo</p>
-      <h2>Configurações</h2>
-      <p class="description">Controle os recursos inteligentes do Git App.</p>
+      <p class="eyebrow">{{ "settings.eyebrow" | translate }}</p>
+      <h2>{{ "settings.title" | translate }}</h2>
+      <p class="description">{{ "settings.description" | translate }}</p>
     </div>
   </div>
 
@@ -11,18 +11,18 @@
     <div class="settings-card-heading">
       <div class="ai-icon" aria-hidden="true">✦</div>
       <div>
-        <h3 id="ai-settings-title">Inteligência artificial</h3>
-        <p>Ative ou desative os recursos de IA do aplicativo.</p>
+        <h3 id="ai-settings-title">{{ "settings.ai.title" | translate }}</h3>
+        <p>{{ "settings.ai.description" | translate }}</p>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-copy">
-        <strong>Habilitar recursos de IA</strong>
-        <span>Usar IA para sugerir títulos de commit e ajudar a resolver conflitos.</span>
+        <strong>{{ "settings.ai.enable" | translate }}</strong>
+        <span>{{ "settings.ai.enableDescription" | translate }}</span>
       </div>
 
-      <label class="switch" aria-label="Habilitar recursos de IA">
+      <label class="switch" [attr.aria-label]="'settings.ai.enable' | translate">
         <input
           type="checkbox"
           [checked]="aiEnabled()"
@@ -42,20 +42,20 @@
           (click)="toggleModelPicker()"
         >
           <span class="model-picker-toggle-copy">
-            <strong>Modelo para mensagens de commit</strong>
-            <span>{{ selectedAiModel().name }} · {{ selectedAiModel().tierLabel }}</span>
+            <strong>{{ "settings.ai.modelTitle" | translate }}</strong>
+            <span>{{ selectedAiModel().name }} · {{ modelTierLabel(selectedAiModel()) }}</span>
           </span>
           <span class="model-picker-toggle-action">
-            {{ modelPickerOpen ? "Fechar" : "Alterar modelo" }}
+            {{ (modelPickerOpen ? "settings.ai.closeModel" : "settings.ai.changeModel") | translate }}
             <span class="picker-chevron" [class.open]="modelPickerOpen" aria-hidden="true"></span>
           </span>
         </button>
 
         @if (modelPickerOpen) {
-          <div id="ai-model-options" class="model-options" role="radiogroup" aria-label="Modelo de IA para mensagens de commit">
+          <div id="ai-model-options" class="model-options" role="radiogroup" [attr.aria-label]="'settings.ai.modelAria' | translate">
             <div class="model-picker-heading">
-              <span>Escolha entre economia de recursos ou uma análise mais detalhada.</span>
-              <span class="model-selected-label">{{ selectedAiModel().sizeLabel }}</span>
+              <span>{{ "settings.ai.modelHint" | translate }}</span>
+              <span class="model-selected-label">{{ modelSizeLabel(selectedAiModel()) }}</span>
             </div>
 
             @for (model of aiModels; track model.id) {
@@ -71,13 +71,13 @@
                 <span class="model-details">
                   <span class="model-name-row">
                     <strong>{{ model.name }}</strong>
-                    <span class="model-tier tier-{{ model.tier }}">{{ model.tierLabel }}</span>
+                    <span class="model-tier tier-{{ model.tier }}">{{ modelTierLabel(model) }}</span>
                     @if (model.recommended) {
-                      <span class="model-recommended">Recomendado</span>
+                      <span class="model-recommended">{{ "settings.ai.recommended" | translate }}</span>
                     }
                   </span>
-                  <span class="model-description">{{ model.description }}</span>
-                  <span class="model-meta">{{ model.sizeLabel }} · {{ model.hardwareLabel }}</span>
+                  <span class="model-description">{{ modelDescription(model) }}</span>
+                  <span class="model-meta">{{ modelSizeLabel(model) }} · {{ modelHardwareLabel(model) }}</span>
                 </span>
               </label>
             }
@@ -91,18 +91,18 @@
     <div class="settings-card-heading">
       <div class="settings-icon" aria-hidden="true">♢</div>
       <div>
-        <h3 id="notification-settings-title">Notificações</h3>
-        <p>Escolha como o Git App deve avisar sobre as operações.</p>
+        <h3 id="notification-settings-title">{{ "settings.notifications.title" | translate }}</h3>
+        <p>{{ "settings.notifications.description" | translate }}</p>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-copy">
-        <strong>Avisar quando um comando Git terminar</strong>
-        <span>Mostra um aviso quando uma operação for concluída.</span>
+        <strong>{{ "settings.notifications.command" | translate }}</strong>
+        <span>{{ "settings.notifications.commandDescription" | translate }}</span>
       </div>
 
-      <label class="switch" aria-label="Avisar quando um comando Git terminar">
+      <label class="switch" [attr.aria-label]="'settings.notifications.command' | translate">
         <input
           type="checkbox"
           [checked]="gitCommandNotifications()"
@@ -114,11 +114,11 @@
 
     <div class="setting-row setting-row-bordered">
       <div class="setting-copy">
-        <strong>Ativar sons</strong>
-        <span>Reproduz um som junto com as notificações.</span>
+        <strong>{{ "settings.notifications.sounds" | translate }}</strong>
+        <span>{{ "settings.notifications.soundsDescription" | translate }}</span>
       </div>
 
-      <label class="switch" aria-label="Ativar sons">
+      <label class="switch" [attr.aria-label]="'settings.notifications.sounds' | translate">
         <input
           type="checkbox"
           [checked]="notificationSounds()"
@@ -133,18 +133,47 @@
     <div class="settings-card-heading">
       <div class="settings-icon" aria-hidden="true">文</div>
       <div>
-        <h3 id="language-settings-title">Idioma</h3>
-        <p>Mais idiomas poderão ser adicionados futuramente.</p>
+        <h3 id="language-settings-title">{{ "settings.language.title" | translate }}</h3>
+        <p>{{ "settings.language.description" | translate }}</p>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-copy">
-        <strong>Idioma da aplicação</strong>
-        <span>Por enquanto, o Git App está disponível somente em português.</span>
+        <strong>{{ "settings.language.app" | translate }}</strong>
+        <span>{{ "settings.language.appDescription" | translate }}</span>
       </div>
 
-      <span class="language-value">Português (Brasil)</span>
+      <div class="language-picker">
+        <button
+          type="button"
+          class="language-picker-toggle"
+          [attr.aria-expanded]="languagePickerOpen"
+          [attr.aria-label]="'settings.language.select' | translate"
+          (click)="toggleLanguagePicker()"
+        >
+          <span>{{ (language() === "en" ? "language.en" : "language.ptBR") | translate }}</span>
+          <span class="picker-chevron" [class.open]="languagePickerOpen" aria-hidden="true"></span>
+        </button>
+        @if (languagePickerOpen) {
+          <div class="language-options" role="menu">
+            @for (option of languages; track option.id) {
+              <button
+                type="button"
+                role="menuitemradio"
+                [class.selected]="language() === option.id"
+                [attr.aria-checked]="language() === option.id"
+                (click)="selectLanguage(option.id)"
+              >
+                <span>{{ option.labelKey | translate }}</span>
+                @if (language() === option.id) {
+                  <span aria-hidden="true">✓</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
     </div>
   </section>
 </section>
