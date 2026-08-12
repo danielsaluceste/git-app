@@ -87,48 +87,6 @@
     }
   </section>
 
-  <section class="settings-card" aria-labelledby="notification-settings-title">
-    <div class="settings-card-heading">
-      <div class="settings-icon" aria-hidden="true">♢</div>
-      <div>
-        <h3 id="notification-settings-title">{{ "settings.notifications.title" | translate }}</h3>
-        <p>{{ "settings.notifications.description" | translate }}</p>
-      </div>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-copy">
-        <strong>{{ "settings.notifications.command" | translate }}</strong>
-        <span>{{ "settings.notifications.commandDescription" | translate }}</span>
-      </div>
-
-      <label class="switch" [attr.aria-label]="'settings.notifications.command' | translate">
-        <input
-          type="checkbox"
-          [checked]="gitCommandNotifications()"
-          (change)="toggleGitCommandNotifications($event)"
-        />
-        <span class="slider" aria-hidden="true"></span>
-      </label>
-    </div>
-
-    <div class="setting-row setting-row-bordered">
-      <div class="setting-copy">
-        <strong>{{ "settings.notifications.sounds" | translate }}</strong>
-        <span>{{ "settings.notifications.soundsDescription" | translate }}</span>
-      </div>
-
-      <label class="switch" [attr.aria-label]="'settings.notifications.sounds' | translate">
-        <input
-          type="checkbox"
-          [checked]="notificationSounds()"
-          (change)="toggleNotificationSounds($event)"
-        />
-        <span class="slider" aria-hidden="true"></span>
-      </label>
-    </div>
-  </section>
-
   <section class="settings-card" aria-labelledby="language-settings-title">
     <div class="settings-card-heading">
       <div class="settings-icon" aria-hidden="true">文</div>
@@ -174,6 +132,48 @@
           </div>
         }
       </div>
+    </div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="notification-settings-title">
+    <div class="settings-card-heading">
+      <div class="settings-icon" aria-hidden="true">♢</div>
+      <div>
+        <h3 id="notification-settings-title">{{ "settings.notifications.title" | translate }}</h3>
+        <p>{{ "settings.notifications.description" | translate }}</p>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-copy">
+        <strong>{{ "settings.notifications.command" | translate }}</strong>
+        <span>{{ "settings.notifications.commandDescription" | translate }}</span>
+      </div>
+
+      <label class="switch" [attr.aria-label]="'settings.notifications.command' | translate">
+        <input
+          type="checkbox"
+          [checked]="gitCommandNotifications()"
+          (change)="toggleGitCommandNotifications($event)"
+        />
+        <span class="slider" aria-hidden="true"></span>
+      </label>
+    </div>
+
+    <div class="setting-row setting-row-bordered">
+      <div class="setting-copy">
+        <strong>{{ "settings.notifications.sounds" | translate }}</strong>
+        <span>{{ "settings.notifications.soundsDescription" | translate }}</span>
+      </div>
+
+      <label class="switch" [attr.aria-label]="'settings.notifications.sounds' | translate">
+        <input
+          type="checkbox"
+          [checked]="notificationSounds()"
+          (change)="toggleNotificationSounds($event)"
+        />
+        <span class="slider" aria-hidden="true"></span>
+      </label>
     </div>
   </section>
 </section>

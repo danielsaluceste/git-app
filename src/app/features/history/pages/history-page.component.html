@@ -1,18 +1,9 @@
 <section class="page">
   @if (activeRepository(); as repository) {
-    <header class="page-heading">
+    <header class="page-heading overview-action-bar" [class.is-scrolled]="actionBarScrolled()">
       <div>
         <p class="eyebrow">{{ "history.repository" | translate }}</p>
         <h2>{{ "history.title" | translate }}</h2>
-        <p class="description" [title]="repository.path">{{ repository.path }}</p>
-      </div>
-
-    </header>
-
-    <div class="overview-action-bar" [class.is-scrolled]="actionBarScrolled()">
-      <div class="overview-summary">
-        <span class="branch-pill"><span aria-hidden="true">⑂</span>{{ currentBranch() }}</span>
-        <span class="summary-copy">{{ "history.visual" | translate }}</span>
       </div>
 
       <div class="sync-toolbar" [attr.aria-label]="'history.sync' | translate">
@@ -39,7 +30,7 @@
           {{ "history.refresh" | translate }}
         </button>
       </div>
-    </div>
+    </header>
 
     @if (isLoading()) {
       <div class="panel loading-state">{{ "history.loading" | translate }}</div>

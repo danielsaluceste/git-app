@@ -5,6 +5,7 @@ import { LayoutService } from "../../core/services/layout.service";
 import { Repository, RepositoryReferences } from "../../core/models/repository.model";
 import { RepositoryService } from "../../core/services/repository.service";
 import { ToastService } from "../../core/services/toast.service";
+import { TranslationService } from "../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
@@ -65,6 +66,7 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   private readonly router = inject(Router);
   private readonly layoutService = inject(LayoutService);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly references = computed(() => this.repositoryService.repositoryReferences() ?? EMPTY_REFERENCES);
   readonly isLoadingReferences = signal(true);
@@ -115,7 +117,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
     try {
     } catch {
-      this.toastService.error("Não foi possível carregar as referências do Git.", "Referências do Git");
+      this.toastService.error(
+        this.translationService.translate("repositorySidebar.referencesLoadError"),
+        this.translationService.translate("repositorySidebar.referencesLoadTitle"),
+      );
     } finally {
       this.isLoadingReferences.set(false);
     }
@@ -156,7 +161,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
         return;
       }
 
-      this.toastService.error("Falha ao carregar as referencias do Git.", "Referencias do Git");
+      this.toastService.error(
+        this.translationService.translate("repositorySidebar.referencesLoadErrorAlt"),
+        this.translationService.translate("repositorySidebar.referencesLoadTitle"),
+      );
     } finally {
       if (this.isCurrentRepositoryLoad(repository, loadVersion)) {
         this.isLoadingReferences.set(false);
@@ -189,9 +197,15 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
         syncCredentials.githubUserId,
       );
       await this.refreshRepositoryData();
-      this.toastService.success("As referências remotas foram atualizadas.", "Fetch concluído");
+      this.toastService.success(
+        this.translationService.translate("repositorySidebar.fetchSuccess"),
+        this.translationService.translate("repositorySidebar.fetchSuccessTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Fetch");
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        this.translationService.translate("repositorySidebar.fetchErrorTitle"),
+      );
     } finally {
       this.isBranchActionRunning.set(false);
     }
@@ -455,12 +469,15 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
       await this.refreshRepositoryData();
       this.toastService.success(
         request.type === "remote"
-          ? `A branch remota "${request.branch}" foi excluída.`
-          : `A branch local "${request.branch}" foi excluída.`,
-        "Branch excluída",
+          ? this.translationService.translate("repositorySidebar.remoteBranchDeleted", { branch: request.branch })
+          : this.translationService.translate("repositorySidebar.localBranchDeleted", { branch: request.branch }),
+        this.translationService.translate("repositorySidebar.branchDeletedTitle"),
       );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Exclusão de branch");
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        this.translationService.translate("repositorySidebar.branchDeleteErrorTitle"),
+      );
     } finally {
       this.isBranchActionRunning.set(false);
     }
@@ -489,9 +506,15 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     try {
       await this.repositoryService.dropStash(this.repository.path, stashRef);
       await this.refreshRepositoryData();
-      this.toastService.success(`O stash "${stashRef}" foi excluído.`, "Stash excluído");
+      this.toastService.success(
+        this.translationService.translate("repositorySidebar.stashDeleted", { stash: stashRef }),
+        this.translationService.translate("repositorySidebar.stashDeletedTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Exclusão de stash");
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        this.translationService.translate("repositorySidebar.stashDeleteErrorTitle"),
+      );
     } finally {
       this.isBranchActionRunning.set(false);
     }
@@ -541,10 +564,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
   syncPendingLabel(): string {
     const pending: string[] = [];
     if (this.aheadCount() > 0) {
-      pending.push(`${this.aheadCount()} para enviar`);
+      pending.push(this.translationService.translate("repositorySidebar.toSend", { count: this.aheadCount() }));
     }
     if (this.behindCount() > 0) {
-      pending.push(`${this.behindCount()} para baixar`);
+      pending.push(this.translationService.translate("repositorySidebar.toDownload", { count: this.behindCount() }));
     }
 
     return pending.join(" · ");
@@ -565,7 +588,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
   private requestCreateBranch(name: string, startPoint?: string): void {
     if (!name) {
-      this.toastService.warning("Informe um nome para a nova branch.", "Nova branch");
+      this.toastService.warning(
+        this.translationService.translate("repositorySidebar.branchNameRequired"),
+        this.translationService.translate("repositorySidebar.newBranchTitle"),
+      );
       this.showCreateBranch.set(true);
       return;
     }
@@ -594,9 +620,15 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
       await this.repositoryService.checkoutBranch(this.repository.path, branch);
       await this.refreshRepositoryData();
-      this.toastService.success(`Branch "${branch}" ativada.`, "Branch atualizada");
+      this.toastService.success(
+        this.translationService.translate("repositorySidebar.branchActivated", { branch }),
+        this.translationService.translate("repositorySidebar.branchUpdatedTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Troca de branch");
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        this.translationService.translate("repositorySidebar.checkoutErrorTitle"),
+      );
     } finally {
       this.isBranchActionRunning.set(false);
     }
@@ -610,12 +642,15 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
       this.closeCreateBranch();
       this.toastService.success(
         startPoint
-          ? `Branch "${name}" criada a partir de "${startPoint}".`
-          : `Branch "${name}" criada e ativada.`,
-        "Nova branch",
+          ? this.translationService.translate("repositorySidebar.branchCreatedFrom", { name, startPoint })
+          : this.translationService.translate("repositorySidebar.branchCreated", { name }),
+        this.translationService.translate("repositorySidebar.newBranchTitle"),
       );
     } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), "Nova branch");
+      this.toastService.error(
+        this.getGitErrorMessage(error),
+        this.translationService.translate("repositorySidebar.newBranchTitle"),
+      );
     } finally {
       this.isBranchActionRunning.set(false);
     }
@@ -639,8 +674,11 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
           request.target,
         );
         this.toastService.success(
-          `Merge de "${request.source}" em "${request.target}" concluído.`,
-          "Merge concluído",
+          this.translationService.translate("repositorySidebar.mergeCompleted", {
+            source: request.source,
+            target: request.target,
+          }),
+          this.translationService.translate("repositorySidebar.mergeCompletedTitle"),
         );
       } else {
         await this.repositoryService.rebaseBranch(
@@ -649,14 +687,21 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
           request.target,
         );
         this.toastService.success(
-          `Rebase de "${request.source}" sobre "${request.target}" concluído.`,
-          "Rebase concluído",
+          this.translationService.translate("repositorySidebar.rebaseCompleted", {
+            source: request.source,
+            target: request.target,
+          }),
+          this.translationService.translate("repositorySidebar.rebaseCompletedTitle"),
         );
       }
     } catch (error: unknown) {
       this.toastService.error(
         this.getGitErrorMessage(error),
-        request.kind === "merge" ? "Falha no Merge" : "Falha no Rebase",
+        this.translationService.translate(
+          request.kind === "merge"
+            ? "repositorySidebar.mergeErrorTitle"
+            : "repositorySidebar.rebaseErrorTitle",
+        ),
       );
     } finally {
       try {
@@ -719,6 +764,6 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
       return error.message;
     }
 
-    return "Não foi possível executar a operação na branch.";
+    return this.translationService.translate("repositorySidebar.operationError");
   }
 }

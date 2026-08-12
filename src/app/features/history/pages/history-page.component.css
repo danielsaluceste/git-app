@@ -17,13 +17,13 @@
   top: -1rem;
   z-index: 10;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-end;
+  justify-content: flex-end;
   gap: 0.75rem;
   min-height: 3rem;
   border: 1px solid #263244;
   border-radius: 0.65rem;
-  padding: 0.45rem 0.55rem 0.45rem 0.7rem;
+  /* padding: 0.45rem 0.55rem 0.45rem 0.7rem; */
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -35,6 +35,10 @@
   background: rgb(23 32 51 / 96%);
   box-shadow: 0 0.45rem 1rem rgb(3 7 18 / 20%);
   backdrop-filter: blur(10px);
+}
+
+.overview-action-bar.is-scrolled > div:first-child {
+  display: none;
 }
 
 .overview-action-bar .overview-summary {
@@ -50,6 +54,8 @@
 
 .overview-action-bar .sync-toolbar {
   flex: 0 0 auto;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .overview-action-bar .sync-button,
@@ -1359,6 +1365,7 @@ dd {
 
   .overview-action-bar .sync-toolbar {
     width: 100%;
+    margin-left: 0;
     justify-content: start;
   }
 
