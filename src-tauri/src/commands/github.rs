@@ -333,7 +333,7 @@ async fn get_github_user(
 
 fn github_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
-        .user_agent("OranGIT/0.1.0")
+        .user_agent("Git-App/0.1.0")
         .build()
         .map_err(|error| format!("Não foi possível preparar a conexão com o GitHub: {error}"))
 }

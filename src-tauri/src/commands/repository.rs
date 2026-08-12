@@ -1538,7 +1538,7 @@ pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> 
 
     if is_running_development_repository(&path) {
         return Err(
-            "Não é possível fazer checkout no próprio repositório do OranGIT enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
+            "Não é possível fazer checkout no próprio repositório do Git App enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
         );
     }
 

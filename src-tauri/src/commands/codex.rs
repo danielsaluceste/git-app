@@ -288,7 +288,7 @@ fn limit_output(output: String) -> String {
     }
 
     let shortened = output.chars().take(MAX_OUTPUT_LENGTH).collect::<String>();
-    format!("{shortened}\n\n[Saída truncada pelo OranGIT]")
+    format!("{shortened}\n\n[Saída truncada pelo Git App]")
 }
 
 fn codex_commands() -> Vec<PathBuf> {
