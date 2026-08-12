@@ -2,18 +2,18 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Histórico temporário</p>
-        <h2>Stashes</h2>
+        <p class="eyebrow">{{ "stashes.eyebrow" | translate }}</p>
+        <h2>{{ "stashes.title" | translate }}</h2>
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
       <button type="button" class="refresh-button" [disabled]="isLoading() || isApplying()" (click)="loadReferences()">
         <span aria-hidden="true">↻</span>
-        Atualizar
+        {{ "stashes.refresh" | translate }}
       </button>
     </header>
 
     @if (isLoading()) {
-      <div class="panel state-panel">Lendo os stashes do Git...</div>
+      <div class="panel state-panel">{{ "stashes.loading" | translate }}</div>
     } @else {
       <div class="stash-workspace">
         <section class="panel stash-detail-panel">
@@ -24,54 +24,54 @@
                   <h3>{{ stashDescriptionByReference(stashRef) }}</h3>
                   <span class="branch-badge">{{ stashBranchByReference(stashRef) }}</span>
                 </div>
-                <p>Selecione os arquivos para aplicar e clique em um deles para visualizar o diff.</p>
+                <p>{{ "stashes.selectHint" | translate }}</p>
               </div>
               <div class="detail-actions">
                 <button type="button" class="rename-button" [disabled]="isApplying()" (click)="openRenameForm()">
-                  Renomear
+                  {{ "stashes.rename" | translate }}
                 </button>
                 <button type="button" class="apply-button" [disabled]="isApplying() || selectedStashPaths().length === 0" (click)="applySelectedStash(stashRef)">
-                  Aplicar ({{ selectedStashPaths().length }})
+                  {{ "stashes.apply" | translate }} ({{ selectedStashPaths().length }})
                 </button>
                 <button type="button" class="delete-button" [disabled]="isApplying()" (click)="requestDeleteStash()">
-                  Excluir stash
+                  {{ "stashes.delete" | translate }}
                 </button>
-                <button type="button" class="text-button" (click)="closeDetails()">Fechar</button>
+                <button type="button" class="text-button" (click)="closeDetails()">{{ "stashes.close" | translate }}</button>
               </div>
             </div>
 
             @if (showRenameForm()) {
               <form class="stash-rename-form" (ngSubmit)="renameSelectedStash()">
                 <div>
-                  <strong>Renomear stash</strong>
-                  <p>Use uma mensagem curta para encontrar este stash mais facilmente.</p>
+                  <strong>{{ "stashes.renameTitle" | translate }}</strong>
+                  <p>{{ "stashes.renameDescription" | translate }}</p>
                 </div>
                 <input
                   [ngModel]="renameMessage()"
                   (ngModelChange)="renameMessage.set($event)"
                   name="renameMessage"
                   autocomplete="off"
-                  placeholder="Ex.: antes de atualizar a branch"
+                  [placeholder]="'stashes.renamePlaceholder' | translate"
                   [disabled]="isApplying()"
                 />
                 <div class="rename-form-actions">
-                  <button type="button" class="text-button" [disabled]="isApplying()" (click)="closeRenameForm()">Cancelar</button>
-                  <button type="submit" class="apply-button" [disabled]="isApplying() || !renameMessage().trim()">Salvar nome</button>
+                  <button type="button" class="text-button" [disabled]="isApplying()" (click)="closeRenameForm()">{{ "workspace.cancel" | translate }}</button>
+                  <button type="submit" class="apply-button" [disabled]="isApplying() || !renameMessage().trim()">{{ "stashes.saveName" | translate }}</button>
                 </div>
               </form>
             }
 
             @if (stashLoading()) {
-              <div class="state-panel">Lendo os arquivos do stash...</div>
+              <div class="state-panel">{{ "stashes.loadingFiles" | translate }}</div>
             } @else if (stashFiles().length > 0) {
               <div class="detail-layout">
                 <div class="file-list-panel">
                   <div class="list-heading">
-                    <span>ARQUIVOS</span>
+                    <span>{{ "stashes.files" | translate }}</span>
                     <div class="list-heading-actions">
                       <span>{{ selectedStashPaths().length }}/{{ stashFiles().length }}</span>
                       <button type="button" class="select-all-button" (click)="toggleAllStashFiles()">
-                        {{ allStashFilesSelected() ? "Desmarcar" : "Todos" }}
+                        {{ (allStashFilesSelected() ? "stashes.unselect" : "stashes.all") | translate }}
                       </button>
                     </div>
                   </div>
@@ -101,48 +101,48 @@
 
                 <div class="diff-panel">
                   <div class="diff-heading">
-                    <span>PRÉ-VISUALIZAÇÃO</span>
+                    <span>{{ "stashes.preview" | translate }}</span>
                     @if (selectedFile(); as file) {
                       <span [title]="file.path">{{ file.path }}</span>
                     }
                   </div>
                   @if (fileDiffLoading()) {
-                    <div class="state-panel">Lendo as alterações do arquivo...</div>
+                    <div class="state-panel">{{ "stashes.loadingDiff" | translate }}</div>
                   } @else if (fileDiffError()) {
                     <div class="state-panel error-state">{{ fileDiffError() }}</div>
                   } @else if (fileDiff().trim()) {
                     <pre class="diff-code">@for (line of diffLines(); track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}</pre>
                   } @else {
-                    <div class="state-panel">Não há um diff textual disponível para este arquivo.</div>
+                    <div class="state-panel">{{ "stashes.noDiff" | translate }}</div>
                   }
                 </div>
               </div>
             } @else {
-              <div class="state-panel">Nenhum arquivo foi encontrado neste stash.</div>
+              <div class="state-panel">{{ "stashes.noFiles" | translate }}</div>
             }
           } @else {
             <div class="empty-detail">
               <span class="empty-detail-icon" aria-hidden="true">⌁</span>
-              <strong>Selecione um stash</strong>
-              <p>Os arquivos e o diff aparecerão aqui.</p>
+              <strong>{{ "stashes.selectStash" | translate }}</strong>
+              <p>{{ "stashes.selectStashDescription" | translate }}</p>
             </div>
           }
         </section>
       </div>
     }
   } @else {
-    <p class="eyebrow">Histórico temporário</p>
-    <h2>Stashes</h2>
-    <div class="panel state-panel">Nenhum repositório selecionado.</div>
+    <p class="eyebrow">{{ "stashes.eyebrow" | translate }}</p>
+    <h2>{{ "stashes.title" | translate }}</h2>
+    <div class="panel state-panel">{{ "stashes.noRepository" | translate }}</div>
   }
 
   @if (pendingDeleteStash(); as stash) {
     <app-confirm-dialog
-      title="Excluir stash?"
-      [message]="'O stash ' + stash + ' será removido permanentemente deste repositório. Deseja continuar?'"
+      [title]="'stashes.deleteConfirmTitle' | translate"
+      [message]="'stashes.deleteConfirmMessage' | translate: { stash: stash }"
       [messageHighlight]="stash"
-      confirmLabel="Excluir stash"
-      cancelLabel="Manter stash"
+      [confirmLabel]="'stashes.deleteConfirm' | translate"
+      [cancelLabel]="'stashes.keep' | translate"
       [destructive]="true"
       (confirmed)="confirmDeleteStash()"
       (cancelled)="cancelDeleteStash()"

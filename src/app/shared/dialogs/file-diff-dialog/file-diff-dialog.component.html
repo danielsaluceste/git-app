@@ -9,25 +9,25 @@
     <div class="diff-heading">
       <span class="diff-icon" aria-hidden="true">&lt;/&gt;</span>
       <div>
-        <p class="eyebrow">Visualização do arquivo</p>
+        <p class="eyebrow">{{ "diffDialog.title" | translate }}</p>
         <h2 id="file-diff-title" [title]="file.path">{{ file.path }}</h2>
       </div>
     </div>
-    <button type="button" class="close-button" aria-label="Fechar visualização" (click)="closed.emit()">×</button>
+    <button type="button" class="close-button" [attr.aria-label]="'diffDialog.close' | translate" (click)="closed.emit()">×</button>
   </header>
 
   <div class="diff-meta">
     <span class="status-badge" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-untracked]="file.status === 'untracked'" [class.status-renamed]="file.status === 'renamed'">
       {{ statusLabel(file.status) }}
     </span>
-    <span>{{ contextLabel || (file.isStaged ? "Preparado para commit" : "Ainda não preparado") }}</span>
+    <span>{{ contextLabel || ((file.isStaged ? "diffDialog.staged" : "diffDialog.unstaged") | translate) }}</span>
   </div>
 
   <div class="diff-content">
     @if (loading) {
       <div class="diff-state">
         <span class="loading-spinner" aria-hidden="true"></span>
-        Lendo as alterações do arquivo...
+        {{ "diffDialog.loading" | translate }}
       </div>
     } @else if (error) {
       <div class="diff-state error-state">{{ error }}</div>
@@ -35,13 +35,13 @@
       <pre class="diff-code">@for (line of diffLines(); track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}</pre>
     } @else {
       <div class="diff-state">
-        Não há um diff textual disponível para este arquivo. Arquivos não rastreados aparecem aqui depois de serem adicionados ao stage.
+        {{ "diffDialog.noDiff" | translate }}
       </div>
     }
   </div>
 
   <footer class="diff-footer">
-    <span>O clique no nome apenas visualiza o arquivo.</span>
-    <button type="button" class="close-action" (click)="closed.emit()">Fechar</button>
+    <span>{{ "diffDialog.footer" | translate }}</span>
+    <button type="button" class="close-action" (click)="closed.emit()">{{ "diffDialog.closeAction" | translate }}</button>
   </footer>
 </dialog>

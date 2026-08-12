@@ -5,12 +5,14 @@ import { Workspace } from "../../../core/models/workspace.model";
 import { LayoutService } from "../../../core/services/layout.service";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-workspace-menu",
-  imports: [ConfirmDialogComponent, FormsModule],
+  imports: [ConfirmDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./workspace-menu.component.html",
   styleUrl: "./workspace-menu.component.css",
 })
@@ -20,6 +22,7 @@ export class WorkspaceMenuComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly workspaces = this.workspaceService.workspaces;
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
@@ -92,7 +95,7 @@ export class WorkspaceMenuComponent {
 
   saveWorkspace(): void {
     if (!this.formName.trim()) {
-      this.formError = "Informe um nome para o workspace.";
+      this.formError = this.translationService.translate("workspace.requiredName");
       return;
     }
 
@@ -101,20 +104,20 @@ export class WorkspaceMenuComponent {
       : this.workspaceService.create(this.formName, this.formDescription);
 
     if (!saved) {
-      this.formError = "Não foi possível salvar o workspace.";
+      this.formError = this.translationService.translate("workspace.saveError");
       return;
     }
 
     this.toastService.success(
-      this.editingId ? "Workspace atualizado com sucesso." : "Workspace criado com sucesso.",
-      this.editingId ? "Workspace atualizado" : "Workspace criado",
+      this.translationService.translate(this.editingId ? "workspace.updatedMessage" : "workspace.createdMessage"),
+      this.translationService.translate(this.editingId ? "workspace.updatedTitle" : "workspace.createdTitle"),
     );
     this.resetForm();
   }
 
   removeWorkspace(workspace: Workspace): void {
     if (this.workspaces().length <= 1) {
-      this.formError = "Mantenha pelo menos um workspace.";
+      this.formError = this.translationService.translate("workspace.keepOne");
       return;
     }
 
@@ -127,7 +130,10 @@ export class WorkspaceMenuComponent {
     }
 
     this.workspaceService.remove(this.workspaceToDelete.id);
-    this.toastService.success("Workspace excluído. Os repositórios foram preservados.", "Workspace excluído");
+    this.toastService.success(
+      this.translationService.translate("workspace.deletedMessage"),
+      this.translationService.translate("workspace.deletedTitle"),
+    );
     this.workspaceToDelete = null;
     this.isOpen = false;
     this.resetForm();

@@ -11,20 +11,20 @@
       </div>
 
       <div class="dialog-content">
-        <h2 id="dialog-title">{{ title }}</h2>
+        <h2 id="dialog-title">{{ title || ("common.confirmTitle" | translate) }}</h2>
         @if (messageHighlight && message.includes(messageHighlight)) {
           <p>
             {{ messageBeforeHighlight }}<strong class="dialog-highlight">{{ messageHighlight }}</strong>{{ messageAfterHighlight }}
           </p>
         } @else {
-          <p>{{ message }}</p>
+          <p>{{ message || ("common.confirmMessage" | translate) }}</p>
         }
       </div>
     </div>
 
     <div class="dialog-actions">
       <button type="button" class="cancel-button" (click)="cancelled.emit()">
-        {{ cancelLabel }}
+        {{ cancelLabel || ("common.cancel" | translate) }}
       </button>
       <button
         type="button"
@@ -32,7 +32,7 @@
         [class.danger]="destructive"
         (click)="confirmed.emit()"
       >
-        {{ confirmLabel }}
+        {{ confirmLabel || ("common.confirm" | translate) }}
       </button>
     </div>
 </dialog>

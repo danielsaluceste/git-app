@@ -7,7 +7,7 @@
     (mousedown)="$event.stopPropagation()"
     (click)="toggleMenu()"
   >
-    <span class="workspace-label">Workspace</span>
+    <span class="workspace-label">{{ "workspace.label" | translate }}</span>
     <span class="workspace-name">
       <span class="workspace-dot" [style.background-color]="activeWorkspace().color"></span>
       {{ activeWorkspace().name }}
@@ -19,10 +19,10 @@
     <div class="workspace-menu" role="menu" (mousedown)="$event.stopPropagation()">
       <div class="menu-heading">
         <div>
-          <strong>Meus workspaces</strong>
-          <span>Separe seus repositórios por contexto</span>
+          <strong>{{ "workspace.my" | translate }}</strong>
+          <span>{{ "workspace.description" | translate }}</span>
         </div>
-        <button type="button" class="icon-button" aria-label="Fechar" (click)="toggleMenu()">×</button>
+        <button type="button" class="icon-button" [attr.aria-label]="'common.close' | translate" (click)="toggleMenu()">×</button>
       </div>
 
       <div class="workspace-list">
@@ -32,17 +32,17 @@
               <span class="workspace-dot" [style.background-color]="workspace.color"></span>
               <span class="workspace-info">
                 <strong>{{ workspace.name }}</strong>
-                <small>{{ workspace.description || "Sem descrição" }}</small>
+                <small>{{ workspace.description || ("workspace.noDescription" | translate) }}</small>
               </span>
               @if (workspace.id === activeWorkspace().id) {
-                <span class="check" aria-label="Selecionado">✓</span>
+                <span class="check" [attr.aria-label]="'workspace.selected' | translate">✓</span>
               }
             </button>
             <button
               type="button"
               class="item-action"
-              aria-label="Editar workspace"
-              title="Editar"
+              [attr.aria-label]="'workspace.edit' | translate"
+              [title]="'workspace.edit' | translate"
               (click)="startEdit(workspace)"
             >
               <svg class="workspace-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -53,8 +53,8 @@
             <button
               type="button"
               class="item-action danger"
-              aria-label="Excluir workspace"
-              title="Excluir"
+              [attr.aria-label]="'workspace.delete' | translate"
+              [title]="'workspace.delete' | translate"
               (click)="removeWorkspace(workspace)"
             >
               <svg class="workspace-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -70,19 +70,19 @@
 
       @if (isFormOpen) {
         <form class="workspace-form" (ngSubmit)="saveWorkspace()">
-          <strong>{{ editingId ? "Editar workspace" : "Novo workspace" }}</strong>
+          <strong>{{ (editingId ? "workspace.edit" : "workspace.new") | translate }}</strong>
 
           <label>
-            Nome
-            <input [(ngModel)]="formName" name="workspaceName" placeholder="Ex.: Cliente X" autofocus />
+            {{ "workspace.name" | translate }}
+            <input [(ngModel)]="formName" name="workspaceName" [placeholder]="'workspace.namePlaceholder' | translate" autofocus />
           </label>
 
           <label>
-            Descrição
+            {{ "workspace.descriptionField" | translate }}
             <input
               [(ngModel)]="formDescription"
               name="workspaceDescription"
-              placeholder="Ex.: Projetos do cliente"
+              [placeholder]="'workspace.descriptionPlaceholder' | translate"
             />
           </label>
 
@@ -91,8 +91,8 @@
           }
 
           <div class="form-actions">
-            <button type="button" class="secondary-button" (click)="cancelForm()">Cancelar</button>
-            <button type="submit" class="primary-button">Salvar</button>
+            <button type="button" class="secondary-button" (click)="cancelForm()">{{ "workspace.cancel" | translate }}</button>
+            <button type="submit" class="primary-button">{{ "workspace.save" | translate }}</button>
           </div>
         </form>
       } @else if (formError) {
@@ -102,7 +102,7 @@
       @if (!isFormOpen) {
         <button type="button" class="new-workspace-button" (click)="startCreate()">
           <span aria-hidden="true">＋</span>
-          Novo workspace
+          {{ "workspace.new" | translate }}
         </button>
       }
     </div>
@@ -111,10 +111,10 @@
 
 @if (workspaceToDelete) {
   <app-confirm-dialog
-    title="Excluir workspace?"
-    [message]="'Excluir o workspace “' + workspaceToDelete.name + '”? Os repositórios não serão apagados.'"
-    confirmLabel="Excluir"
-    cancelLabel="Cancelar"
+    [title]="'workspace.deleteConfirmTitle' | translate"
+    [message]="'workspace.deleteConfirmMessage' | translate: { name: workspaceToDelete.name }"
+    [confirmLabel]="'workspace.deleteConfirm' | translate"
+    [cancelLabel]="'workspace.keep' | translate"
     [destructive]="true"
     (confirmed)="confirmRemoveWorkspace()"
     (cancelled)="cancelRemoveWorkspace()"

@@ -1,4 +1,5 @@
 import { Injectable, signal } from "@angular/core";
+import { AppLanguage } from "../models/language.model";
 import {
   AI_MODEL_OPTIONS,
   AiModelId,
@@ -7,6 +8,7 @@ import {
 
 @Injectable({ providedIn: "root" })
 export class SettingsService {
+  private readonly languageState = signal<AppLanguage>(this.loadLanguage());
   private readonly aiEnabledState = signal(this.loadAiEnabled());
   private readonly aiModelState = signal<AiModelId>(this.loadAiModel());
   private readonly gitCommandNotificationsState = signal(
@@ -16,10 +18,19 @@ export class SettingsService {
     this.loadBoolean("git-app.notification-sounds", false),
   );
 
+  readonly language = this.languageState.asReadonly();
   readonly aiEnabled = this.aiEnabledState.asReadonly();
   readonly aiModel = this.aiModelState.asReadonly();
   readonly gitCommandNotifications = this.gitCommandNotificationsState.asReadonly();
   readonly notificationSounds = this.notificationSoundsState.asReadonly();
+
+  setLanguage(language: AppLanguage): void {
+    this.languageState.set(language);
+
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("git-app.language", language);
+    }
+  }
 
   setAiEnabled(enabled: boolean): void {
     this.aiEnabledState.set(enabled);
@@ -57,6 +68,14 @@ export class SettingsService {
     }
 
     return localStorage.getItem("git-app.ai-enabled") === "true";
+  }
+
+  private loadLanguage(): AppLanguage {
+    if (typeof localStorage === "undefined") {
+      return "pt-BR";
+    }
+
+    return localStorage.getItem("git-app.language") === "en" ? "en" : "pt-BR";
   }
 
   private loadAiModel(): AiModelId {

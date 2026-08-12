@@ -50,6 +50,34 @@
   stroke-width: 1.8;
 }
 
+.window-title {
+  display: flex;
+  min-height: 3rem;
+  flex: 1;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.brand-mark {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-accent);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-on-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.brand-name {
+  color: var(--app-text-bright);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .window-drag-region {
   flex: 1;
   min-height: 3rem;

@@ -1,11 +1,11 @@
 <section class="page">
   <header class="page-heading">
     <div>
-      <p class="eyebrow">Conectividade</p>
-      <h2>Integrações</h2>
+      <p class="eyebrow">{{ "integrations.eyebrow" | translate }}</p>
+      <h2>{{ "integrations.title" | translate }}</h2>
       <p class="description">
-        Conecte serviços ao workspace <strong>{{ activeWorkspace().name }}</strong> para clonar,
-        sincronizar e publicar seus repositórios.
+        {{ "integrations.description" | translate }}
+        <strong>{{ activeWorkspace().name }}</strong>.
       </p>
     </div>
   </header>
@@ -17,12 +17,12 @@
         <div class="service-title-row">
           <h3 id="github-title">GitHub</h3>
           @if (connections().length > 0) {
-            <span class="connected-badge"><span class="status-dot"></span> Conectado</span>
+            <span class="connected-badge"><span class="status-dot"></span> {{ "integrations.connected" | translate }}</span>
           } @else {
-            <span class="available-badge">Disponível</span>
+            <span class="available-badge">{{ "integrations.available" | translate }}</span>
           }
         </div>
-        <p>Use uma ou mais contas para trabalhar com repositórios pessoais e de organizações.</p>
+        <p>{{ "integrations.githubDescription" | translate }}</p>
       </div>
     </header>
 
@@ -30,19 +30,19 @@
       <div class="integration-empty">
         <div class="integration-empty-icon" aria-hidden="true">↗</div>
         <div>
-          <strong>Nenhuma conta conectada</strong>
-          <p>A autorização acontece diretamente no GitHub e não expõe sua senha ao OranGIT.</p>
+          <strong>{{ "integrations.noAccount" | translate }}</strong>
+          <p>{{ "integrations.authorization" | translate }}</p>
         </div>
         <button type="button" class="primary-button" (click)="connectGithub()">
           <span aria-hidden="true">+</span>
-          Conectar GitHub
+          {{ "integrations.connect" | translate }}
         </button>
       </div>
     } @else {
       <div class="accounts-heading">
         <div>
-          <strong>Contas deste workspace</strong>
-          <span>{{ connections().length }} {{ connections().length === 1 ? "conta" : "contas" }}</span>
+            <strong>{{ "integrations.accounts" | translate }}</strong>
+            <span>{{ connections().length }} {{ (connections().length === 1 ? "integrations.account" : "integrations.accountsPlural") | translate }}</span>
         </div>
         <button
           type="button"
@@ -51,7 +51,7 @@
           (click)="connectGithub()"
         >
           <span aria-hidden="true">+</span>
-          Conectar outra conta
+          {{ "integrations.connectAnother" | translate }}
         </button>
       </div>
 
@@ -68,7 +68,7 @@
               <div class="account-name-row">
                 <strong>{{ connection.name || connection.login }}</strong>
                 @if (connection.isDefault) {
-                  <span class="default-badge">Principal</span>
+                  <span class="default-badge">{{ "integrations.default" | translate }}</span>
                 }
               </div>
               <span>@{{ connection.login }}</span>
@@ -77,10 +77,10 @@
             <div class="account-actions">
               @if (!connection.isDefault) {
                 <button type="button" class="text-button" (click)="setDefault(connection)">
-                  Tornar principal
+                  {{ "integrations.makeDefault" | translate }}
                 </button>
               }
-              <button type="button" class="icon-button danger" title="Desconectar conta" (click)="disconnect(connection)">
+              <button type="button" class="icon-button danger" [title]="'integrations.disconnect' | translate" (click)="disconnect(connection)">
                 ×
               </button>
             </div>
@@ -95,26 +95,26 @@
           <div class="device-flow-heading">
             <div class="device-spinner" aria-hidden="true"></div>
             <div>
-              <strong>Autorize sua conta pelo GitHub</strong>
+              <strong>{{ "integrations.authorize" | translate }}</strong>
               <p>{{ connectionMessage }}</p>
             </div>
-            <button type="button" class="close-flow-button" title="Cancelar conexão" (click)="cancelConnection()">×</button>
+            <button type="button" class="close-flow-button" [title]="'integrations.cancelConnection' | translate" (click)="cancelConnection()">×</button>
           </div>
 
           <div class="device-flow-content">
             <div class="device-code-box">
-              <span class="device-code-label">Seu código</span>
+              <span class="device-code-label">{{ "integrations.deviceCode" | translate }}</span>
               <strong>{{ flow.userCode }}</strong>
               <button type="button" class="copy-button" (click)="copyDeviceCode()">
-                {{ copiedCode ? "Copiado" : "Copiar código" }}
+                {{ (copiedCode ? "integrations.copied" : "integrations.copy") | translate }}
               </button>
             </div>
             <div class="device-flow-actions">
               <button type="button" class="primary-button" (click)="openGithubAuthorization()">
-                Abrir GitHub
+                {{ "integrations.openGithub" | translate }}
                 <span aria-hidden="true">↗</span>
               </button>
-              <small>O código expira em {{ Math.ceil(flow.expiresIn / 60) }} minutos.</small>
+              <small>{{ "integrations.codeExpires" | translate: { minutes: Math.ceil(flow.expiresIn / 60) } }}</small>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@
         <div class="loading-row" aria-live="polite">
           <span class="device-spinner" aria-hidden="true"></span>
           {{ connectionMessage }}
-          <button type="button" class="text-button" (click)="cancelConnection()">Cancelar</button>
+          <button type="button" class="text-button" (click)="cancelConnection()">{{ "integrations.cancel" | translate }}</button>
         </div>
       }
     }
@@ -138,13 +138,13 @@
       <div class="error-row" role="alert">
         <span aria-hidden="true">!</span>
         <span>{{ errorMessage }}</span>
-        <button type="button" class="text-button" (click)="connectGithub()">Tentar novamente</button>
+        <button type="button" class="text-button" (click)="connectGithub()">{{ "integrations.retry" | translate }}</button>
       </div>
     }
   </section>
 
   <p class="security-note">
     <span aria-hidden="true">⌁</span>
-    As credenciais ficam protegidas no armazenamento seguro do sistema operacional.
+    {{ "integrations.security" | translate }}
   </p>
 </section>

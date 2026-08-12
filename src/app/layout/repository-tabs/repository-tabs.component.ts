@@ -5,9 +5,11 @@ import { LayoutService } from "../../core/services/layout.service";
 import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
 import { WorkspaceService } from "../../core/services/workspace.service";
+import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-repository-tabs",
+  imports: [TranslatePipe],
   templateUrl: "./repository-tabs.component.html",
   styleUrl: "./repository-tabs.component.css",
 })

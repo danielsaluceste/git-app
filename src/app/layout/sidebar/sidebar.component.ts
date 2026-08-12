@@ -1,10 +1,11 @@
 import { Component, EventEmitter, HostBinding, inject, Input, Output } from "@angular/core";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { RepositoryService } from "../../core/services/repository.service";
+import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-sidebar",
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, TranslatePipe],
   templateUrl: "./sidebar.component.html",
   styleUrl: "./sidebar.component.css",
 })

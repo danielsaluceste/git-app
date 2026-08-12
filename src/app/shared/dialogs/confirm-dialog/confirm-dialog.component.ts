@@ -1,18 +1,20 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from "@angular/core";
+import { TranslatePipe } from "../../pipes/translate.pipe";
 
 @Component({
   selector: "app-confirm-dialog",
+  imports: [TranslatePipe],
   templateUrl: "./confirm-dialog.component.html",
   styleUrl: "./confirm-dialog.component.css",
 })
 export class ConfirmDialogComponent implements AfterViewInit {
   @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
 
-  @Input() title = "Confirmar ação";
-  @Input() message = "Tem certeza que deseja continuar?";
+  @Input() title = "";
+  @Input() message = "";
   @Input() messageHighlight = "";
-  @Input() confirmLabel = "Confirmar";
-  @Input() cancelLabel = "Cancelar";
+  @Input() confirmLabel = "";
+  @Input() cancelLabel = "";
   @Input() destructive = false;
 
   @Output() confirmed = new EventEmitter<void>();

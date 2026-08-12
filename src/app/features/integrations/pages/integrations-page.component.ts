@@ -3,12 +3,15 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { GithubConnection, GithubDeviceFlowStart } from "../../../core/models/github.model";
 import { GithubService } from "../../../core/services/github.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { TranslationService } from "../../../core/services/translation.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
+import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type ConnectionState = "idle" | "starting" | "waiting" | "success" | "error";
 
 @Component({
   selector: "app-integrations-page",
+  imports: [TranslatePipe],
   templateUrl: "./integrations-page.component.html",
   styleUrl: "./integrations-page.component.css",
 })
@@ -16,6 +19,7 @@ export class IntegrationsPageComponent implements OnDestroy {
   private readonly githubService = inject(GithubService);
   private readonly workspaceService = inject(WorkspaceService);
   private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
 
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
   readonly connections = this.githubService.workspaceConnections;
@@ -37,7 +41,7 @@ export class IntegrationsPageComponent implements OnDestroy {
     this.flowCancelled = false;
     this.deviceFlow = undefined;
     this.errorMessage = "";
-    this.connectionMessage = "Preparando uma autorização segura com o GitHub...";
+    this.connectionMessage = this.translationService.translate("integrations.preparing");
     this.connectionState = "starting";
 
     try {
@@ -49,7 +53,7 @@ export class IntegrationsPageComponent implements OnDestroy {
 
       this.deviceFlow = flow;
       this.connectionState = "waiting";
-      this.connectionMessage = "Abra o GitHub, informe o código e autorize o OranGIT.";
+      this.connectionMessage = this.translationService.translate("integrations.authorizeHint");
       await this.openGithubAuthorization();
       await this.waitForAuthorization(flow);
     } catch (error: unknown) {
@@ -72,7 +76,7 @@ export class IntegrationsPageComponent implements OnDestroy {
     try {
       await openUrl(flow.verificationUriComplete ?? flow.verificationUri);
     } catch {
-      this.connectionMessage = "Não foi possível abrir o navegador. Use o endereço abaixo.";
+      this.connectionMessage = this.translationService.translate("integrations.browserError");
     }
   }
 
@@ -102,7 +106,7 @@ export class IntegrationsPageComponent implements OnDestroy {
 
   async disconnect(connection: GithubConnection): Promise<void> {
     const confirmed = window.confirm(
-      `Desconectar a conta @${connection.login} deste workspace?`,
+      this.translationService.translate("integrations.disconnectConfirm", { login: connection.login }),
     );
 
     if (!confirmed) {
@@ -111,15 +115,21 @@ export class IntegrationsPageComponent implements OnDestroy {
 
     try {
       await this.githubService.disconnect(connection);
-      this.toastService.success(`@${connection.login} foi desconectado.`, "GitHub");
+      this.toastService.success(
+        this.translationService.translate("integrations.disconnected", { login: connection.login }),
+        this.translationService.translate("integrations.githubTitle"),
+      );
     } catch (error: unknown) {
-      this.toastService.error(this.getErrorMessage(error), "GitHub");
+      this.toastService.error(this.getErrorMessage(error), this.translationService.translate("integrations.githubTitle"));
     }
   }
 
   setDefault(connection: GithubConnection): void {
     this.githubService.setDefault(connection.workspaceId, connection.id);
-    this.toastService.info(`@${connection.login} será usado como conta principal.`, "GitHub");
+    this.toastService.info(
+      this.translationService.translate("integrations.defaultInfo", { login: connection.login }),
+      this.translationService.translate("integrations.githubTitle"),
+    );
   }
 
   trackConnection(_index: number, connection: GithubConnection): number {
@@ -150,20 +160,23 @@ export class IntegrationsPageComponent implements OnDestroy {
       if (result.status === "authorized" && result.user) {
         this.githubService.addConnection(workspaceId, result.user);
         this.connectionState = "success";
-        this.connectionMessage = `Conta @${result.user.login} conectada com sucesso.`;
+        this.connectionMessage = this.translationService.translate("integrations.connectedMessage", { login: result.user.login });
         this.deviceFlow = undefined;
-        this.toastService.success(`@${result.user.login} está conectado ao workspace.`, "GitHub conectado");
+        this.toastService.success(
+          this.translationService.translate("integrations.connectedToWorkspace", { login: result.user.login }),
+          this.translationService.translate("integrations.githubConnected"),
+        );
         return;
       }
 
       if (result.status === "pending") {
-        this.connectionMessage = "Ainda aguardando a autorização no GitHub...";
+        this.connectionMessage = this.translationService.translate("integrations.waiting");
         continue;
       }
 
       if (result.status === "slowDown") {
         interval = Math.max((result.interval ?? interval / 1000) + 5, 5) * 1000;
-        this.connectionMessage = "O GitHub pediu um intervalo maior entre as consultas...";
+        this.connectionMessage = this.translationService.translate("integrations.slowDown");
         continue;
       }
 
@@ -171,24 +184,24 @@ export class IntegrationsPageComponent implements OnDestroy {
     }
 
     if (!this.flowCancelled) {
-      throw new Error("O código de autorização expirou. Tente conectar novamente.");
+      throw new Error(this.translationService.translate("integrations.expired"));
     }
   }
 
   private deviceFlowError(status: string, message?: string): string {
     if (status === "denied") {
-      return "A autorização foi cancelada no GitHub.";
+      return this.translationService.translate("integrations.denied");
     }
 
     if (status === "expired") {
-      return "O código de autorização expirou. Tente conectar novamente.";
+      return this.translationService.translate("integrations.expired");
     }
 
     if (status === "disabled") {
-      return "Ative o Device Flow nas configurações do GitHub App e tente novamente.";
+      return this.translationService.translate("integrations.disabled");
     }
 
-    return message ?? "Não foi possível concluir a autorização com o GitHub.";
+    return message ?? this.translationService.translate("integrations.connectionError");
   }
 
   private delay(milliseconds: number): Promise<void> {
@@ -200,6 +213,6 @@ export class IntegrationsPageComponent implements OnDestroy {
       ? error
       : error instanceof Error
         ? error.message
-        : "Não foi possível conectar ao GitHub.";
+        : this.translationService.translate("integrations.connectError");
   }
 }

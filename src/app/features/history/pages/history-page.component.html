@@ -2,8 +2,8 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Repositório</p>
-        <h2>Visão geral</h2>
+        <p class="eyebrow">{{ "history.repository" | translate }}</p>
+        <h2>{{ "history.title" | translate }}</h2>
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
 
@@ -12,41 +12,41 @@
     <div class="overview-action-bar" [class.is-scrolled]="actionBarScrolled()">
       <div class="overview-summary">
         <span class="branch-pill"><span aria-hidden="true">⑂</span>{{ currentBranch() }}</span>
-        <span class="summary-copy">Histórico visual do repositório</span>
+        <span class="summary-copy">{{ "history.visual" | translate }}</span>
       </div>
 
-      <div class="sync-toolbar" aria-label="Sincronização do repositório">
-        <button type="button" class="sync-button fetch-button app-tooltip" data-tooltip="Atualizar referências remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('fetch')">
+      <div class="sync-toolbar" [attr.aria-label]="'history.sync' | translate">
+        <button type="button" class="sync-button fetch-button app-tooltip" [attr.data-tooltip]="'history.fetchTooltip' | translate" [disabled]="isLoading() || !!syncAction()" (click)="runSync('fetch')">
           <span aria-hidden="true">↓</span>
           {{ syncLabel("fetch") }}
         </button>
-        <button type="button" class="sync-button pull-button app-tooltip" data-tooltip="Baixar e aplicar alterações remotas" [disabled]="isLoading() || !!syncAction()" (click)="runSync('pull')">
+        <button type="button" class="sync-button pull-button app-tooltip" [attr.data-tooltip]="'history.pullTooltip' | translate" [disabled]="isLoading() || !!syncAction()" (click)="runSync('pull')">
           <span aria-hidden="true">↓</span>
           {{ syncLabel("pull") }}
           @if (behindCount() > 0) {
-            <span class="pending-badge" [attr.aria-label]="behindCount() + ' commits para baixar'">{{ behindCount() }}</span>
+            <span class="pending-badge" [attr.aria-label]="behindCount() + ' ' + ('history.commitsToDownload' | translate)">{{ behindCount() }}</span>
           }
         </button>
-        <button type="button" class="sync-button push-button app-tooltip" data-tooltip="Enviar commits para o remoto" [disabled]="isLoading() || !!syncAction()" (click)="runSync('push')">
+        <button type="button" class="sync-button push-button app-tooltip" [attr.data-tooltip]="'history.pushTooltip' | translate" [disabled]="isLoading() || !!syncAction()" (click)="runSync('push')">
           <span aria-hidden="true">↑</span>
           {{ syncLabel("push") }}
           @if (aheadCount() > 0) {
-            <span class="pending-badge" [attr.aria-label]="aheadCount() + ' commits pendentes'">{{ aheadCount() }}</span>
+            <span class="pending-badge" [attr.aria-label]="aheadCount() + ' ' + ('history.pendingCommits' | translate)">{{ aheadCount() }}</span>
           }
         </button>
-        <button type="button" class="refresh-button app-tooltip" data-tooltip="Atualizar histórico local" [disabled]="isLoading() || !!syncAction()" (click)="loadOverview()">
+        <button type="button" class="refresh-button app-tooltip" [attr.data-tooltip]="'history.refreshTooltip' | translate" [disabled]="isLoading() || !!syncAction()" (click)="loadOverview()">
           <span aria-hidden="true">↻</span>
-          Atualizar
+          {{ "history.refresh" | translate }}
         </button>
       </div>
     </div>
 
     @if (isLoading()) {
-      <div class="panel loading-state">Lendo o histórico do Git...</div>
+      <div class="panel loading-state">{{ "history.loading" | translate }}</div>
     } @else if (commits().length === 0) {
       <div class="panel empty-state">
-        <h3>Nenhum commit encontrado</h3>
-        <p>Este repositório ainda não possui commits.</p>
+        <h3>{{ "history.emptyTitle" | translate }}</h3>
+        <p>{{ "history.emptyDescription" | translate }}</p>
       </div>
     } @else {
       <div class="overview-layout" [class.has-selected-commit]="selectedCommit()">
@@ -54,8 +54,8 @@
           <div class="panel-heading history-panel-heading">
             <div class="history-heading-row">
               <div>
-                <h3>Histórico de commits</h3>
-                <p>{{ filteredCommits().length }} de {{ commits().length }} commits</p>
+                <h3>{{ "history.titleCommits" | translate }}</h3>
+                <p>{{ "history.commitsCount" | translate: { shown: filteredCommits().length, total: commits().length } }}</p>
               </div>
               <div class="history-heading-actions">
                 <div class="history-scope-control">
@@ -65,7 +65,7 @@
                     [class.is-open]="isFilterMenuOpen('scope')"
                     [attr.aria-expanded]="isFilterMenuOpen('scope')"
                     aria-haspopup="listbox"
-                    aria-label="Escolher branches exibidas"
+                    [attr.aria-label]="'history.chooseBranches' | translate"
                     (click)="toggleFilterMenu('scope', $event)"
                   >
                     <span class="history-scope-icon" aria-hidden="true">⑂</span>
@@ -73,17 +73,17 @@
                     <span class="history-select-chevron" aria-hidden="true">⌄</span>
                   </button>
                   @if (isFilterMenuOpen('scope')) {
-                    <div class="history-select-menu history-scope-menu" role="listbox" aria-label="Escopo do histórico" (click)="$event.stopPropagation()">
+                    <div class="history-select-menu history-scope-menu" role="listbox" [attr.aria-label]="'history.scope' | translate" (click)="$event.stopPropagation()">
                       <button type="button" data-filter-menu="scope" role="option" [class.selected]="historyScope() === 'all'" [attr.aria-selected]="historyScope() === 'all'" (click)="selectHistoryScope('all', $event)">
                         <span>
-                          <strong>Todas as branches</strong>
-                          <small>Histórico completo do repositório</small>
+                          <strong>{{ "history.allBranches" | translate }}</strong>
+                          <small>{{ "history.allBranchesDescription" | translate }}</small>
                         </span>
                         @if (historyScope() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
                       </button>
                       <button type="button" data-filter-menu="scope" role="option" [class.selected]="historyScope() === 'current'" [attr.aria-selected]="historyScope() === 'current'" (click)="selectHistoryScope('current', $event)">
                         <span>
-                          <strong>Branch atual</strong>
+                          <strong>{{ "history.currentBranch" | translate }}</strong>
                           <small>{{ currentBranch() }}</small>
                         </span>
                         @if (historyScope() === "current") { <span class="history-option-check" aria-hidden="true">✓</span> }
@@ -95,9 +95,9 @@
                   type="button"
                   class="history-filter-toggle app-tooltip"
                   [class.is-active]="showHistoryFilters()"
-                  [attr.data-tooltip]="showHistoryFilters() ? 'Ocultar filtros' : 'Buscar e filtrar histórico'"
+                  [attr.data-tooltip]="(showHistoryFilters() ? 'history.hideFilters' : 'history.searchFilters') | translate"
                   [attr.aria-expanded]="showHistoryFilters()"
-                  aria-label="Mostrar ou ocultar busca e filtros"
+                  [attr.aria-label]="'history.showHideFilters' | translate"
                   (click)="toggleHistoryFilters()"
                 >
                   <span aria-hidden="true">⌕</span>
@@ -114,28 +114,28 @@
                   type="search"
                   [value]="historyQuery()"
                   (input)="setHistoryQuery($event)"
-                  placeholder="Buscar mensagem, autor ou hash..."
-                  aria-label="Buscar mensagem, autor ou hash"
+                  [placeholder]="'history.searchPlaceholder' | translate"
+                  [attr.aria-label]="'history.searchLabel' | translate"
                 />
               </label>
               <label class="history-filter-control">
-                <span>Autor</span>
+                <span>{{ "history.author" | translate }}</span>
                 <button
                   type="button"
                   class="history-select"
                   [class.is-open]="isFilterMenuOpen('author')"
                   [attr.aria-expanded]="isFilterMenuOpen('author')"
                   aria-haspopup="listbox"
-                  aria-label="Filtrar por autor"
+                  [attr.aria-label]="'history.filterAuthor' | translate"
                   (click)="toggleFilterMenu('author', $event)"
                 >
                   <span>{{ authorFilter() || "Todos" }}</span>
                   <span class="history-select-chevron" aria-hidden="true">⌄</span>
                 </button>
                 @if (isFilterMenuOpen('author')) {
-                  <div class="history-select-menu" role="listbox" aria-label="Autores" (click)="$event.stopPropagation()">
+                  <div class="history-select-menu" role="listbox" [attr.aria-label]="'history.authors' | translate" (click)="$event.stopPropagation()">
                     <button type="button" data-filter-menu="author" role="option" [class.selected]="!authorFilter()" [attr.aria-selected]="!authorFilter()" (click)="selectAuthorFilter('', $event)">
-                      <span>Todos</span>
+                      <span>{{ "history.all" | translate }}</span>
                       @if (!authorFilter()) { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     @for (author of authors(); track author) {
@@ -148,79 +148,79 @@
                 }
               </label>
               <label class="history-filter-control">
-                <span>Tipo</span>
+                <span>{{ "history.kind" | translate }}</span>
                 <button
                   type="button"
                   class="history-select"
                   [class.is-open]="isFilterMenuOpen('kind')"
                   [attr.aria-expanded]="isFilterMenuOpen('kind')"
                   aria-haspopup="listbox"
-                  aria-label="Filtrar tipo de commit"
+                  [attr.aria-label]="'history.filterKind' | translate"
                   (click)="toggleFilterMenu('kind', $event)"
                 >
                   <span>{{ commitKindLabel() }}</span>
                   <span class="history-select-chevron" aria-hidden="true">⌄</span>
                 </button>
                 @if (isFilterMenuOpen('kind')) {
-                  <div class="history-select-menu" role="listbox" aria-label="Tipo de commit" (click)="$event.stopPropagation()">
+                  <div class="history-select-menu" role="listbox" [attr.aria-label]="'history.kindLabel' | translate" (click)="$event.stopPropagation()">
                     <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'all'" [attr.aria-selected]="commitKindFilter() === 'all'" (click)="selectCommitKindFilter('all', $event)">
-                      <span>Todos</span>
+                      <span>{{ "history.all" | translate }}</span>
                       @if (commitKindFilter() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'regular'" [attr.aria-selected]="commitKindFilter() === 'regular'" (click)="selectCommitKindFilter('regular', $event)">
-                      <span>Sem merge</span>
+                      <span>{{ "history.noMerge" | translate }}</span>
                       @if (commitKindFilter() === "regular") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     <button type="button" data-filter-menu="kind" role="option" [class.selected]="commitKindFilter() === 'merge'" [attr.aria-selected]="commitKindFilter() === 'merge'" (click)="selectCommitKindFilter('merge', $event)">
-                      <span>Somente merges</span>
+                      <span>{{ "history.onlyMerges" | translate }}</span>
                       @if (commitKindFilter() === "merge") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                   </div>
                 }
               </label>
               <label class="history-filter-control">
-                <span>Período</span>
+                <span>{{ "history.period" | translate }}</span>
                 <button
                   type="button"
                   class="history-select"
                   [class.is-open]="isFilterMenuOpen('date')"
                   [attr.aria-expanded]="isFilterMenuOpen('date')"
                   aria-haspopup="listbox"
-                  aria-label="Filtrar por período"
+                  [attr.aria-label]="'history.filterPeriod' | translate"
                   (click)="toggleFilterMenu('date', $event)"
                 >
                   <span>{{ commitDateLabel() }}</span>
                   <span class="history-select-chevron" aria-hidden="true">⌄</span>
                 </button>
                 @if (isFilterMenuOpen('date')) {
-                  <div class="history-select-menu" role="listbox" aria-label="Período" (click)="$event.stopPropagation()">
+                  <div class="history-select-menu" role="listbox" [attr.aria-label]="'history.period' | translate" (click)="$event.stopPropagation()">
                     <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === 'all'" [attr.aria-selected]="commitDateFilter() === 'all'" (click)="selectCommitDateFilter('all', $event)">
-                      <span>Qualquer período</span>
+                      <span>{{ "history.anyPeriod" | translate }}</span>
                       @if (commitDateFilter() === "all") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === '7d'" [attr.aria-selected]="commitDateFilter() === '7d'" (click)="selectCommitDateFilter('7d', $event)">
-                      <span>Últimos 7 dias</span>
+                      <span>{{ "history.last7" | translate }}</span>
                       @if (commitDateFilter() === "7d") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === '30d'" [attr.aria-selected]="commitDateFilter() === '30d'" (click)="selectCommitDateFilter('30d', $event)">
-                      <span>Últimos 30 dias</span>
+                      <span>{{ "history.last30" | translate }}</span>
                       @if (commitDateFilter() === "30d") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                     <button type="button" data-filter-menu="date" role="option" [class.selected]="commitDateFilter() === 'year'" [attr.aria-selected]="commitDateFilter() === 'year'" (click)="selectCommitDateFilter('year', $event)">
-                      <span>Último ano</span>
+                      <span>{{ "history.lastYear" | translate }}</span>
                       @if (commitDateFilter() === "year") { <span class="history-option-check" aria-hidden="true">✓</span> }
                     </button>
                   </div>
                 }
               </label>
               @if (hasHistoryFilters()) {
-                <button type="button" class="clear-history-filters" (click)="clearHistoryFilters()">Limpar filtros</button>
+                <button type="button" class="clear-history-filters" (click)="clearHistoryFilters()">{{ "history.clearFilters" | translate }}</button>
               }
               </div>
             }
           </div>
 
-          <div class="commit-graph" role="list" aria-label="Histórico de commits">
+          <div class="commit-graph" role="list" [attr.aria-label]="'history.commitHistory' | translate">
             @for (commit of filteredCommits(); track commit.hash) {
               <button
                 type="button"
@@ -272,58 +272,58 @@
               <button type="button" class="load-more-commits" [disabled]="isLoadingMore()" (click)="loadMoreCommits()">
                 @if (isLoadingMore()) {
                   <span class="load-more-spinner" aria-hidden="true"></span>
-                  Carregando commits...
+                  {{ "history.loadingCommits" | translate }}
                 } @else {
                   <span aria-hidden="true">↓</span>
-                  Carregar mais commits
+                  {{ "history.loadMore" | translate }}
                 }
               </button>
             </div>
           }
           @if (filteredCommits().length === 0) {
-            <div class="filtered-empty">Nenhum commit corresponde aos filtros atuais.</div>
+            <div class="filtered-empty">{{ "history.filteredEmpty" | translate }}</div>
           }
         </section>
 
         @if (selectedCommit(); as commit) {
           <aside class="panel commit-details" [class.is-scroll-offset]="actionBarScrolled()">
             <div class="details-heading">
-              <span class="details-eyebrow">Commit selecionado</span>
+              <span class="details-eyebrow">{{ "history.selectedCommit" | translate }}</span>
               <div class="details-heading-actions">
                 <code [title]="commit.hash">{{ commit.shortHash }}</code>
-                <button type="button" class="details-close-button" aria-label="Fechar detalhes do commit" title="Fechar detalhes" (click)="closeCommitDetails()">×</button>
+                <button type="button" class="details-close-button" [attr.aria-label]="'history.closeDetails' | translate" [title]="'history.closeDetailsShort' | translate" (click)="closeCommitDetails()">×</button>
               </div>
             </div>
             <h3>{{ commit.subject }}</h3>
             <dl>
               <div>
-                <dt>Autor</dt>
+                <dt>{{ "history.authorLabel" | translate }}</dt>
                 <dd>{{ commit.authorName }}</dd>
               </div>
               <div>
-                <dt>Data</dt>
+                <dt>{{ "history.dateLabel" | translate }}</dt>
                 <dd>{{ formatDate(commit.date) }}</dd>
               </div>
               <div>
-                <dt>Hash</dt>
+                <dt>{{ "history.hashLabel" | translate }}</dt>
                 <dd class="hash-value" [title]="commit.hash">{{ commit.hash }}</dd>
               </div>
               <div>
-                <dt>Parent(s)</dt>
-                <dd>{{ commit.parents.length || "Nenhum" }}</dd>
+                <dt>{{ "history.parents" | translate }}</dt>
+                <dd>{{ commit.parents.length || ("history.none" | translate) }}</dd>
               </div>
             </dl>
 
             <button type="button" class="branch-create-button" (click)="createBranchFromSelectedCommit()">
               <span aria-hidden="true">⑂</span>
-              Criar branch a partir deste commit
+              {{ "history.createBranch" | translate }}
             </button>
 
             <section class="changed-files">
               <div class="changed-files-heading">
                 <div>
-                  <h4>Arquivos alterados</h4>
-                  <p>Clique em um arquivo para abrir o diff.</p>
+                  <h4>{{ "history.changedFiles" | translate }}</h4>
+                  <p>{{ "history.openDiffHint" | translate }}</p>
                 </div>
                 @if (!commitFilesLoading()) {
                   <span class="file-count">{{ selectedCommitFiles().length }}</span>
@@ -331,13 +331,13 @@
               </div>
 
               @if (commitFilesLoading()) {
-                <div class="files-loading">Lendo arquivos...</div>
+                <div class="files-loading">{{ "history.loadingFiles" | translate }}</div>
               } @else if (commitFilesError()) {
                 <div class="files-error">{{ commitFilesError() }}</div>
               } @else if (selectedCommitFiles().length > 0) {
                 <div class="commit-file-list">
                   @for (file of selectedCommitFiles(); track file.path) {
-                    <button type="button" class="commit-file-row" (click)="openCommitFile(file)" [title]="'Visualizar diff de ' + file.path">
+                    <button type="button" class="commit-file-row" (click)="openCommitFile(file)" [title]="('history.viewDiff' | translate) + ' ' + file.path">
                       <span
                         class="commit-file-status"
                         [class.status-added]="file.status === 'added'"
@@ -350,7 +350,7 @@
                   }
                 </div>
               } @else {
-                <div class="files-loading">Nenhum arquivo alterado encontrado.</div>
+                <div class="files-loading">{{ "history.noChangedFiles" | translate }}</div>
               }
             </section>
           </aside>
@@ -358,11 +358,11 @@
       </div>
     }
   } @else {
-    <p class="eyebrow">Repositório</p>
-    <h2>Visão geral</h2>
+    <p class="eyebrow">{{ "history.repository" | translate }}</p>
+    <h2>{{ "history.title" | translate }}</h2>
     <div class="panel empty-state">
-      <h3>Nenhum repositório selecionado</h3>
-      <p>Abra um repositório para visualizar o histórico e sincronizar com o remoto.</p>
+      <h3>{{ "history.noRepository" | translate }}</h3>
+      <p>{{ "history.openRepository" | translate }}</p>
     </div>
   }
 
@@ -372,7 +372,7 @@
       [diff]="commitFileDiff()"
       [loading]="commitFileDiffLoading()"
       [error]="commitFileDiffError()"
-      [contextLabel]="'Arquivo do commit ' + (selectedCommit()?.shortHash || '')"
+      [contextLabel]="('history.fileCommit' | translate) + ' ' + (selectedCommit()?.shortHash || '')"
       (closed)="closeCommitFile()"
     />
   }
@@ -385,21 +385,21 @@
       (click)="$event.stopPropagation()"
     >
       <div class="commit-context-heading">
-        <span>COMMIT</span>
+        <span>{{ "history.commit" | translate }}</span>
         <code>{{ menu.commit.shortHash }}</code>
       </div>
       <button type="button" (click)="checkoutFromContextMenu()">
         <span class="context-menu-icon" aria-hidden="true">↓</span>
         <span>
-          <strong>Fazer checkout</strong>
-          <small>Ir para este commit</small>
+          <strong>{{ "history.checkout" | translate }}</strong>
+          <small>{{ "history.checkoutDescription" | translate }}</small>
         </span>
       </button>
       <button type="button" class="context-menu-danger" (click)="revertFromContextMenu()">
         <span class="context-menu-icon" aria-hidden="true">↶</span>
         <span>
-          <strong>Desfazer este commit</strong>
-          <small>Criar um commit inverso</small>
+          <strong>{{ "history.revert" | translate }}</strong>
+          <small>{{ "history.revertDescription" | translate }}</small>
         </span>
       </button>
     </div>
@@ -407,11 +407,11 @@
 
   @if (pendingCheckoutCommit(); as commit) {
     <app-confirm-dialog
-      title="Guardar alterações antes do checkout?"
-      [message]="'Existem alterações não commitadas. Deseja guardá-las em um stash e ir para o commit ' + commit.shortHash + '? Elas poderão ser aplicadas novamente pela tela Stashes.'"
+      [title]="'history.checkoutConfirmTitle' | translate"
+      [message]="'history.checkoutConfirmMessage' | translate: { hash: commit.shortHash }"
       [messageHighlight]="commit.shortHash"
-      confirmLabel="Guardar stash e continuar"
-      cancelLabel="Cancelar"
+      [confirmLabel]="'history.checkoutConfirm' | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
       (confirmed)="confirmCheckoutCommit()"
       (cancelled)="cancelCheckoutCommit()"
     />
@@ -419,11 +419,11 @@
 
   @if (pendingRevertCommit(); as commit) {
     <app-confirm-dialog
-      title="Desfazer este commit?"
-      [message]="'Será criado um novo commit para desfazer ' + commit.shortHash + '. O commit original continuará no histórico e as alterações locais precisam estar limpas. Deseja continuar?'"
+      [title]="'history.revertConfirmTitle' | translate"
+      [message]="'history.revertConfirmMessage' | translate: { hash: commit.shortHash }"
       [messageHighlight]="commit.shortHash"
-      confirmLabel="Desfazer commit"
-      cancelLabel="Cancelar"
+      [confirmLabel]="'history.revertConfirm' | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
       [destructive]="true"
       (confirmed)="confirmRevertCommit()"
       (cancelled)="cancelRevertCommit()"

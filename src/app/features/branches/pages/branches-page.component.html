@@ -2,18 +2,18 @@
   @if (activeRepository(); as repository) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Referências</p>
-        <h2>Branches</h2>
+        <p class="eyebrow">{{ "branches.eyebrow" | translate }}</p>
+        <h2>{{ "repository.branches" | translate }}</h2>
         <p class="description" [title]="repository.path">{{ repository.path }}</p>
       </div>
       <div class="heading-actions">
         <button type="button" class="create-button" [disabled]="isSaving()" (click)="openCreateBranch()">
           <span aria-hidden="true">+</span>
-          Nova branch
+          {{ "branches.new" | translate }}
         </button>
         <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="loadReferences()">
           <span aria-hidden="true">↻</span>
-          Atualizar
+          {{ "branches.refresh" | translate }}
         </button>
       </div>
     </header>
@@ -22,20 +22,20 @@
       <section class="panel branch-form-panel">
         <div class="form-heading">
           <div>
-            <p class="eyebrow">{{ branchFormMode() === "create" ? "Nova referência" : "Editar referência" }}</p>
-            <h3>{{ branchFormMode() === "create" ? "Criar branch" : "Renomear branch" }}</h3>
+            <p class="eyebrow">{{ (branchFormMode() === "create" ? "branches.newReference" : "branches.editReference") | translate }}</p>
+            <h3>{{ (branchFormMode() === "create" ? "branches.create" : "branches.rename") | translate }}</h3>
           </div>
-          <button type="button" class="icon-button" aria-label="Fechar formulário" (click)="closeBranchForm()">×</button>
+          <button type="button" class="icon-button" [attr.aria-label]="'branches.closeForm' | translate" (click)="closeBranchForm()">×</button>
         </div>
 
         @if (createFromCommit(); as commitHash) {
           <div class="origin-chip">
             <span aria-hidden="true">●</span>
-            Criando a partir do commit <code>{{ commitHash.slice(0, 10) }}</code>
+            {{ "branches.fromCommit" | translate }} <code>{{ commitHash.slice(0, 10) }}</code>
           </div>
         }
 
-        <label class="field-label" for="branch-name">Nome da branch</label>
+        <label class="field-label" for="branch-name">{{ "branches.name" | translate }}</label>
         <input
           id="branch-name"
           class="branch-input"
@@ -50,14 +50,14 @@
           <p class="form-error">{{ branchFormError() }}</p>
         }
         <div class="form-actions">
-          <button type="button" class="cancel-button" [disabled]="isSaving()" (click)="closeBranchForm()">Cancelar</button>
+          <button type="button" class="cancel-button" [disabled]="isSaving()" (click)="closeBranchForm()">{{ "workspace.cancel" | translate }}</button>
           <button type="button" class="confirm-button" [disabled]="isSaving() || !branchName().trim()" (click)="submitBranch()">
             @if (isSaving()) {
-              Salvando...
+              {{ "branches.saving" | translate }}
             } @else if (branchFormMode() === "create") {
-              Criar e ativar
+              {{ "branches.createAndActivate" | translate }}
             } @else {
-              Renomear branch
+              {{ "branches.rename" | translate }}
             }
           </button>
         </div>
@@ -65,16 +65,16 @@
     }
 
     @if (isLoading()) {
-      <div class="panel loading-state">Lendo as referências do Git...</div>
+      <div class="panel loading-state">{{ "branches.loading" | translate }}</div>
     } @else if (references(); as repositoryReferences) {
       <div class="branch-summary">
         <span class="branch-icon" aria-hidden="true">⑂</span>
         <div>
-          <span>Branch atual</span>
-          <strong>{{ repositoryReferences.currentBranch || "HEAD destacado" }}</strong>
+          <span>{{ "branches.current" | translate }}</span>
+          <strong>{{ repositoryReferences.currentBranch || ("repository.headDetached" | translate) }}</strong>
         </div>
         @if (repositoryStatus()?.isDirty) {
-          <span class="dirty-badge">Alterações não commitadas</span>
+          <span class="dirty-badge">{{ "branches.dirty" | translate }}</span>
         }
       </div>
 
@@ -87,13 +87,13 @@
         </span>
         <input
           type="search"
-          aria-label="Buscar branches locais e remotas"
-          placeholder="Buscar branches locais e remotas"
+          [attr.aria-label]="'branches.searchLabel' | translate"
+          [placeholder]="'branches.searchPlaceholder' | translate"
           [ngModel]="branchSearch()"
           (ngModelChange)="branchSearch.set($event)"
         />
         @if (branchSearch()) {
-          <button type="button" class="clear-branch-search" aria-label="Limpar busca" (click)="clearBranchSearch()">×</button>
+          <button type="button" class="clear-branch-search" [attr.aria-label]="'branches.clearSearch' | translate" (click)="clearBranchSearch()">×</button>
         }
       </div>
 
@@ -101,8 +101,8 @@
         <section class="panel reference-panel local-panel">
           <div class="panel-heading">
             <div>
-              <h3>Branches locais</h3>
-              <p>Selecione, renomeie ou exclua uma branch</p>
+              <h3>{{ "repository.localBranches" | translate }}</h3>
+              <p>{{ "branches.localDescription" | translate }}</p>
             </div>
             <span>{{ filteredLocalBranches().length }}</span>
           </div>
@@ -114,21 +114,21 @@
                   [class.current]="branch === repositoryReferences.currentBranch"
                   [class.pressed]="branch === repositoryReferences.currentBranch"
                 >
-                  <button type="button" class="branch-main" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestCheckout(branch)" [title]="branch === repositoryReferences.currentBranch ? 'Branch atual' : 'Trocar para ' + branch">
+                  <button type="button" class="branch-main" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestCheckout(branch)" [title]="branch === repositoryReferences.currentBranch ? ('branches.currentTitle' | translate) : ('branches.checkoutTitle' | translate: { branch: branch })">
                     <span class="branch-dot" aria-hidden="true"></span>
                     <span class="branch-name">{{ branch }}</span>
                     @if (branch === repositoryReferences.currentBranch) {
-                      <small>atual</small>
+                      <small>{{ "branches.currentShort" | translate }}</small>
                     }
                   </button>
                   <div class="branch-actions">
-                    <button type="button" class="branch-action edit-action" [disabled]="isSaving()" (click)="openRenameBranch(branch, $event)" [attr.aria-label]="'Renomear ' + branch" title="Renomear branch">
+                    <button type="button" class="branch-action edit-action" [disabled]="isSaving()" (click)="openRenameBranch(branch, $event)" [attr.aria-label]="'branches.renameAria' | translate: { branch: branch }" [title]="'branches.renameTitle' | translate">
                       <svg class="branch-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
                       </svg>
                     </button>
-                    <button type="button" class="branch-action delete-action" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestDeleteBranch(branch, $event)" [attr.aria-label]="'Excluir ' + branch" title="Excluir branch">
+                    <button type="button" class="branch-action delete-action" [disabled]="isSaving() || branch === repositoryReferences.currentBranch" (click)="requestDeleteBranch(branch, $event)" [attr.aria-label]="'branches.deleteAria' | translate: { branch: branch }" [title]="'branches.deleteTitle' | translate">
                       <svg class="branch-action-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M3 6h18" />
                         <path d="M8 6V4h8v2" />
@@ -142,7 +142,7 @@
             </div>
           } @else {
             <p class="empty-reference">
-              {{ branchSearch() ? "Nenhuma branch local encontrada." : "Nenhuma branch local." }}
+              {{ (branchSearch() ? "branches.noLocalFound" : "branches.noLocal") | translate }}
             </p>
           }
         </section>
@@ -150,8 +150,8 @@
         <section class="panel reference-panel">
           <div class="panel-heading">
             <div>
-              <h3>Branches remotas</h3>
-              <p>Referências disponíveis no último fetch</p>
+              <h3>{{ "repository.remoteBranches" | translate }}</h3>
+              <p>{{ "branches.remoteDescription" | translate }}</p>
             </div>
             <span>{{ filteredRemoteBranches().length }}</span>
           </div>
@@ -166,14 +166,14 @@
             </div>
           } @else {
             <p class="empty-reference">
-              {{ branchSearch() ? "Nenhuma branch remota encontrada." : "Nenhuma branch remota." }}
+              {{ (branchSearch() ? "branches.noRemoteFound" : "branches.noRemote") | translate }}
             </p>
           }
         </section>
 
         <section class="panel reference-panel">
           <div class="panel-heading">
-            <h3>Tags</h3>
+            <h3>{{ "branches.tags" | translate }}</h3>
             <span>{{ repositoryReferences.tags.length }}</span>
           </div>
           @if (repositoryReferences.tags.length > 0) {
@@ -186,13 +186,13 @@
               }
             </div>
           } @else {
-            <p class="empty-reference">Nenhuma tag.</p>
+          <p class="empty-reference">{{ "branches.noTags" | translate }}</p>
           }
         </section>
 
         <section class="panel reference-panel">
           <div class="panel-heading">
-            <h3>Stashes</h3>
+            <h3>{{ "branches.stashes" | translate }}</h3>
             <span>{{ repositoryReferences.stashes.length }}</span>
           </div>
           @if (repositoryReferences.stashes.length > 0) {
@@ -205,17 +205,17 @@
               }
             </div>
           } @else {
-            <p class="empty-reference">Nenhum stash.</p>
+          <p class="empty-reference">{{ "branches.noStashes" | translate }}</p>
           }
         </section>
       </div>
     }
   } @else {
-    <p class="eyebrow">Referências</p>
-    <h2>Branches</h2>
+    <p class="eyebrow">{{ "branches.eyebrow" | translate }}</p>
+    <h2>{{ "repository.branches" | translate }}</h2>
     <div class="panel empty-state">
-      <h3>Nenhum repositório selecionado</h3>
-      <p>Abra um repositório para visualizar e gerenciar suas branches.</p>
+      <h3>{{ "branches.noRepository" | translate }}</h3>
+      <p>{{ "branches.openRepository" | translate }}</p>
     </div>
   }
 

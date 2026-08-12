@@ -2,10 +2,12 @@ import { computed, inject, Injectable, signal } from "@angular/core";
 import type { InitProgressReport, MLCEngineInterface } from "@mlc-ai/web-llm";
 import { AiModelId, getAiModelOption } from "../models/ai-model.model";
 import { SettingsService } from "./settings.service";
+import { TranslationService } from "./translation.service";
 
 @Injectable({ providedIn: "root" })
 export class CommitAiService {
   private readonly settingsService = inject(SettingsService);
+  private readonly translationService = inject(TranslationService);
   private readonly workerModel = signal<MLCEngineInterface | undefined>(undefined);
   private enginePromise: Promise<MLCEngineInterface> | undefined;
   private worker: Worker | undefined;
@@ -16,7 +18,7 @@ export class CommitAiService {
   readonly isLoadingModel = signal(false);
   readonly isGenerating = signal(false);
   readonly progress = signal(0);
-  readonly progressText = signal("Preparando a IA local...");
+  readonly progressText = signal(this.translationService.translate("changes.preparingLocal"));
   readonly selectedModel = computed(() => getAiModelOption(this.settingsService.aiModel()));
   readonly modelSizeLabel = computed(() => this.selectedModel().sizeLabel);
 
@@ -94,7 +96,7 @@ export class CommitAiService {
   private async initializeModel(modelId: AiModelId): Promise<MLCEngineInterface> {
     this.isLoadingModel.set(true);
     this.progress.set(0);
-    this.progressText.set("Baixando e preparando o modelo local...");
+    this.progressText.set(this.translationService.translate("changes.downloadingAi"));
     this.worker = new Worker(new URL("../workers/commit-ai.worker.ts", import.meta.url), {
       type: "module",
     });
@@ -107,7 +109,7 @@ export class CommitAiService {
       });
       this.workerModel.set(engine);
       this.progress.set(100);
-      this.progressText.set("IA local pronta.");
+      this.progressText.set(this.translationService.translate("changes.aiReady"));
       return engine;
     } catch (error: unknown) {
       this.worker?.terminate();
@@ -131,7 +133,7 @@ export class CommitAiService {
   private updateProgress(report: InitProgressReport): void {
     const progress = report.progress <= 1 ? report.progress * 100 : report.progress;
     this.progress.set(Math.max(0, Math.min(100, Math.round(progress))));
-    this.progressText.set(report.text || "Baixando e preparando o modelo local...");
+    this.progressText.set(report.text || this.translationService.translate("changes.downloadingAi"));
   }
 
   private loadWebLlm(): Promise<typeof import("@mlc-ai/web-llm")> {
