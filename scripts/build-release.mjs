@@ -5,6 +5,10 @@ const targets = {
     platform: "win32",
     bundles: "nsis,msi",
   },
+  "windows-portable": {
+    platform: "win32",
+    noBundle: true,
+  },
   linux: {
     platform: "linux",
     bundles: "appimage,deb,rpm",
@@ -49,12 +53,22 @@ if (process.platform !== target.platform) {
   process.exit(2);
 }
 
-console.log(`Gerando instaladores para ${requestedTarget}: ${target.bundles}`);
+console.log(
+  target.noBundle
+    ? `Gerando executável portátil para ${requestedTarget}`
+    : `Gerando instaladores para ${requestedTarget}: ${target.bundles}`,
+);
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const result = spawnSync(
   npmCommand,
-  ["run", "tauri", "--", "build", "--bundles", target.bundles],
+  [
+    "run",
+    "tauri",
+    "--",
+    "build",
+    ...(target.noBundle ? ["--no-bundle"] : ["--bundles", target.bundles]),
+  ],
   {
     stdio: "inherit",
     // Arquivos .cmd precisam ser executados pelo shell no Windows.

@@ -5,6 +5,8 @@ import {
   getAiModelOption,
 } from "../../../core/models/ai-model.model";
 import { SettingsService } from "../../../core/services/settings.service";
+import { ThemeId } from "../../../core/models/theme.model";
+import { ThemeService } from "../../../core/services/theme.service";
 
 @Component({
   selector: "app-settings-page",
@@ -13,6 +15,7 @@ import { SettingsService } from "../../../core/services/settings.service";
 })
 export class SettingsPageComponent {
   private readonly settingsService = inject(SettingsService);
+  private readonly themeService = inject(ThemeService);
   readonly aiModels = AI_MODEL_OPTIONS;
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiModel = this.settingsService.aiModel;
@@ -20,6 +23,8 @@ export class SettingsPageComponent {
   modelPickerOpen = false;
   readonly gitCommandNotifications = this.settingsService.gitCommandNotifications;
   readonly notificationSounds = this.settingsService.notificationSounds;
+  readonly themes = this.themeService.themes;
+  readonly activeTheme = this.themeService.theme;
 
   toggleAi(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -46,5 +51,9 @@ export class SettingsPageComponent {
   toggleNotificationSounds(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.settingsService.setNotificationSounds(input.checked);
+  }
+
+  selectTheme(themeId: ThemeId): void {
+    this.themeService.setTheme(themeId);
   }
 }

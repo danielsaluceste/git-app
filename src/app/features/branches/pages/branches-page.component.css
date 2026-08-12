@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   display: grid;
   gap: 1rem;
   max-width: 1550px;
@@ -20,7 +20,7 @@
 
 .eyebrow {
   margin: 0 0 0.45rem;
-  color: #f97316;
+  color: var(--app-accent);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -35,7 +35,7 @@ p {
 
 h2,
 h3 {
-  color: #f9fafb;
+  color: var(--app-text-bright);
 }
 
 h2 {
@@ -50,7 +50,7 @@ h3 {
 .empty-state p,
 .empty-reference {
   margin-top: 0.4rem;
-  color: #9ca3af;
+  color: var(--app-muted);
 }
 
 .description {
@@ -64,19 +64,19 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0.65rem 0.9rem;
-  background: #1f2937;
-  color: #e5e7eb;
+  background: var(--app-surface-1);
+  color: var(--app-text-strong);
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
 }
 
 .refresh-button:hover:not(:disabled) {
-  border-color: #4b5563;
-  background: #263244;
+  border-color: var(--app-border-strong);
+  background: var(--app-border-subtle);
 }
 
 .create-button,
@@ -95,22 +95,22 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid #9a5b18;
+  border: 1px solid var(--app-accent-border);
   padding: 0.65rem 0.8rem;
-  background: #4a2d14;
-  color: #fed7aa;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
   font-size: 0.78rem;
 }
 
 .create-button span {
-  color: #fb923c;
+  color: var(--app-accent-hover);
   font-size: 1.1rem;
   line-height: 1;
 }
 
 .create-button:hover:not(:disabled) {
-  border-color: #fb923c;
-  background: #6b3b14;
+  border-color: var(--app-accent-hover);
+  background: var(--app-accent-surface);
   transform: translateY(-1px);
 }
 
@@ -125,16 +125,16 @@ h3 {
 }
 
 .refresh-button span {
-  color: #f97316;
+  color: var(--app-accent);
   font-size: 1.1rem;
   line-height: 1;
 }
 
 .panel,
 .branch-summary {
-  border: 1px solid #263244;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.75rem;
-  background: #172033;
+  background: var(--app-surface-2);
 }
 
 .panel {
@@ -143,24 +143,24 @@ h3 {
 
 .loading-state,
 .empty-state {
-  color: #9ca3af;
+  color: var(--app-muted);
 }
 
 .error-state {
-  border-color: #7f1d1d;
-  background: #450a0a;
-  color: #fecaca;
+  border-color: var(--app-danger-surface);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .success-message {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  border: 1px solid #065f46;
+  border: 1px solid var(--app-positive-border);
   border-radius: 0.6rem;
   padding: 0.75rem 1rem;
-  background: #064e3b;
-  color: #a7f3d0;
+  background: var(--app-positive-surface);
+  color: var(--app-positive-strong);
   font-size: 0.82rem;
 }
 
@@ -170,8 +170,8 @@ h3 {
   height: 1.2rem;
   place-items: center;
   border-radius: 50%;
-  background: #34d399;
-  color: #064e3b;
+  background: var(--app-positive);
+  color: var(--app-positive-surface);
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -179,8 +179,8 @@ h3 {
 .branch-form-panel {
   display: grid;
   gap: 0.8rem;
-  border-color: #7c4a1d;
-  background: linear-gradient(135deg, #1d2738, #172033);
+  border-color: var(--app-accent-border);
+  background: linear-gradient(135deg, var(--app-surface-2), var(--app-surface-2));
 }
 
 .form-heading {
@@ -189,7 +189,7 @@ h3 {
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 0.8rem;
-  border-bottom: 1px solid #263244;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .icon-button {
@@ -198,13 +198,13 @@ h3 {
   height: 2rem;
   place-items: center;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 1.2rem;
 }
 
 .icon-button:hover {
-  background: #374151;
-  color: #f9fafb;
+  background: var(--app-border);
+  color: var(--app-secondary-text);
 }
 
 .origin-chip {
@@ -212,24 +212,24 @@ h3 {
   align-items: center;
   gap: 0.4rem;
   width: fit-content;
-  border: 1px solid #4c3c79;
+  border: 1px solid var(--app-purple);
   border-radius: 999px;
   padding: 0.35rem 0.6rem;
-  background: #2e2350;
-  color: #ddd6fe;
+  background: var(--app-accent-surface);
+  color: var(--app-purple);
   font-size: 0.74rem;
 }
 
 .origin-chip span {
-  color: #a78bfa;
+  color: var(--app-purple);
 }
 
 .origin-chip code {
-  color: #c4b5fd;
+  color: var(--app-purple);
 }
 
 .field-label {
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -237,29 +237,29 @@ h3 {
 .branch-input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0.75rem 0.85rem;
   outline: none;
-  background: #111827;
-  color: #f9fafb;
+  background: var(--app-surface-0);
+  color: var(--app-text-bright);
   font: inherit;
-  font-family: "Cascadia Code", Consolas, monospace;
+  font-family: var(--app-font-mono);
   font-size: 0.82rem;
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .branch-input:focus {
-  border-color: #f97316;
+  border-color: var(--app-accent);
   box-shadow: 0 0 0 3px rgb(249 115 22 / 15%);
 }
 
 .branch-input::placeholder {
-  color: #6b7280;
+  color: var(--app-muted-strong);
 }
 
 .form-error {
-  color: #fca5a5;
+  color: var(--app-danger-text);
   font-size: 0.76rem;
 }
 
@@ -277,22 +277,22 @@ h3 {
 }
 
 .confirm-button {
-  background: #f97316;
-  color: #111827;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 .confirm-button:hover:not(:disabled) {
-  background: #fb923c;
+  background: var(--app-accent-hover);
   transform: translateY(-1px);
 }
 
 .cancel-button {
-  background: #374151;
-  color: #e5e7eb;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
 }
 
 .cancel-button:hover:not(:disabled) {
-  background: #4b5563;
+  background: var(--app-border-strong);
 }
 
 .branch-summary {
@@ -304,7 +304,7 @@ h3 {
 }
 
 .branch-icon {
-  color: #34d399;
+  color: var(--app-positive);
   font-size: 1.35rem;
 }
 
@@ -314,12 +314,12 @@ h3 {
 }
 
 .branch-summary span:not(.branch-icon) {
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.75rem;
 }
 
 .branch-summary strong {
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.95rem;
 }
 
@@ -328,15 +328,15 @@ h3 {
   align-items: center;
   gap: 0.65rem;
   min-height: 2.8rem;
-  border: 1px solid #263244;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.65rem;
   padding: 0 0.75rem;
-  background: #172033;
+  background: var(--app-surface-2);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .branch-search:focus-within {
-  border-color: #f97316;
+  border-color: var(--app-accent);
   box-shadow: 0 0 0 3px rgb(249 115 22 / 12%);
 }
 
@@ -346,7 +346,7 @@ h3 {
   height: 1rem;
   flex: 0 0 auto;
   place-items: center;
-  color: #94a3b8;
+  color: var(--app-muted);
 }
 
 .branch-search-icon svg {
@@ -365,13 +365,13 @@ h3 {
   outline: 0;
   padding: 0;
   background: transparent;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font: inherit;
   font-size: 0.82rem;
 }
 
 .branch-search input::placeholder {
-  color: #64748b;
+  color: var(--app-muted-strong);
 }
 
 .branch-search input::-webkit-search-cancel-button {
@@ -388,7 +388,7 @@ h3 {
   border-radius: 0.35rem;
   padding: 0;
   background: transparent;
-  color: #94a3b8;
+  color: var(--app-muted);
   cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
@@ -396,17 +396,17 @@ h3 {
 }
 
 .clear-branch-search:hover {
-  background: #374151;
-  color: #f9fafb;
+  background: var(--app-border);
+  color: var(--app-secondary-text);
 }
 
 .dirty-badge {
   margin-left: auto;
-  border: 1px solid #9a5b18;
+  border: 1px solid var(--app-accent-border);
   border-radius: 999px;
   padding: 0.3rem 0.55rem;
-  background: #4a2d14;
-  color: #fed7aa;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
   font-size: 0.68rem;
   font-weight: 700;
 }
@@ -423,7 +423,7 @@ h3 {
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 0.9rem;
-  border-bottom: 1px solid #263244;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .panel-heading > span {
@@ -432,8 +432,8 @@ h3 {
   height: 1.7rem;
   place-items: center;
   border-radius: 0.4rem;
-  background: #2a3548;
-  color: #d1d5db;
+  background: var(--app-surface-1);
+  color: var(--app-text);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -451,16 +451,16 @@ h3 {
   min-width: 0;
   border-radius: 0.4rem;
   padding: 0.55rem;
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.82rem;
 }
 
 .reference-item.current {
-  background: #1f2937;
+  background: var(--app-surface-1);
 }
 
 .reference-item:hover:not(.current) {
-  background: #1f2937;
+  background: var(--app-surface-1);
 }
 
 .branch-main {
@@ -487,7 +487,7 @@ h3 {
 
 .branch-main small {
   margin-left: auto;
-  color: #6ee7b7;
+  color: var(--app-positive-strong);
   font-size: 0.68rem;
 }
 
@@ -511,8 +511,8 @@ h3 {
   place-items: center;
   border: 1px solid transparent;
   border-radius: 0.45rem;
-  background: #332a1b;
-  color: #fbbf24;
+  background: var(--app-accent-surface);
+  color: var(--app-yellow);
   cursor: pointer;
   font: inherit;
   line-height: 1;
@@ -520,22 +520,22 @@ h3 {
 }
 
 .branch-action:hover:not(:disabled) {
-  border-color: #d97706;
-  background: #513516;
-  color: #fcd34d;
+  border-color: var(--app-accent);
+  background: var(--app-accent-surface);
+  color: var(--app-yellow);
   transform: translateY(-1px);
 }
 
 .branch-action.delete-action {
-  border-color: #5f2935;
-  background: #351f29;
-  color: #fb7185;
+  border-color: var(--app-danger-surface);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .branch-action.delete-action:hover:not(:disabled) {
-  border-color: #e11d48;
-  background: #521f2d;
-  color: #fda4af;
+  border-color: var(--app-danger);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .branch-action-icon {
@@ -557,7 +557,7 @@ h3 {
 
 .reference-item small {
   margin-left: auto;
-  color: #6ee7b7;
+  color: var(--app-positive-strong);
   font-size: 0.68rem;
 }
 
@@ -570,23 +570,23 @@ h3 {
 }
 
 .branch-dot {
-  background: #34d399;
+  background: var(--app-positive);
 }
 
 .remote-dot {
-  background: #38bdf8;
+  background: var(--app-info);
 }
 
 .tag-dot,
 .stash-dot {
   width: 0.55rem;
   flex: 0 0 0.55rem;
-  color: #fbbf24;
+  color: var(--app-yellow);
   font-size: 0.55rem;
 }
 
 .stash-dot {
-  color: #c4b5fd;
+  color: var(--app-purple);
 }
 
 .empty-reference {
@@ -602,5 +602,350 @@ h3 {
 
   .reference-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* A tela de referências ganha uma composição própria no tema neo: cada bloco tem
+   uma leitura clara, volume consistente e espaço suficiente para a sombra aparecer. */
+:host-context(:root[data-theme="neo-brutalist"]) .page {
+  gap: 1.15rem;
+  padding: 0.15rem 0.15rem 0.75rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .page-heading {
+  align-items: center;
+  padding: 0.25rem 0.1rem 0;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .eyebrow {
+  margin-bottom: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) h2 {
+  font-size: clamp(2rem, 4vw, 2.65rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .description {
+  margin-top: 0.55rem;
+  color: var(--app-muted);
+  font-family: var(--app-font-mono);
+  font-size: 0.72rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .heading-actions {
+  gap: 0.7rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .create-button,
+:host-context(:root[data-theme="neo-brutalist"]) .refresh-button {
+  min-height: 2.45rem;
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px;
+  padding: 0.62rem 0.9rem;
+  box-shadow: 3px 3px 0 var(--app-shadow-color);
+  font-weight: 800;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .create-button {
+  background: var(--app-accent) !important;
+  color: var(--app-on-accent) !important;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .create-button span {
+  color: var(--app-on-accent);
+  font-weight: 900;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .refresh-button {
+  background: var(--app-surface-1) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .create-button:hover:not(:disabled),
+:host-context(:root[data-theme="neo-brutalist"]) .refresh-button:hover:not(:disabled) {
+  border-color: var(--app-border);
+  box-shadow: 1px 1px 0 var(--app-shadow-color);
+  transform: translate(2px, 2px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-summary,
+:host-context(:root[data-theme="neo-brutalist"]) .branch-search,
+:host-context(:root[data-theme="neo-brutalist"]) .reference-panel {
+  border: 3px solid var(--app-border);
+  border-radius: var(--app-panel-radius);
+  background: var(--app-surface-1);
+  box-shadow: var(--app-panel-shadow);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-summary {
+  min-height: 4.45rem;
+  gap: 0.85rem;
+  padding: 0.9rem 1.05rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-icon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-positive-surface);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-positive-strong);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-summary span:not(.branch-icon) {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-summary strong {
+  font-family: var(--app-font-mono);
+  font-size: 0.9rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .dirty-badge {
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  padding: 0.38rem 0.6rem;
+  background: var(--app-accent-surface);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-text-bright);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-search {
+  min-height: 3.05rem;
+  gap: 0.7rem;
+  padding-inline: 0.9rem;
+  background: var(--app-surface-3);
+  box-shadow: 4px 4px 0 var(--app-shadow-color);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-search:focus-within {
+  border-color: var(--app-border);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  transform: translate(2px, 2px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-search-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--app-text-bright);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-search input {
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--app-text-bright) !important;
+  font-family: var(--app-font-body);
+  font-size: 0.78rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .clear-branch-search {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-accent-surface);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-text-bright);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .clear-branch-search:hover {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+  transform: translate(1px, 1px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-grid {
+  gap: 1.1rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-panel {
+  min-width: 0;
+  overflow: visible;
+  padding: 1.15rem 1.15rem 1.2rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .panel-heading {
+  min-height: 3.1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 2px solid var(--app-border);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .panel-heading h3 {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .panel-heading p {
+  margin-top: 0.3rem;
+  color: var(--app-muted);
+  font-size: 0.72rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .panel-heading > span {
+  min-width: 1.85rem;
+  height: 1.85rem;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-yellow);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-text-bright);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-list {
+  gap: 0.45rem;
+  padding-top: 0.9rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item {
+  min-height: 2.7rem;
+  border: 2px solid transparent;
+  border-radius: var(--app-small-radius);
+  padding: 0.5rem 0.55rem;
+  background: var(--app-surface-2);
+  color: var(--app-text-strong);
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item.current {
+  border-color: var(--app-border);
+  background: var(--app-accent-surface);
+  box-shadow: 3px 3px 0 var(--app-shadow-color);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item:hover:not(.current) {
+  border-color: var(--app-border);
+  background: var(--app-surface-3);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  transform: translate(1px, 1px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-name {
+  font-family: var(--app-font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-main small,
+:host-context(:root[data-theme="neo-brutalist"]) .reference-item small {
+  color: var(--app-positive-strong);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-dot,
+:host-context(:root[data-theme="neo-brutalist"]) .remote-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  flex-basis: 0.62rem;
+  border: 2px solid var(--app-border);
+  box-shadow: 1px 1px 0 var(--app-shadow-color);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .tag-dot,
+:host-context(:root[data-theme="neo-brutalist"]) .stash-dot {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-basis: 1.35rem;
+  place-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-yellow);
+  box-shadow: 1px 1px 0 var(--app-shadow-color);
+  color: var(--app-text-bright);
+  font-size: 0.55rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .stash-dot {
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-actions {
+  gap: 0.4rem;
+  opacity: 1;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-action {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-yellow);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-text-bright);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-action:hover:not(:disabled) {
+  border-color: var(--app-border);
+  background: var(--app-accent);
+  box-shadow: 1px 1px 0 var(--app-shadow-color);
+  color: var(--app-on-accent);
+  transform: translate(1px, 1px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-action.delete-action {
+  border-color: var(--app-border);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-action.delete-action:hover:not(:disabled) {
+  border-color: var(--app-border);
+  background: var(--app-danger);
+  color: var(--app-on-accent);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .empty-reference {
+  margin-top: 0.9rem;
+  border: 2px dashed var(--app-border-subtle);
+  border-radius: var(--app-small-radius);
+  padding: 1rem;
+  background: var(--app-surface-2);
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .branch-form-panel {
+  border: 3px solid var(--app-border);
+  border-radius: var(--app-panel-radius);
+  background: var(--app-surface-1);
+  box-shadow: var(--app-panel-shadow);
+}
+
+@media (max-width: 760px) {
+  :host-context(:root[data-theme="neo-brutalist"]) .page-heading {
+    align-items: stretch;
+  }
+
+  :host-context(:root[data-theme="neo-brutalist"]) .heading-actions {
+    width: 100%;
+  }
+
+  :host-context(:root[data-theme="neo-brutalist"]) .heading-actions > button {
+    flex: 1;
   }
 }

@@ -109,7 +109,7 @@ export class RepositoryTabsComponent {
         return;
       }
 
-      void this.repositoryService.refreshAfterRepositoryOpened(repository).catch(() => undefined);
+      void this.repositoryService.refreshAfterRepositoryOpened(repository, true).catch(() => undefined);
     }, 500);
   }
 

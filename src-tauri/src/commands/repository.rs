@@ -8,6 +8,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -18,6 +20,11 @@ const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_BRANCH_OPERATION_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+
+fn prepare_git_command(command: &mut Command) {
+    #[cfg(target_os = "windows")]
+    command.creation_flags(0x08000000);
+}
 
 #[derive(Default)]
 pub struct CloneProcessState {
@@ -149,6 +156,7 @@ pub fn clone_repository(
     );
 
     let mut command = Command::new("git");
+    prepare_git_command(&mut command);
     if askpass.is_some() {
         command.arg("-c").arg("credential.helper=");
     }
@@ -2121,6 +2129,7 @@ where
     S: AsRef<std::ffi::OsStr>,
 {
     let mut command = Command::new("git");
+    prepare_git_command(&mut command);
     command
         .arg("--no-optional-locks")
         .arg("-C")
@@ -2145,6 +2154,7 @@ where
 {
     let askpass = access_token.map(AskpassGuard::new).transpose()?;
     let mut command = Command::new("git");
+    prepare_git_command(&mut command);
 
     if askpass.is_some() {
         command.arg("-c").arg("credential.helper=");

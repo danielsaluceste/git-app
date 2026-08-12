@@ -1,12 +1,12 @@
-.topbar {
+﻿.topbar {
   display: flex;
   min-height: 3rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0 0 0 1rem;
-  border-bottom: 1px solid #263244;
-  background: #111827;
+  border-bottom: var(--app-panel-border);
+  background: var(--app-surface-0);
   user-select: none;
 }
 
@@ -28,15 +28,15 @@
   border-radius: 0.4rem;
   padding: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font-size: 1.1rem;
   transition: background 140ms ease, color 140ms ease;
 }
 
 .main-sidebar-button:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
 }
 
 .sidebar-toggle-icon {
@@ -50,33 +50,9 @@
   stroke-width: 1.8;
 }
 
-.window-title {
-  display: flex;
-  align-items: center;
-  min-height: 3rem;
-}
-
-.window-title {
+.window-drag-region {
   flex: 1;
-  gap: 0.65rem;
-}
-
-.brand-mark {
-  display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
-  place-items: center;
-  border-radius: 0.45rem;
-  background: #f97316;
-  color: #111827;
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.brand-name {
-  color: #f9fafb;
-  font-size: 0.9rem;
-  font-weight: 700;
+  min-height: 3rem;
 }
 
 .topbar-actions,
@@ -103,19 +79,19 @@
   place-items: center;
   border: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease;
 }
 
 .window-control:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
 }
 
 .window-control.close:hover {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--app-danger);
+  color: var(--app-on-surface);
 }
 
 .minimize span {

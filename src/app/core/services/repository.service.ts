@@ -42,6 +42,9 @@ export class RepositoryService {
   private readonly repositoryRefreshVersionState = signal(0);
   private readonly repositoryCache = new Map<string, RepositoryCache>();
   private readonly backgroundRefreshes = new Set<string>();
+  private readonly pendingReferences = new Map<string, Promise<RepositoryReferences>>();
+  private readonly pendingStatuses = new Map<string, Promise<RepositoryStatus>>();
+  private readonly pendingOperations = new Map<string, Promise<RepositoryOperation | null>>();
 
   readonly repositories = this.repositoriesState.asReadonly();
   readonly openRepositories = this.openRepositoriesState.asReadonly();
@@ -75,12 +78,24 @@ export class RepositoryService {
   }
 
   async getReferences(path: string): Promise<RepositoryReferences> {
-    const references = await invoke<RepositoryReferences>("get_repository_references", { path });
-    this.cacheFor(path).references = references;
-    if (this.isActiveRepositoryPath(path)) {
-      this.repositoryReferencesState.set(references);
+    const cacheKey = this.normalizeRepositoryPath(path);
+    const pending = this.pendingReferences.get(cacheKey);
+    if (pending) {
+      return pending;
     }
-    return references;
+
+    const request = invoke<RepositoryReferences>("get_repository_references", { path })
+      .then((references) => {
+        this.cacheFor(path).references = references;
+        if (this.isActiveRepositoryPath(path)) {
+          this.repositoryReferencesState.set(references);
+        }
+        return references;
+      })
+      .finally(() => this.pendingReferences.delete(cacheKey));
+
+    this.pendingReferences.set(cacheKey, request);
+    return request;
   }
 
   async getRemote(path: string): Promise<RepositoryRemote> {
@@ -92,9 +107,21 @@ export class RepositoryService {
   }
 
   async getOperation(path: string): Promise<RepositoryOperation | null> {
-    const operation = await invoke<RepositoryOperation | null>("get_repository_operation", { path });
-    this.cacheFor(path).operation = operation;
-    return operation;
+    const cacheKey = this.normalizeRepositoryPath(path);
+    const pending = this.pendingOperations.get(cacheKey);
+    if (pending) {
+      return pending;
+    }
+
+    const request = invoke<RepositoryOperation | null>("get_repository_operation", { path })
+      .then((operation) => {
+        this.cacheFor(path).operation = operation;
+        return operation;
+      })
+      .finally(() => this.pendingOperations.delete(cacheKey));
+
+    this.pendingOperations.set(cacheKey, request);
+    return request;
   }
 
   async continueOperation(path: string, operation: RepositoryOperationKind): Promise<void> {
@@ -106,12 +133,24 @@ export class RepositoryService {
   }
 
   async getStatus(path: string): Promise<RepositoryStatus> {
-    const status = await invoke<RepositoryStatus>("get_repository_status", { path });
-    this.cacheFor(path).status = status;
-    if (this.isActiveRepositoryPath(path)) {
-      this.repositoryStatusState.set(status);
+    const cacheKey = this.normalizeRepositoryPath(path);
+    const pending = this.pendingStatuses.get(cacheKey);
+    if (pending) {
+      return pending;
     }
-    return status;
+
+    const request = invoke<RepositoryStatus>("get_repository_status", { path })
+      .then((status) => {
+        this.cacheFor(path).status = status;
+        if (this.isActiveRepositoryPath(path)) {
+          this.repositoryStatusState.set(status);
+        }
+        return status;
+      })
+      .finally(() => this.pendingStatuses.delete(cacheKey));
+
+    this.pendingStatuses.set(cacheKey, request);
+    return request;
   }
 
   async getConflicts(path: string): Promise<ConflictFile[]> {
@@ -270,7 +309,7 @@ export class RepositoryService {
     return allBranches ? this.cacheFor(path).commitsAll : this.cacheFor(path).commitsCurrent;
   }
 
-  async refreshAfterRepositoryOpened(repository: Repository): Promise<void> {
+  async refreshAfterRepositoryOpened(repository: Repository, syncRemote = false): Promise<void> {
     const cacheKey = this.normalizeRepositoryPath(repository.path);
     if (this.backgroundRefreshes.has(cacheKey)) {
       return;
@@ -278,15 +317,17 @@ export class RepositoryService {
 
     this.backgroundRefreshes.add(cacheKey);
     try {
-      try {
-        const syncCredentials = this.getSyncCredentials(repository);
-        await this.fetch(
-          repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
-        );
-      } catch {
-        // Os dados locais continuam sendo atualizados mesmo sem conexão remota.
+      if (syncRemote) {
+        try {
+          const syncCredentials = this.getSyncCredentials(repository);
+          await this.fetch(
+            repository.path,
+            syncCredentials.workspaceId,
+            syncCredentials.githubUserId,
+          );
+        } catch {
+          // Os dados locais continuam sendo atualizados mesmo sem conexão remota.
+        }
       }
 
       await Promise.allSettled([

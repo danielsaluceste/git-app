@@ -9,6 +9,7 @@
     "tauri": "tauri",
     "build:desktop": "node scripts/build-release.mjs",
     "build:windows": "node scripts/build-release.mjs windows",
+    "build:windows-portable": "node scripts/build-release.mjs windows-portable",
     "build:linux": "node scripts/build-release.mjs linux",
     "build:mac": "node scripts/build-release.mjs macos"
   },

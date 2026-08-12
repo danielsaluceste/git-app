@@ -1,17 +1,151 @@
-/* Tipografia local e consistente para o aplicativo desktop. */
+﻿@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
+
+:root,
+:root[data-theme="default"] {
+  color-scheme: dark;
+  --app-bg: #111827;
+  --app-surface-0: #111827;
+  --app-surface-1: #1f2937;
+  --app-surface-2: #172033;
+  --app-surface-3: #131c2d;
+  --app-surface-hover: #263754;
+  --app-border: #374151;
+  --app-border-strong: #4b5563;
+  --app-border-subtle: #263244;
+  --app-text: #d1d5db;
+  --app-text-strong: #e5e7eb;
+  --app-text-bright: #f9fafb;
+  --app-muted: #9ca3af;
+  --app-muted-strong: #6b7280;
+  --app-accent: #f97316;
+  --app-accent-hover: #fb923c;
+  --app-accent-soft: #fdba74;
+  --app-accent-pale: #fed7aa;
+  --app-accent-surface: #4a2d14;
+  --app-accent-border: #7c4a1d;
+  --app-yellow: #fbbf24;
+  --app-ink-on-accent: #111827;
+  --app-positive: #34d399;
+  --app-positive-strong: #6ee7b7;
+  --app-positive-surface: #123b2e;
+  --app-positive-border: #286047;
+  --app-danger: #dc2626;
+  --app-danger-surface: #450a0a;
+  --app-danger-text: #fca5a5;
+  --app-info: #38bdf8;
+  --app-info-surface: #172554;
+  --app-info-text: #93c5fd;
+  --app-purple: #c4b5fd;
+  --app-white: #ffffff;
+  --app-font-body: "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif;
+  --app-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --app-control-radius: 0.45rem;
+  --app-small-radius: 0.4rem;
+  --app-panel-radius: 0.75rem;
+  --app-control-border: 1px solid var(--app-border);
+  --app-panel-border: 1px solid var(--app-border-subtle);
+  --app-shadow-color: rgb(0 0 0 / 35%);
+  --app-small-shadow: 2px 2px 0 var(--app-shadow-color);
+  --app-panel-shadow: 0 1rem 2.5rem var(--app-shadow-color);
+  --app-on-accent: #111827;
+  --app-on-surface: #ffffff;
+  --app-secondary-bg: #374151;
+  --app-secondary-text: #f9fafb;
+  --app-toast-bg: #172033;
+  --app-toast-text: #f9fafb;
+  --app-dialog-bg: #172033;
+  --app-dialog-text: #e5e7eb;
+  --app-dark-button-shadow: #f9fafb;
+  --app-modal-overlay: rgb(3 7 18 / 68%);
+  --app-modal-blur: 14px;
+}
+
+:root[data-theme="neo-brutalist"] {
+  color-scheme: light;
+  --app-bg: #fff3dc;
+  --app-surface-0: #fffaf1;
+  --app-surface-1: #fffaf1;
+  --app-surface-2: #fff3dc;
+  --app-surface-3: #fff1d5;
+  --app-surface-hover: #ffe3ad;
+  --app-border: #211e1b;
+  --app-border-strong: #211e1b;
+  --app-border-subtle: #d7c5a8;
+  --app-text: #433b35;
+  --app-text-strong: #211e1b;
+  --app-text-bright: #211e1b;
+  --app-muted: #5d534a;
+  --app-muted-strong: #6b5b4e;
+  --app-accent: #fd5b49;
+  --app-accent-hover: #d44335;
+  --app-accent-soft: #b83b2f;
+  --app-accent-pale: #8f2a20;
+  --app-accent-surface: #ffd0c6;
+  --app-accent-border: #211e1b;
+  --app-yellow: #ffc467;
+  --app-ink-on-accent: #211e1b;
+  --app-positive: #278b57;
+  --app-positive-strong: #166534;
+  --app-positive-surface: #d7f0dc;
+  --app-positive-border: #278b57;
+  --app-danger: #c9362b;
+  --app-danger-surface: #ffd8d2;
+  --app-danger-text: #8d211a;
+  --app-info: #317b9b;
+  --app-info-surface: #d9edf4;
+  --app-info-text: #245f7a;
+  --app-purple: #6d4c9b;
+  --app-white: #ffffff;
+  --app-font-body: "Sora", "Segoe UI", Inter, system-ui, sans-serif;
+  --app-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --app-control-radius: 999px;
+  --app-small-radius: 0.55rem;
+  --app-panel-radius: 1rem;
+  --app-control-border: 2px solid var(--app-border);
+  --app-panel-border: 3px solid var(--app-border);
+  --app-shadow-color: #211e1b;
+  --app-small-shadow: 3px 3px 0 var(--app-shadow-color);
+  --app-panel-shadow: 7px 7px 0 var(--app-shadow-color);
+  --app-on-accent: #211e1b;
+  --app-on-surface: #211e1b;
+  --app-secondary-bg: #211e1b;
+  --app-secondary-text: #fffaf1;
+  --app-toast-bg: #fffaf1;
+  --app-toast-text: #211e1b;
+  --app-dialog-bg: #fffaf1;
+  --app-dialog-text: #211e1b;
+  --app-dark-button-shadow: #fff3dc;
+  --app-modal-overlay: rgb(33 30 27 / 72%);
+  --app-modal-blur: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
+  height: 100%;
   min-height: 100%;
   margin: 0;
 }
 
 body {
-  background: #111827;
-  color: #e5e7eb;
-  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  min-width: 320px;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font-body);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background 240ms ease, color 240ms ease;
+}
+
+:root[data-theme="neo-brutalist"] body {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 11%) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--app-bg);
 }
 
 button,
@@ -21,12 +155,138 @@ select {
   font: inherit;
 }
 
-* {
-  box-sizing: border-box;
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--app-accent-hover);
+  outline-offset: 3px;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--app-yellow);
+  color: var(--app-ink-on-accent);
+}
+
+.app-root {
+  min-height: 100vh;
+}
+
+/* A transparência nativa fica encapsulada no layout. Cada tema define sua
+   própria moldura para não vazar sombra ou margem para o outro tema. */
+:root[data-tauri-window] {
+  background: var(--app-bg);
+}
+
+:root[data-tauri-window] body {
+  padding: 0;
+  overflow: hidden;
+  background: var(--app-bg);
+}
+
+:root[data-tauri-window] app-root {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--app-bg);
+  box-shadow: none;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] {
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] body {
+  padding: 10px 12px 12px 10px;
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] app-root {
+  overflow: hidden;
+  border: 3px solid var(--app-border);
+  border-radius: calc(var(--app-panel-radius) + 0.2rem);
+  background: var(--app-bg);
+  box-shadow: 10px 10px 0 var(--app-shadow-color);
+}
+
+:root[data-tauri-window] app-shell,
+:root[data-tauri-window] app-shell .app-shell,
+:root[data-tauri-window] app-shell .workspace,
+:root[data-tauri-window] app-shell app-sidebar,
+:root[data-tauri-window] app-shell app-repository-sidebar,
+:root[data-tauri-window] app-shell .sidebar,
+:root[data-tauri-window] app-shell .repository-sidebar {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+:root[data-tauri-window] app-shell .app-shell {
+  border-radius: 0;
+  overflow: hidden;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] app-shell .app-shell {
+  border-radius: var(--app-panel-radius);
 }
 
 .page {
-  animation: page-enter 260ms ease-out both;
+  view-transition-name: route-page;
+}
+
+::view-transition-old(route-page),
+::view-transition-new(route-page) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center top;
+}
+
+::view-transition-old(route-page) {
+  animation-name: route-page-leave;
+}
+
+::view-transition-new(route-page) {
+  animation-name: route-page-enter;
+}
+
+@keyframes route-page-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.995);
+  }
+}
+
+@keyframes route-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .app-tooltip {
@@ -46,7 +306,7 @@ select {
   bottom: calc(100% + 0.3rem);
   left: 50%;
   border: 0.35rem solid transparent;
-  border-top-color: #374151;
+  border-top-color: var(--app-border);
   content: "";
   transform: translate(-50%, 0.35rem);
 }
@@ -57,12 +317,12 @@ select {
   left: 50%;
   width: max-content;
   max-width: 17rem;
-  border: 1px solid #374151;
-  border-radius: 0.45rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-small-radius);
   padding: 0.5rem 0.7rem;
-  background: #1f2937;
-  box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 28%);
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  box-shadow: var(--app-panel-shadow);
+  color: var(--app-text-bright);
   content: attr(data-tooltip);
   font-size: 0.78rem;
   font-weight: 600;
@@ -77,15 +337,6 @@ select {
 .app-tooltip:focus-visible::before,
 .app-tooltip:focus-visible::after {
   opacity: 1;
-}
-
-.app-tooltip:hover::before,
-.app-tooltip:focus-visible::before {
-  transform: translate(-50%, 0);
-}
-
-.app-tooltip:hover::after,
-.app-tooltip:focus-visible::after {
   transform: translate(-50%, 0);
 }
 
@@ -98,6 +349,302 @@ select {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Camada de acabamento neo brutalista: volumes, bordas expressivas e estados com contraste semântico. */
+:root[data-theme="neo-brutalist"] .sidebar,
+:root[data-theme="neo-brutalist"] .repository-sidebar {
+  border-right: 3px solid var(--app-border) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 4px 0 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .topbar {
+  min-height: 3.35rem;
+  border-bottom: 3px solid var(--app-border) !important;
+  background: var(--app-surface-1) !important;
+}
+
+:root[data-theme="neo-brutalist"] .brand-mark,
+:root[data-theme="neo-brutalist"] .sidebar-brand-mark,
+:root[data-theme="neo-brutalist"] .repository-mark {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-avatar,
+:root[data-theme="neo-brutalist"] .account-avatar {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar.is-scrolled {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: var(--app-panel-shadow) !important;
+  backdrop-filter: none;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar .sync-button,
+:root[data-theme="neo-brutalist"] .overview-action-bar .refresh-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-3) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar .sync-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .overview-action-bar .refresh-button:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-hover) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row {
+  border-width: 2px !important;
+  border-radius: var(--app-small-radius) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row:hover,
+:root[data-theme="neo-brutalist"] .commit-row.selected {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-3) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row.selected .graph-node,
+:root[data-theme="neo-brutalist"] .commit-row:hover .graph-node {
+  border-color: var(--app-border) !important;
+  background: var(--app-accent) !important;
+  box-shadow: 0 0 0 3px var(--app-surface-3) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-file-row:hover,
+:root[data-theme="neo-brutalist"] .commit-context-menu button:hover {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-3) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .settings-card,
+:root[data-theme="neo-brutalist"] .integration-card,
+:root[data-theme="neo-brutalist"] .repository-card,
+:root[data-theme="neo-brutalist"] .repository-modal,
+:root[data-theme="neo-brutalist"] .github-clone-panel,
+:root[data-theme="neo-brutalist"] .graph-panel,
+:root[data-theme="neo-brutalist"] .history-panel,
+:root[data-theme="neo-brutalist"] .files-panel,
+:root[data-theme="neo-brutalist"] .staged-panel,
+:root[data-theme="neo-brutalist"] .commit-panel,
+:root[data-theme="neo-brutalist"] .conflict-panel,
+:root[data-theme="neo-brutalist"] .branch-form-panel,
+:root[data-theme="neo-brutalist"] .stash-detail-panel,
+:root[data-theme="neo-brutalist"] .file-list-panel,
+:root[data-theme="neo-brutalist"] .diff-panel,
+:root[data-theme="neo-brutalist"] .device-flow-panel,
+:root[data-theme="neo-brutalist"] .no-account-state,
+:root[data-theme="neo-brutalist"] .empty-state,
+:root[data-theme="neo-brutalist"] .workspace-menu,
+:root[data-theme="neo-brutalist"] .branch-context-menu,
+:root[data-theme="neo-brutalist"] .file-context-menu,
+:root[data-theme="neo-brutalist"] .commit-context-menu {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .settings-card-heading,
+:root[data-theme="neo-brutalist"] .integration-card-heading,
+:root[data-theme="neo-brutalist"] .repository-modal-header,
+:root[data-theme="neo-brutalist"] .history-panel-heading {
+  border-bottom: 2px solid var(--app-border-subtle) !important;
+}
+
+/* Autenticação remota: selected é o estado ativo pressionado; o estado comum
+ * fica alto e o hover simula a pressão antes da ativação. */
+:root[data-theme="neo-brutalist"] .auth-option:not(.selected) {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-surface-2) !important;
+  box-shadow: 6px 6px 0 var(--app-shadow-color) !important;
+  transform: none !important;
+}
+
+:root[data-theme="neo-brutalist"] .auth-option:not(.selected):hover {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .auth-option.selected,
+:root[data-theme="neo-brutalist"] .auth-option.selected:hover,
+:root[data-theme="neo-brutalist"] .auth-option.selected:focus-visible {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .empty-state {
+  border-style: dashed !important;
+  background: var(--app-surface-2) !important;
+}
+
+:root[data-theme="neo-brutalist"] .primary-button,
+:root[data-theme="neo-brutalist"] .create-button,
+:root[data-theme="neo-brutalist"] .branch-create-button,
+:root[data-theme="neo-brutalist"] .commit-button,
+:root[data-theme="neo-brutalist"] .connect-button,
+:root[data-theme="neo-brutalist"] .save-button,
+:root[data-theme="neo-brutalist"] .confirm-button:not(.cancel-button),
+:root[data-theme="neo-brutalist"] .stash-dialog-confirm,
+:root[data-theme="neo-brutalist"] .sidebar-confirm-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-on-accent) !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease !important;
+}
+
+:root[data-theme="neo-brutalist"] .primary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .create-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .branch-create-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .commit-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .connect-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .save-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .confirm-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .stash-dialog-confirm:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .sidebar-confirm-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .secondary-button,
+:root[data-theme="neo-brutalist"] .cancel-button,
+:root[data-theme="neo-brutalist"] .stash-dialog-cancel,
+:root[data-theme="neo-brutalist"] .sidebar-cancel-button,
+:root[data-theme="neo-brutalist"] .modal-secondary-button,
+:root[data-theme="neo-brutalist"] .destination-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  background: var(--app-secondary-bg) !important;
+  box-shadow: 3px 3px 0 var(--app-dark-button-shadow) !important;
+  color: var(--app-secondary-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .secondary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .cancel-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .stash-dialog-cancel:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .sidebar-cancel-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .modal-secondary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .destination-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-dark-button-shadow) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a.active,
+:root[data-theme="neo-brutalist"] .repository-sidebar a.active {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="neo-brutalist"] textarea,
+:root[data-theme="neo-brutalist"] select {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast,
+:root[data-theme="neo-brutalist"] .dialog,
+:root[data-theme="neo-brutalist"] .stash-dialog,
+:root[data-theme="neo-brutalist"] .diff-dialog,
+:root[data-theme="neo-brutalist"] .conflict-dialog {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-toast-bg) !important;
+  box-shadow: var(--app-panel-shadow), 0 0 18px rgb(33 30 27 / 18%) !important;
+  color: var(--app-toast-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .dialog,
+:root[data-theme="neo-brutalist"] .stash-dialog,
+:root[data-theme="neo-brutalist"] .diff-dialog,
+:root[data-theme="neo-brutalist"] .conflict-dialog {
+  color: var(--app-dialog-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast-copy strong,
+:root[data-theme="neo-brutalist"] .toast-copy p,
+:root[data-theme="neo-brutalist"] .toast-close,
+:root[data-theme="neo-brutalist"] .dialog h2,
+:root[data-theme="neo-brutalist"] .dialog p,
+:root[data-theme="neo-brutalist"] .stash-dialog h2,
+:root[data-theme="neo-brutalist"] .stash-dialog p,
+:root[data-theme="neo-brutalist"] .diff-dialog h2,
+:root[data-theme="neo-brutalist"] .conflict-dialog h2 {
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast {
+  padding: 1rem 1rem 1.1rem;
+}
+
+:root[data-theme="neo-brutalist"] .toast-icon,
+:root[data-theme="neo-brutalist"] .dialog-icon,
+:root[data-theme="neo-brutalist"] .settings-icon,
+:root[data-theme="neo-brutalist"] .ai-icon {
+  border: 2px solid var(--app-border) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast-progress {
+  height: 0.25rem;
+}
+
+/* O blur compartilhado fica no app-shell. O ::backdrop nativo é transparente
+ * para não pintar também a área transparente ao redor da janela. */
+.dialog::backdrop,
+.stash-dialog::backdrop,
+.diff-dialog::backdrop,
+.conflict-dialog::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+}
+
+/* Mantém o elemento para click-to-dismiss, mas evita um segundo overlay. */
+.repository-modal-backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* O toast fica sempre destacado da moldura da janela, inclusive no Tauri. */
+:root[data-tauri-window] .toast-container {
+  position: fixed !important;
+  inset: auto 24px 24px auto !important;
+  width: min(25rem, calc(100vw - 48px)) !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 700px) {
+  :root[data-tauri-window] .toast-container {
+    inset: auto 24px 24px !important;
+    width: auto !important;
   }
 }
 
