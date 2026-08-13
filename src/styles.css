@@ -222,7 +222,14 @@ body {
 }
 
 :root[data-theme="glassmorphism"] body {
-  background: transparent;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  transition: color 240ms ease;
+}
+
+:root[data-theme="glassmorphism"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
 }
 
 :root[data-theme="glassmorphism"] .app-shell {
@@ -1322,7 +1329,9 @@ a {
 :root[data-theme="glassmorphism"] app-root,
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
   position: relative;
+  overflow: hidden;
   border-radius: 0.8rem;
+  background: transparent !important;
 }
 
 :root[data-theme="glassmorphism"] .app-shell,
@@ -1354,6 +1363,18 @@ a {
 
 :root[data-theme="glassmorphism"] * {
   text-shadow: none !important;
+}
+
+/* O shell e o material permanecem montados durante a troca de rota. A tela
+ * nova entra sem criar um snapshot intermediário que repinte o fundo. */
+:root[data-theme="glassmorphism"] .page {
+  view-transition-name: none !important;
+}
+
+:root[data-theme="glassmorphism"]::view-transition-old(route-page),
+:root[data-theme="glassmorphism"]::view-transition-new(route-page) {
+  animation: none !important;
+  background: transparent !important;
 }
 
 :root[data-theme="glassmorphism"] .app-tooltip::after,
