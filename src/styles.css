@@ -181,8 +181,10 @@
   --app-dark-button-shadow: rgb(255 255 255 / 12%);
   --app-modal-overlay: rgb(0 0 0 / 62%);
   --app-modal-blur: 28px;
+  --app-global-blur: 13px;
   --app-glass-blur: 36px;
   --app-glass-saturate: 105%;
+  --app-workspace-surface: rgb(20 22 25 / 42%);
   --app-sidebar-bg: rgb(255 255 255 / 7.4%);
   --app-sidebar-text: #ffffff;
   --app-sidebar-muted: rgb(239 243 255 / 70%);
@@ -338,8 +340,8 @@ a {
   z-index: 0;
   inset: 0;
   background: rgb(15 17 20 / 28%);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(var(--app-global-blur));
+  backdrop-filter: blur(var(--app-global-blur));
   content: "";
   pointer-events: none;
 }
@@ -927,7 +929,7 @@ a {
 :root[data-theme="glassmorphism"] .repository-tabs,
 :root[data-theme="glassmorphism"] .codex-sidebar {
   border-color: var(--app-border-subtle) !important;
-  background: rgb(20 22 25 / 42%) !important;
+  background: var(--app-workspace-surface) !important;
   -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   box-shadow: inset -1px 0 0 rgb(255 255 255 / 5%), 0 1.2rem 3rem rgb(0 0 0 / 12%);
@@ -1320,13 +1322,24 @@ a {
   border-radius: 0.8rem;
 }
 
+:root[data-theme="glassmorphism"] .app-shell,
+:root[data-theme="glassmorphism"] .workspace,
+:root[data-theme="glassmorphism"] .content {
+  background: var(--app-workspace-surface) !important;
+}
+
+:root[data-theme="glassmorphism"] .content {
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+}
+
 :root[data-theme="glassmorphism"] app-root::before {
   position: absolute;
   z-index: 0;
   inset: 0;
   background: rgb(15 17 20 / 28%);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(var(--app-global-blur));
+  backdrop-filter: blur(var(--app-global-blur));
   content: "";
   pointer-events: none;
 }
@@ -1334,6 +1347,10 @@ a {
 :root[data-theme="glassmorphism"] app-root app-shell {
   position: relative;
   z-index: 1;
+}
+
+:root[data-theme="glassmorphism"] * {
+  text-shadow: none !important;
 }
 
 :root[data-theme="glassmorphism"] .app-tooltip::after,
@@ -1344,6 +1361,17 @@ a {
   backdrop-filter: blur(18px);
   box-shadow: var(--app-panel-shadow) !important;
   color: #ffffff !important;
+}
+
+/* O wrapper só organiza o painel fixo; o vidro deve ficar no .commit-panel,
+ * evitando uma segunda moldura vazia atrás dele. */
+:root[data-theme="glassmorphism"] .fixed-layout-panel {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 :root[data-theme="glassmorphism"] ::selection {
