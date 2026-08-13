@@ -1074,6 +1074,8 @@ a {
 }
 
 :root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .panel,
+:root[data-theme="glassmorphism"] .reference-panel,
 :root[data-theme="glassmorphism"] .integration-card,
 :root[data-theme="glassmorphism"] .repository-card,
 :root[data-theme="glassmorphism"] .repository-modal,
@@ -1279,6 +1281,7 @@ a {
 :root[data-theme="glassmorphism"] .repository-tabs,
 :root[data-theme="glassmorphism"] .codex-sidebar,
 :root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .panel,
 :root[data-theme="glassmorphism"] .integration-card,
 :root[data-theme="glassmorphism"] .repository-card,
 :root[data-theme="glassmorphism"] .graph-panel,
@@ -1323,12 +1326,12 @@ a {
 }
 
 :root[data-theme="glassmorphism"] .app-shell,
-:root[data-theme="glassmorphism"] .workspace,
-:root[data-theme="glassmorphism"] .content {
-  background: var(--app-workspace-surface) !important;
+:root[data-theme="glassmorphism"] .workspace {
+  background: transparent !important;
 }
 
 :root[data-theme="glassmorphism"] .content {
+  background: var(--app-workspace-surface) !important;
   -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
 }
