@@ -124,6 +124,72 @@
   --app-sidebar-active: #ffc467;
 }
 
+:root[data-theme="glassmorphism"] {
+  color-scheme: dark;
+  --app-bg: #0b0c0f;
+  --app-surface-0: rgb(15 16 20 / 56%);
+  --app-surface-1: rgb(27 28 34 / 64%);
+  --app-surface-2: rgb(44 45 52 / 46%);
+  --app-surface-3: rgb(255 255 255 / 8%);
+  --app-surface-hover: rgb(255 255 255 / 15%);
+  --app-border: rgb(255 255 255 / 22%);
+  --app-border-strong: rgb(255 255 255 / 42%);
+  --app-border-subtle: rgb(255 255 255 / 13%);
+  --app-text: rgb(255 255 255 / 78%);
+  --app-text-strong: rgb(255 255 255 / 90%);
+  --app-text-bright: #ffffff;
+  --app-muted: rgb(238 238 242 / 66%);
+  --app-muted-strong: rgb(224 224 230 / 48%);
+  --app-accent: #d5d6dc;
+  --app-accent-hover: #ffffff;
+  --app-accent-soft: #f2f2f4;
+  --app-accent-pale: #ffffff;
+  --app-accent-surface: rgb(255 255 255 / 13%);
+  --app-accent-border: rgb(255 255 255 / 36%);
+  --app-yellow: #f2f2f4;
+  --app-ink-on-accent: #17181c;
+  --app-positive: #70e6ba;
+  --app-positive-strong: #a4f5d4;
+  --app-positive-surface: rgb(77 221 168 / 17%);
+  --app-positive-border: rgb(122 244 195 / 42%);
+  --app-danger: #ff778b;
+  --app-danger-surface: rgb(255 92 119 / 20%);
+  --app-danger-text: #ffc4ce;
+  --app-info: #73d7ff;
+  --app-info-surface: rgb(64 186 255 / 18%);
+  --app-info-text: #b9ecff;
+  --app-purple: #dedee4;
+  --app-white: #ffffff;
+  --app-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Segoe UI", sans-serif;
+  --app-font-mono: "SF Mono", "IBM Plex Mono", Consolas, monospace;
+  --app-control-radius: 0.8rem;
+  --app-small-radius: 0.65rem;
+  --app-panel-radius: 1.15rem;
+  --app-control-border: 1px solid var(--app-border);
+  --app-panel-border: 1px solid var(--app-border-subtle);
+  --app-shadow-color: rgb(0 0 0 / 32%);
+  --app-small-shadow: 0 0.6rem 1.5rem rgb(0 0 0 / 16%);
+  --app-panel-shadow: 0 1.4rem 3.5rem rgb(0 0 0 / 28%);
+  --app-on-accent: #17181c;
+  --app-on-surface: #ffffff;
+  --app-secondary-bg: rgb(255 255 255 / 12%);
+  --app-secondary-text: #ffffff;
+  --app-toast-bg: rgb(27 28 34 / 82%);
+  --app-toast-text: #ffffff;
+  --app-dialog-bg: rgb(19 20 24 / 86%);
+  --app-dialog-text: #ffffff;
+  --app-dark-button-shadow: rgb(255 255 255 / 12%);
+  --app-modal-overlay: rgb(0 0 0 / 62%);
+  --app-modal-blur: 24px;
+  --app-glass-blur: 30px;
+  --app-glass-saturate: 112%;
+  --app-sidebar-bg: rgb(12 13 17 / 62%);
+  --app-sidebar-text: #ffffff;
+  --app-sidebar-muted: rgb(239 243 255 / 70%);
+  --app-sidebar-hover: rgb(255 255 255 / 12%);
+  --app-sidebar-active: rgb(255 255 255 / 16%);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -151,6 +217,33 @@ body {
   background:
     radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
     var(--app-bg);
+}
+
+:root[data-theme="glassmorphism"] body {
+  background:
+    linear-gradient(rgb(0 0 0 / 18%), rgb(0 0 0 / 18%)),
+    radial-gradient(circle at 16% 4%, rgb(255 255 255 / 10%), transparent 34%),
+    radial-gradient(circle at 86% 12%, rgb(255 255 255 / 6%), transparent 32%),
+    linear-gradient(135deg, #08090b 0%, #18191e 52%, #0a0b0e 100%);
+}
+
+:root[data-theme="glassmorphism"] .app-shell {
+  background: transparent;
+}
+
+:root[data-theme="glassmorphism"] .app-shell::after {
+  position: absolute;
+  z-index: -1;
+  inset: -18%;
+  display: block;
+  background:
+    radial-gradient(ellipse at 22% 24%, rgb(255 255 255 / 11%) 0 8%, transparent 38%),
+    radial-gradient(ellipse at 82% 22%, rgb(255 255 255 / 7%) 0 7%, transparent 34%),
+    radial-gradient(ellipse at 68% 82%, rgb(255 255 255 / 5%) 0 7%, transparent 32%);
+  content: "";
+  filter: blur(46px) saturate(90%);
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
 }
 
 :root[data-theme="neo-brutalist"] .app-shell {
@@ -235,6 +328,27 @@ a {
   border-radius: calc(var(--app-panel-radius) + 0.2rem);
   background: var(--app-bg);
   box-shadow: 10px 10px 0 var(--app-shadow-color);
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] {
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] body {
+  padding: 10px 12px 12px 10px;
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 1.35rem;
+  background:
+    linear-gradient(rgb(0 0 0 / 22%), rgb(0 0 0 / 22%)),
+    radial-gradient(circle at 10% 8%, rgb(255 255 255 / 9%), transparent 34%),
+    radial-gradient(circle at 90% 9%, rgb(255 255 255 / 6%), transparent 31%),
+    linear-gradient(135deg, rgb(11 12 15 / 92%), rgb(26 27 32 / 86%));
+  box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 34%), inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
 :root[data-tauri-window] app-shell,
@@ -804,6 +918,372 @@ a {
 .repository-modal-backdrop {
   background: var(--app-modal-overlay) !important;
   backdrop-filter: blur(var(--app-modal-blur)) !important;
+}
+
+/* Liquid Glass: superfícies translúcidas, reflexo superior e profundidade
+ * baseada em blur. A camada é global para alcançar os componentes Angular
+ * encapsulados sem duplicar o mesmo acabamento em cada feature. */
+:root[data-theme="glassmorphism"] .sidebar,
+:root[data-theme="glassmorphism"] .repository-sidebar,
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs,
+:root[data-theme="glassmorphism"] .codex-sidebar {
+  border-color: var(--app-border-subtle) !important;
+  background: linear-gradient(135deg, rgb(255 255 255 / 9%), rgb(0 0 0 / 23%)) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 5%), 0 1.2rem 3rem rgb(0 0 0 / 12%);
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 0.7rem 2.2rem rgb(0 0 0 / 10%);
+}
+
+:root[data-theme="glassmorphism"] .workspace,
+:root[data-theme="glassmorphism"] .content {
+  background: transparent !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark,
+:root[data-theme="glassmorphism"] .sidebar-brand-mark,
+:root[data-theme="glassmorphism"] .repository-mark,
+:root[data-theme="glassmorphism"] .codex-mark,
+:root[data-theme="glassmorphism"] .codex-empty-icon,
+:root[data-theme="glassmorphism"] .codex-install-icon,
+:root[data-theme="glassmorphism"] .settings-icon,
+:root[data-theme="glassmorphism"] .ai-icon,
+:root[data-theme="glassmorphism"] .toast-icon,
+:root[data-theme="glassmorphism"] .dialog-icon {
+  border: 1px solid rgb(255 255 255 / 28%) !important;
+  border-radius: 0.75rem !important;
+  background: linear-gradient(145deg, rgb(255 255 255 / 20%), rgb(105 106 114 / 18%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 0.5rem 1.2rem rgb(0 0 0 / 16%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] svg,
+:root[data-theme="glassmorphism"] .nav-icon,
+:root[data-theme="glassmorphism"] .branch-icon,
+:root[data-theme="glassmorphism"] .branch-action-icon,
+:root[data-theme="glassmorphism"] .file-action-icon,
+:root[data-theme="glassmorphism"] .diff-icon,
+:root[data-theme="glassmorphism"] .codex-launch-button,
+:root[data-theme="glassmorphism"] .icon-button,
+:root[data-theme="glassmorphism"] .close-button,
+:root[data-theme="glassmorphism"] .details-close-button {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .codex-launch-button:hover,
+:root[data-theme="glassmorphism"] .codex-launch-button.is-active {
+  border-color: rgb(255 255 255 / 34%) !important;
+  background: rgb(255 255 255 / 13%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark {
+  border-radius: 0.7rem !important;
+  background: linear-gradient(145deg, rgb(255 255 255 / 30%), rgb(103 104 112 / 24%)) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 8px rgb(255 255 255 / 38%);
+}
+
+:root[data-theme="glassmorphism"] .sidebar .brand,
+:root[data-theme="glassmorphism"] .sidebar .collapse-button,
+:root[data-theme="glassmorphism"] .sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row,
+:root[data-theme="glassmorphism"] .nav-icon,
+:root[data-theme="glassmorphism"] .window-title,
+:root[data-theme="glassmorphism"] .window-title svg,
+:root[data-theme="glassmorphism"] .codex-title-copy strong,
+:root[data-theme="glassmorphism"] .codex-close-button {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row,
+:root[data-theme="glassmorphism"] .collapse-button,
+:root[data-theme="glassmorphism"] .main-sidebar-button,
+:root[data-theme="glassmorphism"] .window-control,
+:root[data-theme="glassmorphism"] .codex-close-button,
+:root[data-theme="glassmorphism"] .repository-tab-close {
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a:hover,
+:root[data-theme="glassmorphism"] .sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar a:hover,
+:root[data-theme="glassmorphism"] .repository-sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row:hover,
+:root[data-theme="glassmorphism"] .collapse-button:hover,
+:root[data-theme="glassmorphism"] .main-sidebar-button:hover,
+:root[data-theme="glassmorphism"] .window-control:hover,
+:root[data-theme="glassmorphism"] .codex-close-button:hover {
+  border-color: rgb(255 255 255 / 22%) !important;
+  background: rgb(255 255 255 / 13%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 0.4rem 1rem rgb(0 0 0 / 12%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar a.active {
+  background: linear-gradient(105deg, rgb(255 255 255 / 17%), rgb(118 119 127 / 13%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 0.45rem 1.3rem rgb(0 0 0 / 20%);
+}
+
+:root[data-theme="glassmorphism"] .repository-tab {
+  border-color: transparent !important;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+:root[data-theme="glassmorphism"] .repository-tab:hover,
+:root[data-theme="glassmorphism"] .repository-tab.active {
+  border-color: var(--app-border-subtle) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%);
+}
+
+:root[data-theme="glassmorphism"] .repository-tab.active .repository-tab-dot {
+  background: var(--app-accent-hover) !important;
+  box-shadow: 0 0 0 0.22rem rgb(255 255 255 / 18%), 0 0 0.7rem rgb(255 255 255 / 32%);
+}
+
+:root[data-theme="glassmorphism"] .branch-summary,
+:root[data-theme="glassmorphism"] .reference-panel,
+:root[data-theme="glassmorphism"] .state-panel,
+:root[data-theme="glassmorphism"] .fixed-layout-panel,
+:root[data-theme="glassmorphism"] .ours-card,
+:root[data-theme="glassmorphism"] .theirs-card,
+:root[data-theme="glassmorphism"] .version-card,
+:root[data-theme="glassmorphism"] .result-card,
+:root[data-theme="glassmorphism"] .local-panel,
+:root[data-theme="glassmorphism"] .codex-status-card,
+:root[data-theme="glassmorphism"] .message-content,
+:root[data-theme="glassmorphism"] .codex-composer {
+  border: 1px solid var(--app-border-subtle) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: linear-gradient(145deg, rgb(255 255 255 / 9%), rgb(18 19 23 / 34%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
+  backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-small-shadow);
+}
+
+:root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .integration-card,
+:root[data-theme="glassmorphism"] .repository-card,
+:root[data-theme="glassmorphism"] .repository-modal,
+:root[data-theme="glassmorphism"] .github-clone-panel,
+:root[data-theme="glassmorphism"] .graph-panel,
+:root[data-theme="glassmorphism"] .history-panel,
+:root[data-theme="glassmorphism"] .files-panel,
+:root[data-theme="glassmorphism"] .staged-panel,
+:root[data-theme="glassmorphism"] .commit-panel,
+:root[data-theme="glassmorphism"] .conflict-panel,
+:root[data-theme="glassmorphism"] .branch-form-panel,
+:root[data-theme="glassmorphism"] .stash-detail-panel,
+:root[data-theme="glassmorphism"] .file-list-panel,
+:root[data-theme="glassmorphism"] .diff-panel,
+:root[data-theme="glassmorphism"] .commit-details,
+:root[data-theme="glassmorphism"] .device-flow-panel,
+:root[data-theme="glassmorphism"] .no-account-state,
+:root[data-theme="glassmorphism"] .empty-state,
+:root[data-theme="glassmorphism"] .workspace-menu,
+:root[data-theme="glassmorphism"] .branch-context-menu,
+:root[data-theme="glassmorphism"] .file-context-menu,
+:root[data-theme="glassmorphism"] .commit-context-menu,
+:root[data-theme="glassmorphism"] .toast,
+:root[data-theme="glassmorphism"] .dialog,
+:root[data-theme="glassmorphism"] .stash-dialog,
+:root[data-theme="glassmorphism"] .diff-dialog,
+:root[data-theme="glassmorphism"] .conflict-dialog {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: linear-gradient(145deg, rgb(55 56 64 / 57%), rgb(9 10 13 / 72%)) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .settings-card-heading,
+:root[data-theme="glassmorphism"] .integration-card-heading,
+:root[data-theme="glassmorphism"] .repository-modal-header,
+:root[data-theme="glassmorphism"] .history-panel-heading,
+:root[data-theme="glassmorphism"] .codex-header,
+:root[data-theme="glassmorphism"] .codex-cli-status {
+  border-color: var(--app-border-subtle) !important;
+}
+
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .modal-primary-button,
+:root[data-theme="glassmorphism"] .confirm-button:not(.cancel-button),
+:root[data-theme="glassmorphism"] .stash-dialog-confirm,
+:root[data-theme="glassmorphism"] .sidebar-confirm-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-send-button,
+:root[data-theme="glassmorphism"] .codex-stop-button,
+:root[data-theme="glassmorphism"] .operation-continue-button,
+:root[data-theme="glassmorphism"] .operation-resolve-button {
+  border: 1px solid rgb(255 255 255 / 42%) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, rgb(255 255 255 / 34%), rgb(133 134 142 / 44%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%), 0 0.55rem 1.25rem rgb(0 0 0 / 28%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 36%);
+}
+
+:root[data-theme="glassmorphism"] .primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .create-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .branch-create-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .commit-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .connect-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .save-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .modal-primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .confirm-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .stash-dialog-confirm:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .sidebar-confirm-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(255 255 255 / 48%), rgb(164 165 173 / 54%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 50%), 0 0.7rem 1.5rem rgb(0 0 0 / 34%) !important;
+  transform: translateY(-1px);
+}
+
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .stash-dialog-cancel,
+:root[data-theme="glassmorphism"] .sidebar-cancel-button,
+:root[data-theme="glassmorphism"] .modal-secondary-button,
+:root[data-theme="glassmorphism"] .destination-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button,
+:root[data-theme="glassmorphism"] .back-button {
+  border: 1px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  background: rgb(255 255 255 / 10%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), 0 0.4rem 1rem rgb(0 0 0 / 14%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .cancel-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .stash-dialog-cancel:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .sidebar-cancel-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .modal-secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .destination-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .back-button:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 38%) !important;
+  background: rgb(255 255 255 / 17%) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+:root[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="glassmorphism"] textarea,
+:root[data-theme="glassmorphism"] select,
+:root[data-theme="glassmorphism"] .model-picker-toggle,
+:root[data-theme="glassmorphism"] .language-picker-toggle {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-control-radius) !important;
+  background: rgb(0 0 0 / 24%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 0.35rem 1rem rgb(0 0 0 / 10%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]):focus,
+:root[data-theme="glassmorphism"] textarea:focus,
+:root[data-theme="glassmorphism"] select:focus,
+:root[data-theme="glassmorphism"] .model-picker-toggle:focus-visible,
+:root[data-theme="glassmorphism"] .language-picker-toggle:focus-visible {
+  border-color: rgb(255 255 255 / 62%) !important;
+  background: rgb(49 50 57 / 48%) !important;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 13%), inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+:root[data-theme="glassmorphism"] .commit-row:hover,
+:root[data-theme="glassmorphism"] .commit-row.selected,
+:root[data-theme="glassmorphism"] .repository-option:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .auth-option.selected,
+:root[data-theme="glassmorphism"] .auth-option.selected:hover,
+:root[data-theme="glassmorphism"] .file-action-button:hover,
+:root[data-theme="glassmorphism"] .reference-item.current,
+:root[data-theme="glassmorphism"] .reference-item:hover:not(.pressed) {
+  border-color: rgb(255 255 255 / 32%) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: linear-gradient(110deg, rgb(255 255 255 / 15%), rgb(111 112 120 / 12%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 0.45rem 1.1rem rgb(0 0 0 / 18%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .repository-option,
+:root[data-theme="glassmorphism"] .auth-option:not(.selected),
+:root[data-theme="glassmorphism"] .model-option,
+:root[data-theme="glassmorphism"] .theme-settings-option {
+  border: 1px solid var(--app-border-subtle) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: rgb(255 255 255 / 7%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 0.45rem 1.1rem rgb(0 0 0 / 10%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .repository-option:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .auth-option:not(.selected):hover,
+:root[data-theme="glassmorphism"] .theme-settings-option:hover,
+:root[data-theme="glassmorphism"] .theme-settings-option.selected {
+  border-color: rgb(255 255 255 / 38%) !important;
+  background: rgb(255 255 255 / 14%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 0.65rem 1.4rem rgb(0 0 0 / 20%) !important;
+  transform: translateY(-2px);
+}
+
+:root[data-theme="glassmorphism"] .theme-settings-preview {
+  border: 1px solid rgb(255 255 255 / 38%) !important;
+  border-radius: 0.7rem !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 0.4rem 0.8rem rgb(0 0 0 / 15%) !important;
+}
+
+:root[data-theme="glassmorphism"] .toast-copy strong,
+:root[data-theme="glassmorphism"] .toast-copy p,
+:root[data-theme="glassmorphism"] .toast-close,
+:root[data-theme="glassmorphism"] .dialog h2,
+:root[data-theme="glassmorphism"] .dialog p,
+:root[data-theme="glassmorphism"] .stash-dialog h2,
+:root[data-theme="glassmorphism"] .stash-dialog p,
+:root[data-theme="glassmorphism"] .diff-dialog h2,
+:root[data-theme="glassmorphism"] .conflict-dialog h2,
+:root[data-theme="glassmorphism"] .codex-empty-state h3,
+:root[data-theme="glassmorphism"] .codex-install-state h3 {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .window-control.close:hover {
+  background: linear-gradient(135deg, rgb(255 108 137 / 75%), rgb(217 73 129 / 65%)) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .app-tooltip::after,
+:root[data-theme="glassmorphism"] .sidebar a[data-tooltip]::after {
+  border-color: var(--app-border) !important;
+  background: rgb(28 29 34 / 86%) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--app-panel-shadow) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] ::selection {
+  background: rgb(255 255 255 / 28%);
+  color: #ffffff;
 }
 
 /* O toast fica sempre destacado da moldura da janela, inclusive no Tauri. */

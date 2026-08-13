@@ -17,13 +17,14 @@
   top: -1rem;
   z-index: 10;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
   min-height: 3rem;
+  box-sizing: border-box;
   border: 1px solid var(--app-border-subtle);
   border-radius: 0.65rem;
-  /* padding: 0.45rem 0.55rem 0.45rem 0.7rem; */
+  padding: 0.45rem 0.55rem 0.45rem 0.7rem;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -54,13 +55,17 @@
 
 .overview-action-bar .sync-toolbar {
   flex: 0 0 auto;
+  align-items: center;
   margin-left: auto;
   justify-content: flex-end;
 }
 
 .overview-action-bar .sync-button,
 .overview-action-bar .refresh-button {
+  min-height: 2.3rem;
+  box-sizing: border-box;
   padding-block: 0.5rem;
+  white-space: nowrap;
 }
 
 .eyebrow {

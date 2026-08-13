@@ -1,4 +1,4 @@
-export type ThemeId = "default" | "neo-brutalist";
+export type ThemeId = "default" | "neo-brutalist" | "glassmorphism";
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -30,6 +30,16 @@ export const THEME_OPTIONS: readonly ThemeDefinition[] = [
       background: "#fff0d3",
       accent: "#d94332",
       ink: "#211e1b",
+    },
+  },
+  {
+    id: "glassmorphism",
+    name: "Liquid Glass",
+    description: "Vidro escuro translúcido, blur suave e reflexos inspirados no iOS.",
+    preview: {
+      background: "#121a3b",
+      accent: "#8b9cff",
+      ink: "#ffffff",
     },
   },
 ];

@@ -64,7 +64,7 @@
 
 .workspace-menu {
   position: absolute;
-  z-index: 20;
+  z-index: 1000;
   top: calc(100% + 0.6rem);
   left: 50%;
   width: 22rem;
