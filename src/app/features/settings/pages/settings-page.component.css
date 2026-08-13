@@ -46,6 +46,14 @@ h3 {
   background: var(--app-surface-2);
 }
 
+/* O menu precisa sair por cima do card seguinte. Como o glass usa
+ * backdrop-filter, cada card vira um contexto de empilhamento próprio. */
+.settings-card:has(.language-picker) {
+  position: relative;
+  z-index: 20;
+  overflow: visible;
+}
+
 .theme-settings-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -464,6 +472,7 @@ h3 {
 
 .language-picker {
   position: relative;
+  z-index: 30;
   flex: 0 0 auto;
 }
 
@@ -473,11 +482,11 @@ h3 {
   gap: 0.7rem;
   min-width: 10.5rem;
   justify-content: space-between;
-  border: 1px solid #374151;
-  border-radius: 0.45rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-control-radius);
   padding: 0.55rem 0.75rem;
-  background: #172033;
-  color: #d1d5db;
+  background: var(--app-surface-2);
+  color: var(--app-text);
   cursor: pointer;
   font: inherit;
   font-size: 0.85rem;
@@ -487,9 +496,9 @@ h3 {
 
 .language-picker-toggle:hover,
 .language-picker-toggle:focus-visible {
-  border-color: #f97316;
-  background: #263244;
-  color: #f9fafb;
+  border-color: var(--app-accent);
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
   outline: none;
 }
 
@@ -499,17 +508,17 @@ h3 {
 
 .language-options {
   position: absolute;
-  z-index: 10;
+  z-index: 1000;
   top: calc(100% + 0.45rem);
   right: 0;
   display: grid;
   min-width: 100%;
   gap: 0.2rem;
-  border: 1px solid #374151;
-  border-radius: 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-small-radius);
   padding: 0.35rem;
-  background: #172033;
-  box-shadow: 0 1rem 2rem rgb(0 0 0 / 30%);
+  background: var(--app-surface-2);
+  box-shadow: var(--app-panel-shadow);
 }
 
 .language-options button {
@@ -521,7 +530,7 @@ h3 {
   border-radius: 0.35rem;
   padding: 0.5rem 0.6rem;
   background: transparent;
-  color: #d1d5db;
+  color: var(--app-text);
   cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
@@ -530,13 +539,13 @@ h3 {
 
 .language-options button:hover,
 .language-options button.selected {
-  border-color: #3b4a61;
-  background: #263754;
-  color: #f9fafb;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-text-bright);
 }
 
 .language-options button.selected span:last-child {
-  color: #fb923c;
+  color: var(--app-accent-hover);
 }
 
 @media (max-width: 650px) {

@@ -181,8 +181,8 @@
   --app-dark-button-shadow: rgb(255 255 255 / 12%);
   --app-modal-overlay: rgb(0 0 0 / 62%);
   --app-modal-blur: 28px;
-  /* Parâmetro de teste do fundo global: experimente 0px, 8px, 13px, 20px... */
-  --app-global-background-blur: 13px;
+  /* Parâmetro de teste do fundo global: experimente 0px, 16px, 28px, 40px... */
+  --app-global-background-blur: 28px;
   --app-glass-blur: 36px;
   --app-glass-saturate: 105%;
   --app-workspace-surface: rgb(20 22 25 / 42%);
@@ -261,6 +261,7 @@ a {
 
 button {
   outline: none;
+  line-height: 1.2;
 }
 
 button:focus-visible,
@@ -336,18 +337,20 @@ a {
 
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 1.35rem;
   background: transparent;
-  box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 34%), inset 0 1px 0 rgb(255 255 255 / 12%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
 :root[data-tauri-window][data-theme="glassmorphism"] app-root::before {
   position: absolute;
   z-index: 0;
   inset: 0;
-  background: rgb(15 17 20 / 28%);
+  display: block;
+  background: rgb(15 17 20 / 26%);
   -webkit-backdrop-filter: blur(var(--app-global-background-blur));
   backdrop-filter: blur(var(--app-global-background-blur));
   content: "";
@@ -381,6 +384,14 @@ a {
 
 .page {
   view-transition-name: route-page;
+}
+
+/* No glass, a entrada acontece no elemento real da rota. Isso mantém o shell
+ * e o fundo glass fora de qualquer snapshot de transição, evitando a dupla
+ * composição semitransparente que alterava o preto entre telas. */
+:root[data-theme="glassmorphism"] .page {
+  view-transition-name: none;
+  animation: glass-route-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 ::view-transition-old(route-page),
@@ -419,6 +430,24 @@ a {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glass-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="glassmorphism"] .page {
+    animation: none;
   }
 }
 
@@ -1220,6 +1249,32 @@ a {
   box-shadow: 0 0 0 3px rgb(255 255 255 / 13%), inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
+:root[data-theme="glassmorphism"] .language-options {
+  border-color: var(--app-border) !important;
+  background: rgb(30 32 36 / 72%) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--app-text) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button:hover,
+:root[data-theme="glassmorphism"] .language-options button.selected {
+  border-color: var(--app-border-strong) !important;
+  background: var(--app-accent-surface) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button.selected span:last-child {
+  color: var(--app-accent-hover) !important;
+}
+
 :root[data-theme="glassmorphism"] .commit-row:hover,
 :root[data-theme="glassmorphism"] .commit-row.selected,
 :root[data-theme="glassmorphism"] .repository-option:hover:not(:disabled),
@@ -1330,6 +1385,7 @@ a {
 :root[data-theme="glassmorphism"] app-root,
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border-radius: 0.8rem;
   background: transparent !important;
@@ -1340,17 +1396,28 @@ a {
   background: transparent !important;
 }
 
-:root[data-theme="glassmorphism"] .content {
+:root[data-theme="glassmorphism"] .app-shell {
+  /* A base do vidro pertence ao shell persistente, não à rota. Assim a
+   * troca entre Visão geral, Alterações e as demais telas não muda a cor
+   * do fundo nem repinta uma superfície diferente. */
   background: var(--app-workspace-surface) !important;
   -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+}
+
+:root[data-theme="glassmorphism"] .content {
+  /* O shell persistente já fornece a superfície global. */
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 :root[data-theme="glassmorphism"] app-root::before {
   position: absolute;
   z-index: 0;
   inset: 0;
-  background: rgb(15 17 20 / 28%);
+  display: block;
+  background: rgb(15 17 20 / 26%);
   -webkit-backdrop-filter: blur(var(--app-global-background-blur));
   backdrop-filter: blur(var(--app-global-background-blur));
   content: "";
@@ -1366,16 +1433,35 @@ a {
   text-shadow: none !important;
 }
 
-/* O shell e o material permanecem montados durante a troca de rota. A tela
- * nova entra sem criar um snapshot intermediário que repinte o fundo. */
-:root[data-theme="glassmorphism"] .page {
-  view-transition-name: none !important;
-}
-
-:root[data-theme="glassmorphism"]::view-transition-old(route-page),
-:root[data-theme="glassmorphism"]::view-transition-new(route-page) {
-  animation: none !important;
-  background: transparent !important;
+:root[data-theme="glassmorphism"] .stash-header-button,
+:root[data-theme="glassmorphism"] .refresh-button,
+:root[data-theme="glassmorphism"] .sync-button,
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .modal-primary-button,
+:root[data-theme="glassmorphism"] .modal-secondary-button,
+:root[data-theme="glassmorphism"] .confirm-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .destination-button,
+:root[data-theme="glassmorphism"] .back-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button,
+:root[data-theme="glassmorphism"] .codex-send-button,
+:root[data-theme="glassmorphism"] .codex-stop-button,
+:root[data-theme="glassmorphism"] .operation-resolve-button,
+:root[data-theme="glassmorphism"] .operation-continue-button,
+:root[data-theme="glassmorphism"] .operation-abort-button,
+:root[data-theme="glassmorphism"] .file-action-button,
+:root[data-theme="glassmorphism"] .text-button {
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  vertical-align: middle;
 }
 
 :root[data-theme="glassmorphism"] .app-tooltip::after,
