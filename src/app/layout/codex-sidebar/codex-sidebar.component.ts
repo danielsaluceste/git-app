@@ -5,14 +5,16 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
+  computed,
   inject,
   signal,
 } from "@angular/core";
 import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { CodexMessage } from "../../core/models/codex.model";
+import { CodexMessage, CodexSession } from "../../core/models/codex.model";
 import { Repository } from "../../core/models/repository.model";
 import { CodexService } from "../../core/services/codex.service";
+import { CodexSessionService } from "../../core/services/codex-session.service";
 import { TranslationService } from "../../core/services/translation.service";
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
@@ -29,6 +31,7 @@ export class CodexSidebarComponent implements OnChanges {
   @Output() closeRequested = new EventEmitter<void>();
 
   private readonly codexService = inject(CodexService);
+  private readonly sessionService = inject(CodexSessionService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translationService = inject(TranslationService);
   private nextMessageId = 0;
@@ -37,9 +40,17 @@ export class CodexSidebarComponent implements OnChanges {
   readonly status = this.codexService.status;
   readonly isChecking = this.codexService.isChecking;
   readonly isRunning = this.codexService.isRunning;
+  readonly sessions = signal<CodexSession[]>([]);
+  readonly activeSessionId = signal("");
+  readonly activeSession = computed(() =>
+    this.sessions().find((session) => session.id === this.activeSessionId()),
+  );
   readonly messages = signal<CodexMessage[]>([]);
   prompt = "";
   allowEdits = false;
+  sessionMenuOpen = false;
+  editingSessionId: string | undefined;
+  editingSessionTitle = "";
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["repository"] && !changes["repository"].firstChange) {
@@ -48,8 +59,91 @@ export class CodexSidebarComponent implements OnChanges {
     }
 
     if (changes["repository"]) {
+      this.loadSessions();
       void this.checkCli();
     }
+  }
+
+  createSession(): void {
+    if (this.isRunning()) {
+      return;
+    }
+
+    const session = this.sessionService.create(this.repository);
+    this.refreshSessions(session.id);
+    this.sessionMenuOpen = false;
+    this.editingSessionId = undefined;
+    this.prompt = "";
+  }
+
+  selectSession(sessionId: string): void {
+    if (this.isRunning() || sessionId === this.activeSessionId()) {
+      this.sessionMenuOpen = false;
+      return;
+    }
+
+    this.sessionService.setActive(this.repository, sessionId);
+    this.loadSessions(sessionId);
+    this.sessionMenuOpen = false;
+    this.editingSessionId = undefined;
+    this.prompt = "";
+  }
+
+  beginRename(session: CodexSession, event: Event): void {
+    event.stopPropagation();
+    this.editingSessionId = session.id;
+    this.editingSessionTitle = session.title;
+  }
+
+  finishRename(sessionId: string): void {
+    this.sessionService.rename(sessionId, this.editingSessionTitle);
+    this.refreshSessions(this.activeSessionId());
+    this.editingSessionId = undefined;
+    this.editingSessionTitle = "";
+  }
+
+  cancelRename(): void {
+    this.editingSessionId = undefined;
+    this.editingSessionTitle = "";
+  }
+
+  deleteSession(session: CodexSession, event: Event): void {
+    event.stopPropagation();
+    const confirmed = window.confirm(
+      this.translationService.translate("codex.deleteSessionConfirm", { title: session.title }),
+    );
+    if (!confirmed || this.isRunning()) {
+      return;
+    }
+
+    const wasActive = session.id === this.activeSessionId();
+    this.sessionService.delete(session.id);
+    let sessions = this.sessionService.sessionsFor(this.repository);
+    if (sessions.length === 0) {
+      const newSession = this.sessionService.create(this.repository);
+      sessions = this.sessionService.sessionsFor(this.repository);
+      this.refreshSessions(newSession.id);
+    } else {
+      const nextId = wasActive
+        ? this.sessionService.activeSessionIdFor(this.repository) ?? sessions[0].id
+        : this.activeSessionId();
+      this.loadSessions(nextId);
+    }
+  }
+
+  onSessionTitleKeydown(event: KeyboardEvent, sessionId: string): void {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      this.finishRename(sessionId);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      this.cancelRename();
+    }
+  }
+
+  setAllowEdits(event: Event): void {
+    this.allowEdits = (event.target as HTMLInputElement).checked;
+    this.sessionService.saveAllowEdits(this.activeSessionId(), this.allowEdits);
   }
 
   async checkCli(): Promise<void> {
@@ -68,22 +162,23 @@ export class CodexSidebarComponent implements OnChanges {
     }
 
     const repositoryPath = this.repository.path;
+    const sessionId = this.activeSessionId();
     const context = this.messages()
       .slice(-8)
       .map((message) => `${message.role === "user" ? "Usuário" : "Codex"}: ${message.content}`)
       .join("\n\n");
 
-    this.addMessage("user", prompt);
+    this.addMessageToSession(sessionId, "user", prompt);
     this.prompt = "";
 
     try {
       const result = await this.codexService.run(repositoryPath, prompt, context, this.allowEdits);
       if (repositoryPath === this.repository.path) {
-        this.addMessage("assistant", result.output);
+        this.addMessageToSession(sessionId, "assistant", result.output);
       }
     } catch (error: unknown) {
       if (repositoryPath === this.repository.path) {
-        this.addMessage("error", this.errorMessage(error));
+        this.addMessageToSession(sessionId, "error", this.errorMessage(error));
       }
     }
   }
@@ -122,11 +217,50 @@ export class CodexSidebarComponent implements OnChanges {
     return formatted;
   }
 
-  private addMessage(role: CodexMessage["role"], content: string): void {
-    this.messages.update((messages) => [
-      ...messages,
-      { id: ++this.nextMessageId, role, content },
-    ]);
+  private loadSessions(preferredSessionId?: string): void {
+    let sessions = this.sessionService.sessionsFor(this.repository);
+    if (sessions.length === 0) {
+      this.sessionService.create(this.repository);
+      sessions = this.sessionService.sessionsFor(this.repository);
+    }
+
+    const sessionId = preferredSessionId
+      ?? this.sessionService.activeSessionIdFor(this.repository)
+      ?? sessions[0].id;
+    this.refreshSessions(sessionId);
+  }
+
+  private refreshSessions(preferredSessionId?: string): void {
+    const sessions = this.sessionService.sessionsFor(this.repository);
+    const session = sessions.find((item) => item.id === preferredSessionId) ?? sessions[0];
+    if (!session) {
+      return;
+    }
+
+    this.sessions.set(sessions);
+    this.activeSessionId.set(session.id);
+    this.sessionService.setActive(this.repository, session.id);
+    this.messages.set([...session.messages]);
+    this.allowEdits = session.allowEdits;
+    this.nextMessageId = session.messages.reduce((highest, message) => Math.max(highest, message.id), 0);
+  }
+
+  private addMessageToSession(
+    sessionId: string,
+    role: CodexMessage["role"],
+    content: string,
+  ): void {
+    const session = this.sessionService.get(sessionId);
+    if (!session) {
+      return;
+    }
+
+    const message = { id: ++this.nextMessageId, role, content };
+    this.sessionService.saveMessages(sessionId, [...session.messages, message]);
+    if (sessionId === this.activeSessionId()) {
+      this.messages.set([...(this.sessionService.get(sessionId)?.messages ?? [])]);
+      this.sessions.set(this.sessionService.sessionsFor(this.repository));
+    }
   }
 
   private errorMessage(error: unknown): string {
