@@ -127,14 +127,14 @@
 :root[data-theme="glassmorphism"] {
   color-scheme: dark;
   --app-bg: #0b0c0f;
-  --app-surface-0: rgb(15 16 20 / 56%);
-  --app-surface-1: rgb(27 28 34 / 64%);
-  --app-surface-2: rgb(44 45 52 / 46%);
-  --app-surface-3: rgb(255 255 255 / 8%);
-  --app-surface-hover: rgb(255 255 255 / 15%);
-  --app-border: rgb(255 255 255 / 22%);
-  --app-border-strong: rgb(255 255 255 / 42%);
-  --app-border-subtle: rgb(255 255 255 / 13%);
+  --app-surface-0: rgb(20 22 25 / 42%);
+  --app-surface-1: rgb(30 32 36 / 48%);
+  --app-surface-2: rgb(24 26 29 / 40%);
+  --app-surface-3: rgb(255 255 255 / 5%);
+  --app-surface-hover: rgb(255 255 255 / 10%);
+  --app-border: rgb(255 255 255 / 22.2%);
+  --app-border-strong: rgb(255 255 255 / 45.4%);
+  --app-border-subtle: rgb(255 255 255 / 14%);
   --app-text: rgb(255 255 255 / 78%);
   --app-text-strong: rgb(255 255 255 / 90%);
   --app-text-bright: #ffffff;
@@ -162,9 +162,9 @@
   --app-white: #ffffff;
   --app-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Segoe UI", sans-serif;
   --app-font-mono: "SF Mono", "IBM Plex Mono", Consolas, monospace;
-  --app-control-radius: 0.8rem;
-  --app-small-radius: 0.65rem;
-  --app-panel-radius: 1.15rem;
+  --app-control-radius: 0.55rem;
+  --app-small-radius: 0.45rem;
+  --app-panel-radius: 0.8rem;
   --app-control-border: 1px solid var(--app-border);
   --app-panel-border: 1px solid var(--app-border-subtle);
   --app-shadow-color: rgb(0 0 0 / 32%);
@@ -180,10 +180,10 @@
   --app-dialog-text: #ffffff;
   --app-dark-button-shadow: rgb(255 255 255 / 12%);
   --app-modal-overlay: rgb(0 0 0 / 62%);
-  --app-modal-blur: 24px;
-  --app-glass-blur: 30px;
-  --app-glass-saturate: 112%;
-  --app-sidebar-bg: rgb(12 13 17 / 62%);
+  --app-modal-blur: 28px;
+  --app-glass-blur: 36px;
+  --app-glass-saturate: 105%;
+  --app-sidebar-bg: rgb(255 255 255 / 7.4%);
   --app-sidebar-text: #ffffff;
   --app-sidebar-muted: rgb(239 243 255 / 70%);
   --app-sidebar-hover: rgb(255 255 255 / 12%);
@@ -220,11 +220,7 @@ body {
 }
 
 :root[data-theme="glassmorphism"] body {
-  background:
-    linear-gradient(rgb(0 0 0 / 18%), rgb(0 0 0 / 18%)),
-    radial-gradient(circle at 16% 4%, rgb(255 255 255 / 10%), transparent 34%),
-    radial-gradient(circle at 86% 12%, rgb(255 255 255 / 6%), transparent 32%),
-    linear-gradient(135deg, #08090b 0%, #18191e 52%, #0a0b0e 100%);
+  background: transparent;
 }
 
 :root[data-theme="glassmorphism"] .app-shell {
@@ -232,18 +228,7 @@ body {
 }
 
 :root[data-theme="glassmorphism"] .app-shell::after {
-  position: absolute;
-  z-index: -1;
-  inset: -18%;
-  display: block;
-  background:
-    radial-gradient(ellipse at 22% 24%, rgb(255 255 255 / 11%) 0 8%, transparent 38%),
-    radial-gradient(ellipse at 82% 22%, rgb(255 255 255 / 7%) 0 7%, transparent 34%),
-    radial-gradient(ellipse at 68% 82%, rgb(255 255 255 / 5%) 0 7%, transparent 32%);
-  content: "";
-  filter: blur(46px) saturate(90%);
-  pointer-events: none;
-  transform: translate3d(0, 0, 0);
+  display: none;
 }
 
 :root[data-theme="neo-brutalist"] .app-shell {
@@ -340,15 +325,28 @@ a {
 }
 
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  position: relative;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 1.35rem;
-  background:
-    linear-gradient(rgb(0 0 0 / 22%), rgb(0 0 0 / 22%)),
-    radial-gradient(circle at 10% 8%, rgb(255 255 255 / 9%), transparent 34%),
-    radial-gradient(circle at 90% 9%, rgb(255 255 255 / 6%), transparent 31%),
-    linear-gradient(135deg, rgb(11 12 15 / 92%), rgb(26 27 32 / 86%));
+  background: transparent;
   box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 34%), inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: rgb(15 17 20 / 28%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  content: "";
+  pointer-events: none;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root app-shell {
+  position: relative;
+  z-index: 1;
 }
 
 :root[data-tauri-window] app-shell,
@@ -929,7 +927,7 @@ a {
 :root[data-theme="glassmorphism"] .repository-tabs,
 :root[data-theme="glassmorphism"] .codex-sidebar {
   border-color: var(--app-border-subtle) !important;
-  background: linear-gradient(135deg, rgb(255 255 255 / 9%), rgb(0 0 0 / 23%)) !important;
+  background: rgb(20 22 25 / 42%) !important;
   -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   box-shadow: inset -1px 0 0 rgb(255 255 255 / 5%), 0 1.2rem 3rem rgb(0 0 0 / 12%);
@@ -957,8 +955,8 @@ a {
 :root[data-theme="glassmorphism"] .toast-icon,
 :root[data-theme="glassmorphism"] .dialog-icon {
   border: 1px solid rgb(255 255 255 / 28%) !important;
-  border-radius: 0.75rem !important;
-  background: linear-gradient(145deg, rgb(255 255 255 / 20%), rgb(105 106 114 / 18%)) !important;
+  border-radius: 0.55rem !important;
+  background: rgb(255 255 255 / 6%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 0.5rem 1.2rem rgb(0 0 0 / 16%) !important;
   color: #ffffff !important;
 }
@@ -984,8 +982,8 @@ a {
 }
 
 :root[data-theme="glassmorphism"] .brand-mark {
-  border-radius: 0.7rem !important;
-  background: linear-gradient(145deg, rgb(255 255 255 / 30%), rgb(103 104 112 / 24%)) !important;
+  border-radius: 0.55rem !important;
+  background: rgb(255 255 255 / 7%) !important;
   color: #ffffff !important;
   text-shadow: 0 1px 8px rgb(255 255 255 / 38%);
 }
@@ -1031,13 +1029,13 @@ a {
 
 :root[data-theme="glassmorphism"] .sidebar a.active,
 :root[data-theme="glassmorphism"] .repository-sidebar a.active {
-  background: linear-gradient(105deg, rgb(255 255 255 / 17%), rgb(118 119 127 / 13%)) !important;
+  background: rgb(255 255 255 / 10%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 0.45rem 1.3rem rgb(0 0 0 / 20%);
 }
 
 :root[data-theme="glassmorphism"] .repository-tab {
   border-color: transparent !important;
-  border-radius: 0.75rem 0.75rem 0 0;
+  border-radius: 0.55rem 0.55rem 0 0;
 }
 
 :root[data-theme="glassmorphism"] .repository-tab:hover,
@@ -1067,7 +1065,7 @@ a {
 :root[data-theme="glassmorphism"] .codex-composer {
   border: 1px solid var(--app-border-subtle) !important;
   border-radius: var(--app-panel-radius) !important;
-  background: linear-gradient(145deg, rgb(255 255 255 / 9%), rgb(18 19 23 / 34%)) !important;
+  background: rgb(255 255 255 / 7%) !important;
   -webkit-backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
   backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-small-shadow);
@@ -1103,7 +1101,7 @@ a {
 :root[data-theme="glassmorphism"] .conflict-dialog {
   border: 1px solid var(--app-border) !important;
   border-radius: var(--app-panel-radius) !important;
-  background: linear-gradient(145deg, rgb(55 56 64 / 57%), rgb(9 10 13 / 72%)) !important;
+  background: rgb(30 32 36 / 48%) !important;
   -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), var(--app-panel-shadow) !important;
@@ -1135,9 +1133,9 @@ a {
 :root[data-theme="glassmorphism"] .operation-continue-button,
 :root[data-theme="glassmorphism"] .operation-resolve-button {
   border: 1px solid rgb(255 255 255 / 42%) !important;
-  border-radius: 999px !important;
-  background: linear-gradient(135deg, rgb(255 255 255 / 34%), rgb(133 134 142 / 44%)) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%), 0 0.55rem 1.25rem rgb(0 0 0 / 28%) !important;
+  border-radius: var(--app-control-radius) !important;
+  background: rgb(255 255 255 / 12%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 0.55rem 1.25rem rgb(0 0 0 / 28%) !important;
   color: #ffffff !important;
   text-shadow: 0 1px 4px rgb(0 0 0 / 36%);
 }
@@ -1154,8 +1152,8 @@ a {
 :root[data-theme="glassmorphism"] .sidebar-confirm-button:hover:not(:disabled),
 :root[data-theme="glassmorphism"] .codex-primary-button:hover:not(:disabled),
 :root[data-theme="glassmorphism"] .codex-send-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgb(255 255 255 / 48%), rgb(164 165 173 / 54%)) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 50%), 0 0.7rem 1.5rem rgb(0 0 0 / 34%) !important;
+  background: rgb(255 255 255 / 17%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 0.7rem 1.5rem rgb(0 0 0 / 34%) !important;
   transform: translateY(-1px);
 }
 
@@ -1168,7 +1166,7 @@ a {
 :root[data-theme="glassmorphism"] .codex-secondary-button,
 :root[data-theme="glassmorphism"] .back-button {
   border: 1px solid var(--app-border) !important;
-  border-radius: 999px !important;
+  border-radius: var(--app-control-radius) !important;
   background: rgb(255 255 255 / 10%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), 0 0.4rem 1rem rgb(0 0 0 / 14%) !important;
   color: #ffffff !important;
@@ -1195,7 +1193,7 @@ a {
 :root[data-theme="glassmorphism"] .language-picker-toggle {
   border: 1px solid var(--app-border) !important;
   border-radius: var(--app-control-radius) !important;
-  background: rgb(0 0 0 / 24%) !important;
+  background: rgb(255 255 255 / 5.5%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 0.35rem 1rem rgb(0 0 0 / 10%);
   color: #ffffff !important;
 }
@@ -1206,7 +1204,7 @@ a {
 :root[data-theme="glassmorphism"] .model-picker-toggle:focus-visible,
 :root[data-theme="glassmorphism"] .language-picker-toggle:focus-visible {
   border-color: rgb(255 255 255 / 62%) !important;
-  background: rgb(49 50 57 / 48%) !important;
+  background: rgb(255 255 255 / 10%) !important;
   box-shadow: 0 0 0 3px rgb(255 255 255 / 13%), inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
@@ -1220,7 +1218,7 @@ a {
 :root[data-theme="glassmorphism"] .reference-item:hover:not(.pressed) {
   border-color: rgb(255 255 255 / 32%) !important;
   border-radius: var(--app-small-radius) !important;
-  background: linear-gradient(110deg, rgb(255 255 255 / 15%), rgb(111 112 120 / 12%)) !important;
+  background: rgb(255 255 255 / 10%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 0.45rem 1.1rem rgb(0 0 0 / 18%);
   color: #ffffff !important;
 }
@@ -1267,8 +1265,75 @@ a {
 }
 
 :root[data-theme="glassmorphism"] .window-control.close:hover {
-  background: linear-gradient(135deg, rgb(255 108 137 / 75%), rgb(217 73 129 / 65%)) !important;
+  background: rgb(150 55 70 / 72%) !important;
   color: #ffffff !important;
+}
+
+/* O vidro não usa brilho especular: apenas translucidez, blur e sombra preta
+ * muito discreta para separar as camadas. */
+:root[data-theme="glassmorphism"] .sidebar,
+:root[data-theme="glassmorphism"] .repository-sidebar,
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs,
+:root[data-theme="glassmorphism"] .codex-sidebar,
+:root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .integration-card,
+:root[data-theme="glassmorphism"] .repository-card,
+:root[data-theme="glassmorphism"] .graph-panel,
+:root[data-theme="glassmorphism"] .history-panel,
+:root[data-theme="glassmorphism"] .files-panel,
+:root[data-theme="glassmorphism"] .commit-panel,
+:root[data-theme="glassmorphism"] .workspace-menu,
+:root[data-theme="glassmorphism"] .dialog,
+:root[data-theme="glassmorphism"] .stash-dialog,
+:root[data-theme="glassmorphism"] .diff-dialog,
+:root[data-theme="glassmorphism"] .conflict-dialog {
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 18%) !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark,
+:root[data-theme="glassmorphism"] .sidebar-brand-mark,
+:root[data-theme="glassmorphism"] .repository-mark,
+:root[data-theme="glassmorphism"] .codex-mark,
+:root[data-theme="glassmorphism"] .settings-icon,
+:root[data-theme="glassmorphism"] .ai-icon,
+:root[data-theme="glassmorphism"] .toast-icon,
+:root[data-theme="glassmorphism"] .dialog-icon,
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button {
+  box-shadow: 0 0.35rem 0.9rem rgb(0 0 0 / 16%) !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme="glassmorphism"] .app-root,
+:root[data-theme="glassmorphism"] app-root,
+:root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  position: relative;
+  border-radius: 0.8rem;
+}
+
+:root[data-theme="glassmorphism"] app-root::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: rgb(15 17 20 / 28%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  content: "";
+  pointer-events: none;
+}
+
+:root[data-theme="glassmorphism"] app-root app-shell {
+  position: relative;
+  z-index: 1;
 }
 
 :root[data-theme="glassmorphism"] .app-tooltip::after,
