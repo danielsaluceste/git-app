@@ -50,6 +50,106 @@
       }
     </div>
 
+    <div class="codex-session-toolbar">
+      <button
+        type="button"
+        class="codex-session-selector"
+        [class.is-open]="sessionMenuOpen"
+        [disabled]="isRunning()"
+        [attr.aria-expanded]="sessionMenuOpen"
+        (click)="sessionMenuOpen = !sessionMenuOpen"
+      >
+        <span class="codex-session-selector-icon" aria-hidden="true">◌</span>
+        <span class="codex-session-selector-copy">
+          <small>{{ "codex.currentSession" | translate }}</small>
+          <strong>{{ activeSession()?.title }}</strong>
+        </span>
+        <span class="codex-session-chevron" aria-hidden="true">⌄</span>
+      </button>
+
+      <button
+        type="button"
+        class="codex-new-session-button"
+        [disabled]="isRunning()"
+        [attr.aria-label]="'codex.newSession' | translate"
+        [title]="'codex.newSession' | translate"
+        (click)="createSession()"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+
+      @if (sessionMenuOpen) {
+        <div class="codex-session-menu">
+          <div class="codex-session-menu-heading">
+            <strong>{{ "codex.sessions" | translate }}</strong>
+            <span>{{ sessions().length }}</span>
+          </div>
+
+          <div class="codex-session-list">
+            @for (session of sessions(); track session.id) {
+              <div class="codex-session-option" [class.is-active]="session.id === activeSessionId()">
+                @if (editingSessionId === session.id) {
+                  <input
+                    class="codex-session-rename-input"
+                    [value]="editingSessionTitle"
+                    [attr.aria-label]="'codex.renameSession' | translate"
+                    (input)="editingSessionTitle = $any($event.target).value"
+                    (keydown)="onSessionTitleKeydown($event, session.id)"
+                    (blur)="finishRename(session.id)"
+                  />
+                } @else {
+                  <button
+                    type="button"
+                    class="codex-session-option-main"
+                    [disabled]="isRunning()"
+                    (click)="selectSession(session.id)"
+                  >
+                    <span class="codex-session-option-dot" aria-hidden="true"></span>
+                    <span>
+                      <strong>{{ session.title }}</strong>
+                      <small>{{ session.messages.length }} {{ "codex.messages" | translate }}</small>
+                    </span>
+                  </button>
+                  <div class="codex-session-option-actions">
+                    <button
+                      type="button"
+                      class="codex-session-action"
+                      [disabled]="isRunning()"
+                      [attr.aria-label]="'codex.renameSession' | translate"
+                      [title]="'codex.renameSession' | translate"
+                      (click)="beginRename(session, $event)"
+                    >
+                      <span aria-hidden="true">✎</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="codex-session-action delete-action"
+                      [disabled]="isRunning()"
+                      [attr.aria-label]="'codex.deleteSession' | translate"
+                      [title]="'codex.deleteSession' | translate"
+                      (click)="deleteSession(session, $event)"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="codex-menu-new-session"
+            [disabled]="isRunning()"
+            (click)="createSession()"
+          >
+            <span aria-hidden="true">+</span>
+            {{ "codex.newSession" | translate }}
+          </button>
+        </div>
+      }
+    </div>
+
     <section class="codex-messages" aria-live="polite">
       @if (messages().length === 0) {
         <div class="codex-empty-state">
@@ -81,7 +181,7 @@
         <input
           type="checkbox"
           [checked]="allowEdits"
-          (change)="allowEdits = $any($event.target).checked"
+          (change)="setAllowEdits($event)"
         />
         <span>
           <strong>{{ "codex.allowEdits" | translate }}</strong>
