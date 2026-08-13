@@ -14,3 +14,14 @@ export interface CodexMessage {
   role: "user" | "assistant" | "error";
   content: string;
 }
+
+export interface CodexSession {
+  id: string;
+  repositoryKey: string;
+  repositoryPath: string;
+  title: string;
+  messages: CodexMessage[];
+  createdAt: string;
+  updatedAt: string;
+  allowEdits: boolean;
+}
