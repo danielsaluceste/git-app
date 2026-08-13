@@ -181,7 +181,8 @@
   --app-dark-button-shadow: rgb(255 255 255 / 12%);
   --app-modal-overlay: rgb(0 0 0 / 62%);
   --app-modal-blur: 28px;
-  --app-global-blur: 13px;
+  /* Parâmetro de teste do fundo global: experimente 0px, 8px, 13px, 20px... */
+  --app-global-background-blur: 13px;
   --app-glass-blur: 36px;
   --app-glass-saturate: 105%;
   --app-workspace-surface: rgb(20 22 25 / 42%);
@@ -347,8 +348,8 @@ a {
   z-index: 0;
   inset: 0;
   background: rgb(15 17 20 / 28%);
-  -webkit-backdrop-filter: blur(var(--app-global-blur));
-  backdrop-filter: blur(var(--app-global-blur));
+  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
+  backdrop-filter: blur(var(--app-global-background-blur));
   content: "";
   pointer-events: none;
 }
@@ -1350,8 +1351,8 @@ a {
   z-index: 0;
   inset: 0;
   background: rgb(15 17 20 / 28%);
-  -webkit-backdrop-filter: blur(var(--app-global-blur));
-  backdrop-filter: blur(var(--app-global-blur));
+  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
+  backdrop-filter: blur(var(--app-global-background-blur));
   content: "";
   pointer-events: none;
 }
