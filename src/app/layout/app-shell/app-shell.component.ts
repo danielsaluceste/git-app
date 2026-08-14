@@ -29,6 +29,9 @@ import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component"
   styleUrl: "./app-shell.component.css",
 })
 export class AppShellComponent implements OnDestroy {
+  private readonly codexSidebarMinWidth = 300;
+  private readonly codexSidebarMaxWidth = 620;
+  private readonly codexSidebarWidthStorageKey = "git-app.codex-sidebar-width";
   private readonly repositoryRefreshInterval = 30_000;
   private readonly layoutService = inject(LayoutService);
   private readonly codexService = inject(CodexService);
@@ -47,6 +50,11 @@ export class AppShellComponent implements OnDestroy {
   readonly codexStatus = this.codexService.status;
   readonly codexEnabled = this.settingsService.codexEnabled;
   readonly codexSidebarOpen = signal(false);
+  readonly codexSidebarWidth = signal(this.loadCodexSidebarWidth());
+  readonly codexResizeActive = signal(false);
+
+  private codexResizeStartX = 0;
+  private codexResizeStartWidth = 360;
 
   constructor() {
     void this.codexService.check();
@@ -116,6 +124,48 @@ export class AppShellComponent implements OnDestroy {
     this.codexSidebarOpen.set(false);
   }
 
+  startCodexResize(event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    this.codexResizeActive.set(true);
+    this.codexResizeStartX = event.clientX;
+    this.codexResizeStartWidth = this.codexSidebarWidth();
+  }
+
+  @HostListener("document:pointermove", ["$event"])
+  onCodexResize(event: PointerEvent): void {
+    if (!this.codexResizeActive()) {
+      return;
+    }
+
+    const width = this.codexResizeStartWidth + this.codexResizeStartX - event.clientX;
+    this.codexSidebarWidth.set(
+      Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, width)),
+    );
+  }
+
+  @HostListener("document:pointerup")
+  stopCodexResize(): void {
+    if (!this.codexResizeActive()) {
+      return;
+    }
+
+    this.codexResizeActive.set(false);
+    try {
+      localStorage.setItem(this.codexSidebarWidthStorageKey, String(this.codexSidebarWidth()));
+    } catch {
+      // A largura continua funcionando mesmo se o armazenamento não estiver disponível.
+    }
+  }
+
+  @HostListener("document:pointercancel")
+  cancelCodexResize(): void {
+    this.stopCodexResize();
+  }
+
   private refreshActiveRepository(): void {
     if (document.visibilityState === "hidden" || this.repositoryRefreshInFlight) {
       return;
@@ -156,6 +206,17 @@ export class AppShellComponent implements OnDestroy {
         .catch(() => undefined);
     } else {
       void this.repositoryService.refreshAfterRepositoryOpened(repository).catch(() => undefined);
+    }
+  }
+
+  private loadCodexSidebarWidth(): number {
+    try {
+      const stored = Number(localStorage.getItem(this.codexSidebarWidthStorageKey));
+      return Number.isFinite(stored)
+        ? Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, stored))
+        : 360;
+    } catch {
+      return 360;
     }
   }
 }

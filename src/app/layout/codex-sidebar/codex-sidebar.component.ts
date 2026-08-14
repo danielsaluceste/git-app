@@ -1,17 +1,27 @@
 import {
   Component,
+  ElementRef,
   EventEmitter,
+  AfterViewInit,
+  AfterViewChecked,
   Input,
   OnChanges,
   Output,
   SimpleChanges,
+  ViewChild,
   computed,
   inject,
   signal,
 } from "@angular/core";
 import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { CodexMessage, CodexSession } from "../../core/models/codex.model";
+import {
+  CodexMessage,
+  CodexModelOption,
+  CodexReasoningOption,
+  CodexSession,
+  CodexUsage,
+} from "../../core/models/codex.model";
 import { Repository } from "../../core/models/repository.model";
 import { CodexService } from "../../core/services/codex.service";
 import { CodexSessionService } from "../../core/services/codex-session.service";
@@ -19,6 +29,7 @@ import { TranslationService } from "../../core/services/translation.service";
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 const CODEX_DOCUMENTATION_URL = "https://developers.openai.com/codex/cli/";
+const MAX_CONTEXT_MESSAGES = 2;
 
 @Component({
   selector: "app-codex-sidebar",
@@ -26,7 +37,7 @@ const CODEX_DOCUMENTATION_URL = "https://developers.openai.com/codex/cli/";
   templateUrl: "./codex-sidebar.component.html",
   styleUrl: "./codex-sidebar.component.css",
 })
-export class CodexSidebarComponent implements OnChanges {
+export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterViewChecked {
   @Input({ required: true }) repository!: Repository;
   @Output() closeRequested = new EventEmitter<void>();
 
@@ -42,20 +53,48 @@ export class CodexSidebarComponent implements OnChanges {
   readonly isRunning = this.codexService.isRunning;
   readonly sessions = signal<CodexSession[]>([]);
   readonly activeSessionId = signal("");
+  @ViewChild("messagesContainer")
+  private messagesContainer?: ElementRef<HTMLElement>;
+
   readonly activeSession = computed(() =>
     this.sessions().find((session) => session.id === this.activeSessionId()),
   );
   readonly messages = signal<CodexMessage[]>([]);
+  readonly selectedModel = signal<CodexModelOption | undefined>(undefined);
+  readonly usage = this.codexService.usage;
+  readonly models = this.codexService.models;
+  readonly isLoadingModels = this.codexService.isLoadingModels;
+  readonly isLoadingUsage = this.codexService.isLoadingUsage;
   prompt = "";
   allowEdits = false;
   sessionMenuOpen = false;
+  modelMenuOpen = false;
+  reasoningMenuOpen = false;
+  usagePanelOpen = false;
+  settingsPanelOpen = false;
+  selectedReasoning = signal<string | undefined>(undefined);
   editingSessionId: string | undefined;
   editingSessionTitle = "";
+  private initialScrollPending = true;
+
+  ngAfterViewInit(): void {
+    this.initialScrollPending = true;
+  }
+
+  ngAfterViewChecked(): void {
+    if (!this.initialScrollPending) {
+      return;
+    }
+
+    this.initialScrollPending = false;
+    this.scrollMessagesToBottom("auto");
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["repository"] && !changes["repository"].firstChange) {
       this.messages.set([]);
       this.prompt = "";
+      this.initialScrollPending = true;
     }
 
     if (changes["repository"]) {
@@ -147,7 +186,101 @@ export class CodexSidebarComponent implements OnChanges {
   }
 
   async checkCli(): Promise<void> {
-    await this.codexService.check();
+    const status = await this.codexService.check();
+    if (status.installed) {
+      await Promise.all([
+        this.codexService.loadModels(),
+        this.codexService.loadUsage(),
+      ]);
+      this.updateSelectedModel();
+    }
+  }
+
+  selectModel(model: CodexModelOption): void {
+    if (this.isRunning()) {
+      return;
+    }
+
+    this.selectedModel.set(model);
+    this.sessionService.saveModel(this.activeSessionId(), model.id);
+    const reasoning = this.reasoningOptions(model).find(
+      (option) => option.reasoningEffort === this.selectedReasoning(),
+    )?.reasoningEffort
+      ?? model.defaultReasoningEffort
+      ?? this.reasoningOptions(model)[0]?.reasoningEffort;
+    this.selectedReasoning.set(reasoning);
+    this.sessionService.saveReasoningEffort(this.activeSessionId(), reasoning);
+    this.modelMenuOpen = false;
+    this.reasoningMenuOpen = false;
+    this.refreshSessions(this.activeSessionId());
+  }
+
+  toggleSettings(): void {
+    this.settingsPanelOpen = !this.settingsPanelOpen;
+    if (!this.settingsPanelOpen) {
+      this.modelMenuOpen = false;
+      this.reasoningMenuOpen = false;
+    }
+  }
+
+  selectReasoning(reasoning: CodexReasoningOption): void {
+    if (this.isRunning()) {
+      return;
+    }
+
+    this.selectedReasoning.set(reasoning.reasoningEffort);
+    this.sessionService.saveReasoningEffort(this.activeSessionId(), reasoning.reasoningEffort);
+    this.reasoningMenuOpen = false;
+  }
+
+  reasoningOptions(model = this.selectedModel()): CodexReasoningOption[] {
+    return model?.supportedReasoningEfforts ?? [];
+  }
+
+  reasoningLabel(reasoningEffort = ""): string {
+    const key = ["none", "low", "medium", "high", "xhigh", "max", "ultra"].includes(reasoningEffort)
+      ? reasoningEffort
+      : "custom";
+    return this.translationService.translate(`codex.reasoning.${key}`);
+  }
+
+  async refreshUsage(): Promise<void> {
+    await this.codexService.loadUsage();
+  }
+
+  usagePercent(window: CodexUsage["primary"]): number {
+    return Math.max(0, Math.min(100, window?.usedPercent ?? 0));
+  }
+
+  usageRemaining(window: CodexUsage["primary"]): number {
+    return 100 - this.usagePercent(window);
+  }
+
+  usageDuration(window: CodexUsage["primary"]): string {
+    const minutes = window?.windowDurationMins;
+    if (!minutes) {
+      return "";
+    }
+    if (minutes % (60 * 24) === 0) {
+      return this.translationService.translate("codex.usageDays", { count: minutes / (60 * 24) });
+    }
+    if (minutes % 60 === 0) {
+      return this.translationService.translate("codex.usageHours", { count: minutes / 60 });
+    }
+    return this.translationService.translate("codex.usageMinutes", { count: minutes });
+  }
+
+  usageReset(window: CodexUsage["primary"]): string {
+    if (!window?.resetsAt) {
+      return this.translationService.translate("codex.usageUnknownReset");
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(window.resetsAt * 1000));
   }
 
   async send(): Promise<void> {
@@ -156,29 +289,48 @@ export class CodexSidebarComponent implements OnChanges {
       return;
     }
 
-    const status = this.status() ?? await this.codexService.check();
-    if (!status.installed) {
-      return;
-    }
-
     const repositoryPath = this.repository.path;
     const sessionId = this.activeSessionId();
-    const context = this.messages()
-      .slice(-8)
-      .map((message) => `${message.role === "user" ? "Usuário" : "Codex"}: ${message.content}`)
-      .join("\n\n");
-
-    this.addMessageToSession(sessionId, "user", prompt);
-    this.prompt = "";
 
     try {
-      const result = await this.codexService.run(repositoryPath, prompt, context, this.allowEdits);
+      const status = this.status() ?? await this.codexService.check();
+      if (!status.installed) {
+        return;
+      }
+
+      const context = this.messages()
+        .slice(-MAX_CONTEXT_MESSAGES)
+        .map((message) => {
+          const content = message.content.trim();
+          const shortened = content.length > 2_500
+            ? `${content.slice(-2_500)}\n[Mensagem anterior resumida]`
+            : content;
+          return `${message.role === "user" ? "Usuário" : "Codex"}: ${shortened}`;
+        })
+        .join("\n\n");
+
+      this.addMessageToSession(sessionId, "user", prompt);
+      this.prompt = "";
+
+      const result = await this.codexService.run(
+        repositoryPath,
+        prompt,
+        context,
+        this.allowEdits,
+        sessionId,
+        this.selectedModel()?.id,
+        this.selectedReasoning(),
+      );
       if (repositoryPath === this.repository.path) {
         this.addMessageToSession(sessionId, "assistant", result.output);
       }
     } catch (error: unknown) {
       if (repositoryPath === this.repository.path) {
-        this.addMessageToSession(sessionId, "error", this.errorMessage(error));
+        try {
+          this.addMessageToSession(sessionId, "error", this.errorMessage(error));
+        } catch {
+          // Uma falha ao salvar a mensagem não pode encerrar a interface.
+        }
       }
     }
   }
@@ -213,6 +365,12 @@ export class CodexSidebarComponent implements OnChanges {
     }
 
     const formatted = this.sanitizer.bypassSecurityTrustHtml(this.markdownToHtml(content));
+    if (this.formattedMessages.size >= 100) {
+      const oldest = this.formattedMessages.keys().next().value;
+      if (oldest) {
+        this.formattedMessages.delete(oldest);
+      }
+    }
     this.formattedMessages.set(content, formatted);
     return formatted;
   }
@@ -241,8 +399,26 @@ export class CodexSidebarComponent implements OnChanges {
     this.activeSessionId.set(session.id);
     this.sessionService.setActive(this.repository, session.id);
     this.messages.set([...session.messages]);
+    this.scrollMessagesToBottom("auto");
     this.allowEdits = session.allowEdits;
+    this.updateSelectedModel(session.model);
     this.nextMessageId = session.messages.reduce((highest, message) => Math.max(highest, message.id), 0);
+  }
+
+  private updateSelectedModel(sessionModel?: string): void {
+    const session = this.sessionService.get(this.activeSessionId());
+    const modelId = sessionModel ?? session?.model;
+    const model = this.models().find((item) => item.id === modelId)
+      ?? this.models().find((item) => item.isDefault)
+      ?? this.models()[0];
+    this.selectedModel.set(model);
+
+    const supported = this.reasoningOptions(model);
+    this.selectedReasoning.set(
+      supported.find((item) => item.reasoningEffort === session?.reasoningEffort)?.reasoningEffort
+        ?? model?.defaultReasoningEffort
+        ?? supported[0]?.reasoningEffort,
+    );
   }
 
   private addMessageToSession(
@@ -260,7 +436,35 @@ export class CodexSidebarComponent implements OnChanges {
     if (sessionId === this.activeSessionId()) {
       this.messages.set([...(this.sessionService.get(sessionId)?.messages ?? [])]);
       this.sessions.set(this.sessionService.sessionsFor(this.repository));
+      this.scrollMessagesToBottom();
     }
+  }
+
+  private scrollMessagesToBottom(behavior: ScrollBehavior = "smooth"): void {
+    window.setTimeout(() => {
+      const scroll = (): void => {
+        const element = this.messagesContainer?.nativeElement;
+        if (!element) {
+          return;
+        }
+
+        element.scrollTop = element.scrollHeight;
+        element.scrollTo({
+          top: element.scrollHeight,
+          behavior,
+        });
+
+        element.lastElementChild?.scrollIntoView({
+          block: "end",
+          behavior,
+        });
+      };
+
+      scroll();
+      window.requestAnimationFrame(() => {
+        scroll();
+      });
+    }, 0);
   }
 
   private errorMessage(error: unknown): string {
@@ -388,7 +592,7 @@ export class CodexSidebarComponent implements OnChanges {
   private formatInline(text: string): string {
     const codeSpans: string[] = [];
     let formatted = text.replace(/`([^`]+)`/g, (_match, code: string) => {
-      const token = `@@CODE_SPAN_${codeSpans.length}@@`;
+      const token = `@@CODESPAN${codeSpans.length}@@`;
       codeSpans.push(`<code>${code}</code>`);
       return token;
     });
@@ -401,7 +605,7 @@ export class CodexSidebarComponent implements OnChanges {
       .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
       .replace(/_([^_\n]+)_/g, "<em>$1</em>");
 
-    return formatted.replace(/@@CODE_SPAN_(\d+)@@/g, (_match, index: string) => codeSpans[Number(index)]);
+    return formatted.replace(/@@CODESPAN(\d+)@@/g, (_match, index: string) => codeSpans[Number(index)]);
   }
 
   private escapeHtml(value: string): string {

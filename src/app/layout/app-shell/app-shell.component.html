@@ -3,6 +3,8 @@
   [class.main-sidebar-collapsed]="!mainSidebarOpen()"
   [class.repository-open]="!!activeRepository()"
   [class.codex-open]="codexSidebarOpen()"
+  [class.codex-resizing]="codexResizeActive()"
+  [style.--codex-sidebar-width.px]="codexSidebarWidth()"
 >
   <app-sidebar
     [collapsed]="!mainSidebarOpen()"
@@ -31,10 +33,19 @@
 
   @if (activeRepository(); as repository) {
     @if (codexSidebarOpen()) {
-      <app-codex-sidebar
-        [repository]="repository"
-        (closeRequested)="closeCodexSidebar()"
-      />
+      <div class="codex-resizable-panel">
+        <div
+          class="codex-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar barra do Codex"
+          (pointerdown)="startCodexResize($event)"
+        ></div>
+        <app-codex-sidebar
+          [repository]="repository"
+          (closeRequested)="closeCodexSidebar()"
+        />
+      </div>
     }
   }
 

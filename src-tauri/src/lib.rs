@@ -13,6 +13,8 @@ pub fn run() {
         .manage(commands::github::GithubCredentialState::default())
         .invoke_handler(tauri::generate_handler![
             commands::codex::check_codex_cli,
+            commands::codex::get_codex_models,
+            commands::codex::get_codex_usage,
             commands::codex::run_codex,
             commands::codex::cancel_codex,
             commands::repository::inspect_repository,

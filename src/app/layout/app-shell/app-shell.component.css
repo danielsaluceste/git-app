@@ -26,6 +26,57 @@
   --codex-sidebar-width: 360px;
 }
 
+.codex-resizable-panel {
+  position: relative;
+  display: flex;
+  width: var(--codex-sidebar-width, 360px);
+  min-width: 300px;
+  max-width: 620px;
+  height: 100vh;
+  flex: 0 0 var(--codex-sidebar-width, 360px);
+}
+
+.codex-resizable-panel app-codex-sidebar {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.codex-resize-handle {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  bottom: 0;
+  left: -0.25rem;
+  width: 0.5rem;
+  cursor: col-resize;
+}
+
+.codex-resize-handle::after {
+  position: absolute;
+  top: 50%;
+  left: 0.2rem;
+  width: 0.12rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: transparent;
+  content: "";
+  transform: translateY(-50%);
+  transition: background 140ms ease, height 140ms ease;
+}
+
+.codex-resize-handle:hover::after,
+.app-shell.codex-resizing .codex-resize-handle::after {
+  height: 3.5rem;
+  background: #f97316;
+}
+
+.app-shell.codex-resizing,
+.app-shell.codex-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .workspace {
   display: flex;
   flex: 1;
@@ -66,4 +117,21 @@
 .content::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
   background-clip: content-box;
+}
+
+@media (max-width: 900px) {
+  .codex-resizable-panel {
+    position: absolute;
+    z-index: 25;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(var(--codex-sidebar-width, 360px), 92vw);
+    max-width: 92vw;
+    height: 100vh;
+  }
+
+  .codex-resize-handle {
+    display: none;
+  }
 }

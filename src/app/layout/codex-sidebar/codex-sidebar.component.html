@@ -50,6 +50,156 @@
       }
     </div>
 
+    @if (false) {
+    <div class="codex-ai-toolbar">
+      <div class="codex-model-picker">
+        <button
+          type="button"
+          class="codex-model-button"
+          [class.is-open]="modelMenuOpen"
+          [disabled]="isRunning() || isLoadingModels()"
+          [attr.aria-expanded]="modelMenuOpen"
+          [attr.aria-label]="'codex.changeModel' | translate"
+          (click)="modelMenuOpen = !modelMenuOpen"
+        >
+          <span class="codex-model-icon" aria-hidden="true">✦</span>
+          <span class="codex-model-copy">
+            <small>{{ "codex.model" | translate }}</small>
+            @if (isLoadingModels()) {
+              <strong>{{ "codex.loadingModels" | translate }}</strong>
+            } @else {
+              <strong>{{ selectedModel()?.displayName || "—" }}</strong>
+            }
+          </span>
+          <span class="codex-model-chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        @if (modelMenuOpen) {
+          <div class="codex-model-menu">
+            <div class="codex-model-menu-heading">
+              <strong>{{ "codex.models" | translate }}</strong>
+              <span>{{ models().length }}</span>
+            </div>
+            @for (model of models(); track model.id) {
+              <button
+                type="button"
+                class="codex-model-option"
+                [class.is-selected]="selectedModel()?.id === model.id"
+                (click)="selectModel(model)"
+              >
+                <span class="codex-model-option-mark" aria-hidden="true"></span>
+                <span class="codex-model-option-copy">
+                  <strong>{{ model.displayName }}</strong>
+                  <small>{{ model.description }}</small>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="codex-reasoning-picker">
+        <button
+          type="button"
+          class="codex-reasoning-button"
+          [class.is-open]="reasoningMenuOpen"
+          [disabled]="isRunning() || !selectedModel()"
+          [attr.aria-expanded]="reasoningMenuOpen"
+          [attr.aria-label]="'codex.changeReasoning' | translate"
+          (click)="reasoningMenuOpen = !reasoningMenuOpen"
+        >
+          <span class="codex-reasoning-copy">
+            <small>{{ "codex.reasoning" | translate }}</small>
+            <strong>{{ reasoningLabel(selectedReasoning()) }}</strong>
+          </span>
+          <span class="codex-model-chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        @if (reasoningMenuOpen) {
+          <div class="codex-reasoning-menu">
+            <div class="codex-model-menu-heading">
+              <strong>{{ "codex.reasoningTitle" | translate }}</strong>
+            </div>
+            @for (reasoning of reasoningOptions(); track reasoning.reasoningEffort) {
+              <button
+                type="button"
+                class="codex-reasoning-option"
+                [class.is-selected]="selectedReasoning() === reasoning.reasoningEffort"
+                (click)="selectReasoning(reasoning)"
+              >
+                <span class="codex-model-option-mark" aria-hidden="true"></span>
+                <span class="codex-model-option-copy">
+                  <strong>{{ reasoningLabel(reasoning.reasoningEffort) }}</strong>
+                  <small>{{ reasoning.description }}</small>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="codex-usage-wrapper">
+        <button
+          type="button"
+          class="codex-usage-button"
+          [class.is-open]="usagePanelOpen"
+          [attr.aria-expanded]="usagePanelOpen"
+          [attr.aria-label]="'codex.usageTitle' | translate"
+          (click)="usagePanelOpen = !usagePanelOpen"
+        >
+          <span class="codex-usage-icon" aria-hidden="true">◔</span>
+          <span>{{ "codex.usage" | translate }}</span>
+          @if (usage()?.primary; as primary) {
+            <span class="codex-usage-percent">{{ usageRemaining(primary) }}%</span>
+          }
+        </button>
+
+        @if (usagePanelOpen) {
+          <div class="codex-usage-panel">
+            <div class="codex-usage-panel-heading">
+              <strong>{{ "codex.usageTitle" | translate }}</strong>
+              <button
+                type="button"
+                class="codex-usage-refresh"
+                [disabled]="isLoadingUsage()"
+                [attr.aria-label]="'codex.usageRefresh' | translate"
+                [title]="'codex.usageRefresh' | translate"
+                (click)="refreshUsage()"
+              >
+                <span [class.is-spinning]="isLoadingUsage()" aria-hidden="true">↻</span>
+              </button>
+            </div>
+            @if (isLoadingUsage()) {
+              <div class="codex-usage-loading">
+                <span class="codex-spinner" aria-hidden="true"></span>
+                {{ "codex.usageLoading" | translate }}
+              </div>
+            } @else if (usage()?.primary; as primary) {
+              <div class="codex-usage-window">
+                <div class="codex-usage-window-label">
+                  <span>{{ "codex.usageWindow" | translate:{ duration: usageDuration(primary) } }}</span>
+                  <strong>{{ usagePercent(primary) }}% {{ "codex.usageUsed" | translate }}</strong>
+                </div>
+                <div class="codex-usage-track">
+                  <span [style.width.%]="usagePercent(primary)"></span>
+                </div>
+                <div class="codex-usage-window-meta">
+                  <span>{{ usageRemaining(primary) }}% {{ "codex.usageAvailable" | translate }}</span>
+                  <span>{{ "codex.usageResets" | translate }} {{ usageReset(primary) }}</span>
+                </div>
+              </div>
+              @if (usage()?.planType; as plan) {
+                <small class="codex-usage-plan">{{ "codex.usagePlan" | translate:{ plan: plan ?? "" } }}</small>
+              }
+            } @else {
+              <p class="codex-usage-unavailable">{{ "codex.usageUnavailable" | translate }}</p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+    }
+
     <div class="codex-session-toolbar">
       <button
         type="button"
@@ -150,7 +300,7 @@
       }
     </div>
 
-    <section class="codex-messages" aria-live="polite">
+    <section #messagesContainer class="codex-messages" aria-live="polite">
       @if (messages().length === 0) {
         <div class="codex-empty-state">
           <div class="codex-empty-icon" aria-hidden="true">✦</div>
@@ -199,17 +349,185 @@
       ></textarea>
 
       <div class="codex-composer-actions">
-        <span>{{ "codex.shortcut" | translate }}</span>
-        @if (isRunning()) {
-          <button type="button" class="codex-stop-button" (click)="cancel()">
-            {{ "codex.stop" | translate }}
+        <div class="codex-composer-usage-wrapper">
+          <button
+            type="button"
+            class="codex-usage-button codex-composer-usage-button"
+            [class.is-open]="usagePanelOpen"
+            [attr.aria-expanded]="usagePanelOpen"
+            [attr.aria-label]="'codex.usageTitle' | translate"
+            (click)="usagePanelOpen = !usagePanelOpen"
+          >
+            <span class="codex-usage-icon" aria-hidden="true">◔</span>
+            <span>{{ "codex.usage" | translate }}</span>
+            @if (usage()?.primary; as primary) {
+              <span class="codex-usage-percent">{{ usageRemaining(primary) }}%</span>
+            }
           </button>
-        } @else {
-          <button type="button" class="codex-send-button" [disabled]="!prompt.trim()" (click)="send()">
-            <span aria-hidden="true">↑</span>
-            {{ "codex.send" | translate }}
-          </button>
-        }
+
+          @if (usagePanelOpen) {
+            <div class="codex-usage-panel">
+              <div class="codex-usage-panel-heading">
+                <strong>{{ "codex.usageTitle" | translate }}</strong>
+                <button
+                  type="button"
+                  class="codex-usage-refresh"
+                  [disabled]="isLoadingUsage()"
+                  [attr.aria-label]="'codex.usageRefresh' | translate"
+                  [title]="'codex.usageRefresh' | translate"
+                  (click)="refreshUsage()"
+                >
+                  <span [class.is-spinning]="isLoadingUsage()" aria-hidden="true">↻</span>
+                </button>
+              </div>
+              @if (isLoadingUsage()) {
+                <div class="codex-usage-loading">
+                  <span class="codex-spinner" aria-hidden="true"></span>
+                  {{ "codex.usageLoading" | translate }}
+                </div>
+              } @else if (usage()?.primary; as primary) {
+                <div class="codex-usage-window">
+                  <div class="codex-usage-window-label">
+                    <span>{{ "codex.usageWindow" | translate:{ duration: usageDuration(primary) } }}</span>
+                    <strong>{{ usagePercent(primary) }}% {{ "codex.usageUsed" | translate }}</strong>
+                  </div>
+                  <div class="codex-usage-track">
+                    <span [style.width.%]="usagePercent(primary)"></span>
+                  </div>
+                  <div class="codex-usage-window-meta">
+                    <span>{{ usageRemaining(primary) }}% {{ "codex.usageAvailable" | translate }}</span>
+                    <span>{{ "codex.usageResets" | translate }} {{ usageReset(primary) }}</span>
+                  </div>
+                </div>
+                @if (usage()?.planType; as plan) {
+                  <small class="codex-usage-plan">{{ "codex.usagePlan" | translate:{ plan: plan ?? "" } }}</small>
+                }
+              } @else {
+                <p class="codex-usage-unavailable">{{ "codex.usageUnavailable" | translate }}</p>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="codex-composer-controls">
+          <div class="codex-composer-settings">
+            <button
+              type="button"
+              class="codex-settings-button"
+              [class.is-open]="settingsPanelOpen"
+              [disabled]="isRunning()"
+              [attr.aria-expanded]="settingsPanelOpen"
+              [attr.aria-label]="'codex.settings' | translate"
+              [title]="'codex.settings' | translate"
+              (click)="toggleSettings()"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M6.5 1.8h3l.4 1.5a5.5 5.5 0 0 1 1.1.6l1.5-.5 1.5 2.6-1.1 1.1a5.4 5.4 0 0 1 0 1.3l1.1 1.1-1.5 2.6-1.5-.5a5.5 5.5 0 0 1-1.1.6l-.4 1.5h-3l-.4-1.5a5.5 5.5 0 0 1-1.1-.6l-1.5.5L2 9.5l1.1-1.1a5.4 5.4 0 0 1 0-1.3L2 6l1.5-2.6 1.5.5a5.5 5.5 0 0 1 1.1-.6l.4-1.5Z" />
+                <circle cx="8" cy="8" r="2.1" />
+              </svg>
+            </button>
+
+            @if (settingsPanelOpen) {
+              <div class="codex-settings-panel">
+                <div class="codex-settings-panel-heading">
+                  <strong>{{ "codex.settings" | translate }}</strong>
+                </div>
+
+                <div class="codex-settings-field">
+                  <span class="codex-settings-label">{{ "codex.model" | translate }}</span>
+                  <div class="codex-model-picker codex-settings-picker">
+                    <button
+                      type="button"
+                      class="codex-model-button"
+                      [class.is-open]="modelMenuOpen"
+                      [disabled]="isLoadingModels()"
+                      [attr.aria-expanded]="modelMenuOpen"
+                      (click)="modelMenuOpen = !modelMenuOpen"
+                    >
+                      <span class="codex-model-icon" aria-hidden="true">✦</span>
+                      <span class="codex-model-copy">
+                        @if (isLoadingModels()) {
+                          <strong>{{ "codex.loadingModels" | translate }}</strong>
+                        } @else {
+                          <strong>{{ selectedModel()?.displayName || "—" }}</strong>
+                        }
+                      </span>
+                      <span class="codex-model-chevron" aria-hidden="true">⌄</span>
+                    </button>
+
+                    @if (modelMenuOpen) {
+                      <div class="codex-model-menu">
+                        @for (model of models(); track model.id) {
+                          <button
+                            type="button"
+                            class="codex-model-option"
+                            [class.is-selected]="selectedModel()?.id === model.id"
+                            (click)="selectModel(model)"
+                          >
+                            <span class="codex-model-option-mark" aria-hidden="true"></span>
+                            <span class="codex-model-option-copy">
+                              <strong>{{ model.displayName }}</strong>
+                              <small>{{ model.description }}</small>
+                            </span>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <div class="codex-settings-field">
+                  <span class="codex-settings-label">{{ "codex.reasoning" | translate }}</span>
+                  <div class="codex-reasoning-picker codex-settings-picker">
+                    <button
+                      type="button"
+                      class="codex-reasoning-button"
+                      [class.is-open]="reasoningMenuOpen"
+                      [disabled]="!selectedModel()"
+                      [attr.aria-expanded]="reasoningMenuOpen"
+                      (click)="reasoningMenuOpen = !reasoningMenuOpen"
+                    >
+                      <span class="codex-reasoning-copy">
+                        <strong>{{ reasoningLabel(selectedReasoning()) }}</strong>
+                      </span>
+                      <span class="codex-model-chevron" aria-hidden="true">⌄</span>
+                    </button>
+
+                    @if (reasoningMenuOpen) {
+                      <div class="codex-reasoning-menu">
+                        @for (reasoning of reasoningOptions(); track reasoning.reasoningEffort) {
+                          <button
+                            type="button"
+                            class="codex-reasoning-option"
+                            [class.is-selected]="selectedReasoning() === reasoning.reasoningEffort"
+                            (click)="selectReasoning(reasoning)"
+                          >
+                            <span class="codex-model-option-mark" aria-hidden="true"></span>
+                            <span class="codex-model-option-copy">
+                              <strong>{{ reasoningLabel(reasoning.reasoningEffort) }}</strong>
+                              <small>{{ reasoning.description }}</small>
+                            </span>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (isRunning()) {
+            <button type="button" class="codex-stop-button" (click)="cancel()">
+              {{ "codex.stop" | translate }}
+            </button>
+          } @else {
+            <button type="button" class="codex-send-button" [disabled]="!prompt.trim()" (click)="send()">
+              <span aria-hidden="true">↑</span>
+              {{ "codex.send" | translate }}
+            </button>
+          }
+        </div>
       </div>
     </footer>
   }

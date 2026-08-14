@@ -5,6 +5,38 @@ export interface CodexCliStatus {
   error?: string;
 }
 
+export interface CodexModelOption {
+  id: string;
+  model: string;
+  displayName: string;
+  description: string;
+  hidden: boolean;
+  isDefault: boolean;
+  upgrade?: string | null;
+  defaultReasoningEffort: string;
+  supportedReasoningEfforts: CodexReasoningOption[];
+}
+
+export interface CodexReasoningOption {
+  reasoningEffort: string;
+  description: string;
+}
+
+export interface CodexUsageWindow {
+  usedPercent: number;
+  windowDurationMins?: number | null;
+  resetsAt?: number | null;
+}
+
+export interface CodexUsage {
+  planType?: string | null;
+  limitName?: string | null;
+  primary?: CodexUsageWindow | null;
+  secondary?: CodexUsageWindow | null;
+  rateLimitReachedType?: string | null;
+  lifetimeTokens?: number | null;
+}
+
 export interface CodexRunResult {
   output: string;
 }
@@ -24,4 +56,6 @@ export interface CodexSession {
   createdAt: string;
   updatedAt: string;
   allowEdits: boolean;
+  model?: string;
+  reasoningEffort?: string;
 }
