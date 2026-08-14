@@ -14,6 +14,7 @@
   min-height: 0;
   box-sizing: border-box;
   flex-direction: column;
+  overflow: hidden;
   border-left: 1px solid #263244;
   background: #0f172a;
   color: #e5e7eb;
@@ -261,10 +262,17 @@
 }
 
 .codex-model-chevron {
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
   margin-left: auto;
+  margin-right: 0.18rem;
   color: #94a3b8;
-  font-size: 0.9rem;
-  line-height: 1;
+  font-size: 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-0.04rem, -0.04rem);
 }
 
 .codex-usage-wrapper {
@@ -809,7 +817,9 @@
 .codex-messages {
   display: flex;
   min-height: 0;
-  flex: 1;
+  height: 0;
+  flex: 1 1 0;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 0.75rem;
   overflow-y: auto;

@@ -5,6 +5,8 @@ import {
   AfterViewInit,
   AfterViewChecked,
   Input,
+  HostListener,
+  OnDestroy,
   OnChanges,
   Output,
   SimpleChanges,
@@ -37,7 +39,7 @@ const MAX_CONTEXT_MESSAGES = 2;
   templateUrl: "./codex-sidebar.component.html",
   styleUrl: "./codex-sidebar.component.css",
 })
-export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterViewChecked {
+export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterViewChecked, OnDestroy {
   @Input({ required: true }) repository!: Repository;
   @Output() closeRequested = new EventEmitter<void>();
 
@@ -76,9 +78,31 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
   editingSessionId: string | undefined;
   editingSessionTitle = "";
   private initialScrollPending = true;
+  private messagesObserver?: MutationObserver;
+  private messagesResizeObserver?: ResizeObserver;
+  private scrollTimer?: number;
 
   ngAfterViewInit(): void {
     this.initialScrollPending = true;
+    const element = this.messagesContainer?.nativeElement;
+    if (element && typeof MutationObserver !== "undefined") {
+      this.messagesObserver = new MutationObserver(() => {
+        this.scrollMessagesToBottom("auto");
+      });
+      this.messagesObserver.observe(element, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    if (element && typeof ResizeObserver !== "undefined") {
+      this.messagesResizeObserver = new ResizeObserver(() => {
+        this.scrollMessagesToBottom("auto");
+      });
+      this.messagesResizeObserver.observe(element);
+    }
+
+    this.scrollMessagesToBottom("auto");
   }
 
   ngAfterViewChecked(): void {
@@ -88,6 +112,14 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
 
     this.initialScrollPending = false;
     this.scrollMessagesToBottom("auto");
+  }
+
+  ngOnDestroy(): void {
+    this.messagesObserver?.disconnect();
+    this.messagesResizeObserver?.disconnect();
+    if (this.scrollTimer !== undefined) {
+      window.clearTimeout(this.scrollTimer);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -177,6 +209,37 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
     } else if (event.key === "Escape") {
       event.preventDefault();
       this.cancelRename();
+    }
+  }
+
+  @HostListener("document:pointerdown", ["$event"])
+  closePopoversOnOutsideClick(event: PointerEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (!target.closest(".codex-session-toolbar")) {
+      this.sessionMenuOpen = false;
+    }
+
+    if (!target.closest(".codex-usage-wrapper, .codex-composer-usage-wrapper")) {
+      this.usagePanelOpen = false;
+    }
+
+    if (!target.closest(".codex-composer-settings")) {
+      this.settingsPanelOpen = false;
+      this.modelMenuOpen = false;
+      this.reasoningMenuOpen = false;
+      return;
+    }
+
+    if (!target.closest(".codex-model-picker")) {
+      this.modelMenuOpen = false;
+    }
+
+    if (!target.closest(".codex-reasoning-picker")) {
+      this.reasoningMenuOpen = false;
     }
   }
 
@@ -336,10 +399,14 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
   }
 
   onPromptKeydown(event: KeyboardEvent): void {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-      event.preventDefault();
-      void this.send();
+    // Shift + Enter keeps the native textarea behavior and inserts a line
+    // break. Plain Enter sends the current prompt.
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
+      return;
     }
+
+    event.preventDefault();
+    void this.send();
   }
 
   async cancel(): Promise<void> {
@@ -398,6 +465,7 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
     this.sessions.set(sessions);
     this.activeSessionId.set(session.id);
     this.sessionService.setActive(this.repository, session.id);
+    this.initialScrollPending = true;
     this.messages.set([...session.messages]);
     this.scrollMessagesToBottom("auto");
     this.allowEdits = session.allowEdits;
@@ -441,29 +509,37 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
   }
 
   private scrollMessagesToBottom(behavior: ScrollBehavior = "smooth"): void {
-    window.setTimeout(() => {
+    if (this.scrollTimer !== undefined) {
+      window.clearTimeout(this.scrollTimer);
+    }
+
+    this.scrollTimer = window.setTimeout(() => {
+      this.scrollTimer = undefined;
       const scroll = (): void => {
         const element = this.messagesContainer?.nativeElement;
         if (!element) {
           return;
         }
 
-        element.scrollTop = element.scrollHeight;
+        const bottom = Math.max(0, element.scrollHeight - element.clientHeight);
         element.scrollTo({
-          top: element.scrollHeight,
+          top: bottom,
           behavior,
         });
-
-        element.lastElementChild?.scrollIntoView({
-          block: "end",
-          behavior,
-        });
+        if (behavior === "auto") {
+          element.scrollTop = bottom;
+        }
       };
 
       scroll();
       window.requestAnimationFrame(() => {
         scroll();
       });
+
+      // The sidebar can still be finishing its first layout animation when the
+      // messages are rendered. A final pass guarantees the restored session is
+      // positioned at the bottom after that layout settles.
+      window.setTimeout(scroll, 240);
     }, 0);
   }
 
