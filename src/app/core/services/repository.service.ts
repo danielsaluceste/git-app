@@ -1,5 +1,6 @@
 import { Injectable, signal } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import {
   LocalRepositoryInfo,
   Repository,
@@ -46,6 +47,11 @@ export class RepositoryService {
   private readonly repositoryRefreshVersionState = signal(0);
   private readonly repositoryCache = new Map<string, RepositoryCache>();
   private readonly backgroundRefreshes = new Set<string>();
+  private watcherUnlisten?: UnlistenFn;
+
+  constructor() {
+    void this.initWatcherListener();
+  }
 
   readonly repositories = this.repositoriesState.asReadonly();
   readonly openRepositories = this.openRepositoriesState.asReadonly();
@@ -426,6 +432,63 @@ export class RepositoryService {
     this.repositoryStatusState.set(repository ? this.getCachedStatus(repository.path) : undefined);
     this.repositoryReferencesState.set(repository ? this.getCachedReferences(repository.path) : undefined);
     this.persistActiveRepository(repository);
+
+    if (repository) {
+      void this.watchRepository(repository.path);
+    } else {
+      void this.unwatchRepository();
+    }
+  }
+
+  async watchRepository(path: string): Promise<void> {
+    try {
+      await invoke("watch_repository", { path });
+    } catch (error) {
+      console.warn("Falha ao iniciar file watcher:", error);
+    }
+  }
+
+  async unwatchRepository(): Promise<void> {
+    try {
+      await invoke("unwatch_repository");
+    } catch (error) {
+      console.warn("Falha ao parar file watcher:", error);
+    }
+  }
+
+  private async initWatcherListener(): Promise<void> {
+    try {
+      this.watcherUnlisten = await listen<{ path: string }>(
+        "repository-changed",
+        (event) => {
+          const active = this.activeRepositoryState();
+          if (!active) {
+            return;
+          }
+
+          const eventPath = this.normalizeRepositoryPath(event.payload.path);
+          const activePath = this.normalizeRepositoryPath(active.path);
+          if (eventPath === activePath) {
+            void this.handleRepositoryFileChange(active);
+          }
+        },
+      );
+    } catch (error) {
+      console.warn("Falha ao inicializar listener de mudanças de arquivo:", error);
+    }
+  }
+
+  private async handleRepositoryFileChange(repository: Repository): Promise<void> {
+    try {
+      await Promise.allSettled([
+        this.getReferences(repository.path),
+        this.getStatus(repository.path),
+        this.getOperation(repository.path),
+      ]);
+      this.repositoryRefreshVersionState.update((version) => version + 1);
+    } catch (error) {
+      console.warn("Erro ao atualizar dados após evento do file watcher:", error);
+    }
   }
 
   openRepository(repository: Repository): void {

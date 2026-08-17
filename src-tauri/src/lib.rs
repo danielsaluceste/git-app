@@ -11,6 +11,7 @@ pub fn run() {
         .manage(commands::codex::CodexProcessState::default())
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
+        .manage(commands::watcher::WatcherState::default())
         .invoke_handler(tauri::generate_handler![
             commands::codex::check_codex_cli,
             commands::codex::get_codex_models,
@@ -63,6 +64,8 @@ pub fn run() {
             commands::github::poll_device_flow,
             commands::github::list_repositories,
             commands::github::disconnect_account,
+            commands::watcher::watch_repository,
+            commands::watcher::unwatch_repository,
             commands::system::ping
         ])
         .run(tauri::generate_context!())
