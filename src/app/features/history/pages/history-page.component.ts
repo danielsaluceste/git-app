@@ -21,8 +21,10 @@ import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
+import { CreateTagRequest } from "../../../core/models/tag.model";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
+import { TagDialogComponent } from "../../../shared/dialogs/tag-dialog/tag-dialog.component";
 import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 import {
   CommitGraphResult,
@@ -44,7 +46,7 @@ interface CommitContextMenu {
 
 @Component({
   selector: "app-history-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent, TranslatePipe],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, TagDialogComponent, TranslatePipe],
   templateUrl: "./history-page.component.html",
   styleUrl: "./history-page.component.css",
 })
@@ -77,6 +79,8 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
   readonly pendingRevertCommit = signal<Commit | undefined>(undefined);
   readonly isRevertingCommit = signal(false);
+  readonly pendingTagCommit = signal<Commit | undefined>(undefined);
+  readonly isCreatingTag = signal(false);
   readonly commitContextMenu = signal<CommitContextMenu | undefined>(undefined);
   readonly historyQuery = signal("");
   readonly authorFilter = signal("");
@@ -321,6 +325,40 @@ export class HistoryPageComponent implements AfterViewInit {
     this.closeCommitContextMenu();
     if (commit) {
       void this.requestCheckoutCommit(commit);
+    }
+  }
+
+  createTagFromContextMenu(): void {
+    const commit = this.commitContextMenu()?.commit;
+    this.closeCommitContextMenu();
+    if (commit) {
+      this.pendingTagCommit.set(commit);
+    }
+  }
+
+  cancelCreateTag(): void {
+    this.pendingTagCommit.set(undefined);
+  }
+
+  async confirmCreateTag(request: CreateTagRequest): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository) {
+      return;
+    }
+
+    this.isCreatingTag.set(true);
+    try {
+      await this.repositoryService.createTag(repository.path, request);
+      this.toastService.success(
+        this.translationService.translate("tags.createSuccess", { name: request.name }),
+        this.translationService.translate("tags.title"),
+      );
+      this.pendingTagCommit.set(undefined);
+      await this.loadOverview();
+    } catch (error: unknown) {
+      this.toastService.error(this.getSyncErrorMessage(error), this.translationService.translate("tags.title"));
+    } finally {
+      this.isCreatingTag.set(false);
     }
   }
 

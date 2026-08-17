@@ -15,6 +15,7 @@ import {
 } from "../models/repository.model";
 import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
+import { CreateTagRequest, GitTag } from "../models/tag.model";
 
 const STORAGE_KEY = "git-app.repositories";
 const OPEN_REPOSITORIES_KEY = "git-app.open-repositories";
@@ -352,6 +353,32 @@ export class RepositoryService {
 
   async deleteRemoteBranch(path: string, remoteBranch: string): Promise<void> {
     await invoke("delete_remote_branch", { path, remoteBranch });
+  }
+
+  async getTags(path: string): Promise<GitTag[]> {
+    return invoke<GitTag[]>("get_repository_tags", { path });
+  }
+
+  async createTag(path: string, request: CreateTagRequest): Promise<void> {
+    await invoke("create_repository_tag", {
+      path,
+      name: request.name,
+      commitHash: request.commitHash ?? null,
+      message: request.message ?? null,
+      push: request.push,
+    });
+  }
+
+  async deleteTag(path: string, name: string, deleteRemote = false): Promise<void> {
+    await invoke("delete_repository_tag", { path, name, deleteRemote });
+  }
+
+  async pushTags(path: string): Promise<void> {
+    await invoke("push_repository_tags", { path });
+  }
+
+  async pushTag(path: string, name: string): Promise<void> {
+    await invoke("push_repository_tag", { path, name });
   }
 
   updateAuthentication(

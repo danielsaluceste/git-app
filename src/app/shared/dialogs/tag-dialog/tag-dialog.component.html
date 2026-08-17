@@ -1,0 +1,78 @@
+<dialog
+  #dialog
+  class="tag-dialog"
+  (cancel)="onCancel($event)"
+  (click)="onBackdropClick($event)"
+  aria-labelledby="tag-dialog-title"
+>
+  <div class="tag-dialog-icon" aria-hidden="true">🏷</div>
+
+  <div class="tag-dialog-content">
+    <h2 id="tag-dialog-title">{{ "tagDialog.title" | translate }}</h2>
+    <p>{{ "tagDialog.description" | translate }}</p>
+  </div>
+
+  @if (commitHash) {
+    <div class="tag-dialog-target">
+      <span class="target-label">{{ "tagDialog.targetCommit" | translate }}:</span>
+      <code>{{ shortHash || commitHash.slice(0, 7) }}</code>
+    </div>
+  }
+
+  <form class="tag-dialog-form" (ngSubmit)="submit()">
+    <div class="field-group">
+      <label for="tag-name">{{ "tagDialog.nameLabel" | translate }} <span class="required">*</span></label>
+      <input
+        #nameInput
+        id="tag-name"
+        [ngModel]="tagName()"
+        (ngModelChange)="tagName.set($event)"
+        name="tagName"
+        placeholder="v1.0.0, release-2026..."
+        autocomplete="off"
+        [disabled]="isSaving"
+      />
+    </div>
+
+    <div class="field-group">
+      <label for="tag-message">{{ "tagDialog.messageLabel" | translate }} <span class="optional">({{ "tagDialog.optional" | translate }})</span></label>
+      <textarea
+        id="tag-message"
+        [ngModel]="tagMessage()"
+        (ngModelChange)="tagMessage.set($event)"
+        name="tagMessage"
+        rows="3"
+        [placeholder]="'tagDialog.messagePlaceholder' | translate"
+        [disabled]="isSaving"
+      ></textarea>
+    </div>
+
+    <label class="tag-dialog-checkbox">
+      <input
+        type="checkbox"
+        [ngModel]="pushImmediately()"
+        (ngModelChange)="pushImmediately.set($event)"
+        name="pushImmediately"
+        [disabled]="isSaving"
+      />
+      <span>{{ "tagDialog.pushImmediately" | translate }}</span>
+    </label>
+
+    @if (errorMessage()) {
+      <p class="tag-dialog-error">{{ errorMessage() }}</p>
+    }
+
+    <div class="tag-dialog-actions">
+      <button type="button" class="tag-dialog-cancel" [disabled]="isSaving" (click)="cancelled.emit()">
+        {{ "workspace.cancel" | translate }}
+      </button>
+      <button type="submit" class="tag-dialog-confirm" [disabled]="isSaving || !tagName().trim()">
+        @if (isSaving) {
+          {{ "tagDialog.creating" | translate }}
+        } @else {
+          {{ "tagDialog.create" | translate }}
+        }
+      </button>
+    </div>
+  </form>
+</dialog>

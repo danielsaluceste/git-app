@@ -425,6 +425,13 @@
           <small>{{ "history.checkoutDescription" | translate }}</small>
         </span>
       </button>
+      <button type="button" (click)="createTagFromContextMenu()">
+        <span class="context-menu-icon" aria-hidden="true">🏷</span>
+        <span>
+          <strong>{{ "history.createTag" | translate }}</strong>
+          <small>{{ "history.createTagDescription" | translate }}</small>
+        </span>
+      </button>
       <button type="button" class="context-menu-danger" (click)="revertFromContextMenu()">
         <span class="context-menu-icon" aria-hidden="true">↶</span>
         <span>
@@ -433,6 +440,16 @@
         </span>
       </button>
     </div>
+  }
+
+  @if (pendingTagCommit(); as commit) {
+    <app-tag-dialog
+      [commitHash]="commit.hash"
+      [shortHash]="commit.shortHash"
+      [isSaving]="isCreatingTag()"
+      (confirmed)="confirmCreateTag($event)"
+      (cancelled)="cancelCreateTag()"
+    />
   }
 
   @if (pendingCheckoutCommit(); as commit) {

@@ -11,6 +11,14 @@
           <span aria-hidden="true">+</span>
           {{ "branches.new" | translate }}
         </button>
+        <button type="button" class="create-tag-button" [disabled]="isSaving()" (click)="openCreateTag()">
+          <span aria-hidden="true">+</span>
+          {{ "tags.new" | translate }}
+        </button>
+        <button type="button" class="push-tags-button app-tooltip" [attr.data-tooltip]="'tags.pushAllTooltip' | translate" [disabled]="isSaving() || isPushingTags() || tags().length === 0" (click)="pushAllTags()">
+          <span aria-hidden="true">↑</span>
+          {{ (isPushingTags() ? "tags.pushing" : "tags.pushAll") | translate }}
+        </button>
         <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="loadReferences()">
           <span aria-hidden="true">↻</span>
           {{ "branches.refresh" | translate }}
@@ -167,28 +175,70 @@
           }
         </section>
 
-        <section class="panel reference-panel">
+        <section class="panel reference-panel tags-panel">
           <div class="panel-heading">
-            <h3>{{ "branches.tags" | translate }}</h3>
-            <span>{{ repositoryReferences.tags.length }}</span>
+            <div>
+              <h3>{{ "tags.title" | translate }}</h3>
+              <p>{{ "repository.tags" | translate }}</p>
+            </div>
+            <div class="tags-heading-actions">
+              <span>{{ filteredTags().length }}</span>
+            </div>
           </div>
-          @if (repositoryReferences.tags.length > 0) {
-            <div class="reference-list">
-              @for (tag of repositoryReferences.tags; track tag) {
-                <div class="reference-item">
-                  <span class="tag-dot" aria-hidden="true">◆</span>
-                  <span class="branch-name">{{ tag }}</span>
+          @if (filteredTags().length > 0) {
+            <div class="reference-list tags-list">
+              @for (tag of filteredTags(); track tag.name) {
+                <div class="reference-item tag-item">
+                  <div class="tag-main" (click)="checkoutTagCommit(tag)" [title]="'tags.checkoutCommit' | translate">
+                    <span class="tag-badge" [class.annotated]="tag.isAnnotated">
+                      {{ (tag.isAnnotated ? "tags.annotated" : "tags.lightweight") | translate }}
+                    </span>
+                    <strong class="tag-name">{{ tag.name }}</strong>
+                    <code class="tag-hash">{{ tag.shortHash }}</code>
+                    @if (tag.message) {
+                      <span class="tag-message" [title]="tag.message">{{ tag.message }}</span>
+                    }
+                  </div>
+                  <div class="tag-actions">
+                    <button
+                      type="button"
+                      class="branch-action push-action"
+                      [disabled]="isSaving()"
+                      (click)="pushSingleTag(tag, $event)"
+                      [title]="'tags.pushTag' | translate"
+                      [attr.aria-label]="'tags.pushTag' | translate"
+                    >
+                      <svg class="branch-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="branch-action delete-action"
+                      [disabled]="isSaving()"
+                      (click)="requestDeleteTag(tag, $event)"
+                      [title]="'tags.deleteTag' | translate"
+                      [attr.aria-label]="'tags.deleteTag' | translate"
+                    >
+                      <svg class="branch-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v5m4-5v5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               }
             </div>
           } @else {
-            <p class="empty-reference">{{ "branches.noTags" | translate }}</p>
+            <p class="empty-reference">{{ (branchSearch() ? "tags.noTagsFound" : "tags.noTags") | translate }}</p>
           }
         </section>
 
         <section class="panel reference-panel">
           <div class="panel-heading">
-            <h3>{{ "branches.stashes" | translate }}</h3>
+            <div>
+              <h3>{{ "branches.stashes" | translate }}</h3>
+              <p>{{ "repository.stashes" | translate }}</p>
+            </div>
             <span>{{ repositoryReferences.stashes.length }}</span>
           </div>
           @if (repositoryReferences.stashes.length > 0) {
@@ -213,6 +263,26 @@
       <h3>{{ "branches.noRepository" | translate }}</h3>
       <p>{{ "branches.openRepository" | translate }}</p>
     </div>
+  }
+
+  @if (showTagDialog()) {
+    <app-tag-dialog
+      [isSaving]="isSaving()"
+      (confirmed)="confirmCreateTag($event)"
+      (cancelled)="closeTagDialog()"
+    />
+  }
+
+  @if (pendingDeleteTag(); as tag) {
+    <app-confirm-dialog
+      [title]="'tags.deleteConfirmTitle' | translate"
+      [message]="'tags.deleteConfirmMessage' | translate: { name: tag.name }"
+      [confirmLabel]="'tags.deleteConfirm' | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
+      [destructive]="true"
+      (confirmed)="confirmDeleteTag()"
+      (cancelled)="cancelDeleteTag()"
+    />
   }
 
   @if (pendingCreateBranch(); as request) {

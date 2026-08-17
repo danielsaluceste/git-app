@@ -755,6 +755,10 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     void this.router.navigate(["/stashes"], { queryParams: { stash: this.stashReference(stash) } });
   }
 
+  openTag(tag: string): void {
+    void this.router.navigate(["/branches"], { queryParams: { search: tag } });
+  }
+
   private getGitErrorMessage(error: unknown): string {
     if (typeof error === "string" && error.trim()) {
       return error.trim();

@@ -594,6 +594,124 @@ h3 {
   font-size: 0.8rem;
 }
 
+.create-tag-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #78350f;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  background: #2e1d09;
+  color: #fde68a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.create-tag-button:hover:not(:disabled) {
+  border-color: #b45309;
+  background: #3d240c;
+  color: #fff;
+}
+
+.push-tags-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.push-tags-button:hover:not(:disabled) {
+  border-color: #4b5563;
+  background: #263244;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  transition: background 140ms ease;
+}
+
+.tag-item:hover {
+  background: #1f2937;
+}
+
+.tag-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.tag-badge {
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  background: #263244;
+  color: #9ca3af;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tag-badge.annotated {
+  background: rgb(245 158 11 / 20%);
+  color: #f59e0b;
+}
+
+.tag-name {
+  color: #f3f4f6;
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-hash {
+  flex-shrink: 0;
+  color: #38bdf8;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.75rem;
+}
+
+.tag-message {
+  color: #9ca3af;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.push-action {
+  color: #38bdf8;
+}
+
+.push-action:hover {
+  background: rgb(56 189 248 / 15%);
+}
+
 @media (max-width: 760px) {
   .page-heading {
     align-items: start;

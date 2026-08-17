@@ -87,3 +87,17 @@ pub struct CommitFile {
     pub path: String,
     pub status: String,
 }
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryTag {
+    pub name: String,
+    pub commit_hash: String,
+    pub short_hash: String,
+    pub message: String,
+    pub tagger_name: String,
+    pub tagger_email: String,
+    pub date: String,
+    pub is_annotated: bool,
+}
+

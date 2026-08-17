@@ -2,6 +2,7 @@ use crate::commands::github;
 use crate::models::repository::{
     CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
     RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
+    RepositoryTag,
 };
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -1617,6 +1618,166 @@ pub fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), S
     run_git_with_timeout(
         &path,
         &["push", remote, "--delete", branch],
+        GIT_NETWORK_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn get_repository_tags(path: String) -> Result<Vec<RepositoryTag>, String> {
+    ensure_repository(&path)?;
+
+    let output = run_git_with_timeout(
+        &path,
+        &[
+            "for-each-ref",
+            "--sort=-creatordate",
+            "--format=%(refname:short)%x1f%(*objectname)%(objectname)%x1f%(contents:subject)%x1f%(taggername)%(authorname)%x1f%(taggeremail)%(authoremail)%x1f%(creatordate:iso-strict)%x1f%(objecttype)%x1e",
+            "refs/tags",
+        ],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+
+    let tags = output
+        .split('\x1e')
+        .filter_map(|record| {
+            let fields: Vec<&str> = record.trim().split('\x1f').collect();
+            if fields.len() < 7 || fields[0].is_empty() {
+                return None;
+            }
+
+            let name = fields[0].to_string();
+            let commit_hash = fields[1].to_string();
+            let short_hash = if commit_hash.len() >= 7 {
+                commit_hash[..7].to_string()
+            } else {
+                commit_hash.clone()
+            };
+            let message = fields[2].to_string();
+            let tagger_name = fields[3].to_string();
+            let tagger_email = fields[4].to_string();
+            let date = fields[5].to_string();
+            let obj_type = fields[6];
+            let is_annotated = obj_type == "tag" || !message.is_empty();
+
+            Some(RepositoryTag {
+                name,
+                commit_hash,
+                short_hash,
+                message,
+                tagger_name,
+                tagger_email,
+                date,
+                is_annotated,
+            })
+        })
+        .collect();
+
+    Ok(tags)
+}
+
+#[tauri::command]
+pub fn create_repository_tag(
+    path: String,
+    name: String,
+    commit_hash: Option<String>,
+    message: Option<String>,
+    push: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let tag_name = name.trim();
+    if tag_name.is_empty()
+        || tag_name.contains(' ')
+        || tag_name.contains('~')
+        || tag_name.contains('^')
+        || tag_name.contains(':')
+    {
+        return Err("O nome da tag é inválido.".to_string());
+    }
+
+    let mut args = vec!["tag".to_string()];
+    let has_message = message.as_ref().map(|m| !m.trim().is_empty()).unwrap_or(false);
+
+    if has_message {
+        args.push("-a".to_string());
+        args.push(tag_name.to_string());
+        args.push("-m".to_string());
+        args.push(message.unwrap_or_default());
+    } else {
+        args.push(tag_name.to_string());
+    }
+
+    if let Some(hash) = commit_hash.as_ref().filter(|h| !h.trim().is_empty()) {
+        validate_commit_hash(hash)?;
+        args.push(hash.clone());
+    }
+
+    let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_git_with_timeout(&path, &arg_refs, GIT_COMMAND_TIMEOUT)?;
+
+    if push {
+        let remote = preferred_push_remote(&path)?;
+        run_git_with_timeout(
+            &path,
+            &["push", &remote, tag_name],
+            GIT_NETWORK_TIMEOUT,
+        )?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_repository_tag(
+    path: String,
+    name: String,
+    delete_remote: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let tag_name = name.trim();
+    if tag_name.is_empty() {
+        return Err("Nome da tag não informado.".to_string());
+    }
+
+    run_git_with_timeout(&path, &["tag", "-d", tag_name], GIT_COMMAND_TIMEOUT)?;
+
+    if delete_remote {
+        let remote = preferred_push_remote(&path)?;
+        run_git_with_timeout(
+            &path,
+            &["push", &remote, "--delete", tag_name],
+            GIT_NETWORK_TIMEOUT,
+        )?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn push_repository_tags(path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let remote = preferred_push_remote(&path)?;
+    run_git_with_timeout(
+        &path,
+        &["push", &remote, "--tags"],
+        GIT_NETWORK_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub fn push_repository_tag(path: String, name: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let tag_name = name.trim();
+    if tag_name.is_empty() {
+        return Err("Nome da tag não informado.".to_string());
+    }
+    let remote = preferred_push_remote(&path)?;
+    run_git_with_timeout(
+        &path,
+        &["push", &remote, tag_name],
         GIT_NETWORK_TIMEOUT,
     )
     .map(|_| ())
