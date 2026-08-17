@@ -20,8 +20,11 @@
       [showMainSidebarButton]="!mainSidebarOpen()"
       [showCodexButton]="!!activeRepository() && codexEnabled() && codexStatus()?.installed === true"
       [codexOpen]="codexSidebarOpen()"
+      [showTerminalButton]="!!activeRepository()"
+      [terminalOpen]="terminalDrawerOpen()"
       (mainSidebarRequested)="openMainSidebar()"
       (codexRequested)="toggleCodexSidebar()"
+      (terminalRequested)="toggleTerminalDrawer()"
     />
 
     <app-repository-tabs />
@@ -29,6 +32,10 @@
     <main class="content">
       <router-outlet />
     </main>
+
+    @if (activeRepository()) {
+      <app-terminal-drawer />
+    }
   </section>
 
   @if (activeRepository(); as repository) {

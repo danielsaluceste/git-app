@@ -7,12 +7,14 @@ import { CodexService } from "../../core/services/codex.service";
 import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
 import { SettingsService } from "../../core/services/settings.service";
+import { TerminalService } from "../../core/services/terminal.service";
 import { RepositorySidebarComponent } from "../repository-sidebar/repository-sidebar.component";
 import { RepositoryTabsComponent } from "../repository-tabs/repository-tabs.component";
 import { SidebarComponent } from "../sidebar/sidebar.component";
 import { TopbarComponent } from "../topbar/topbar.component";
 import { ToastContainerComponent } from "../../shared/components/toast-container/toast-container.component";
 import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component";
+import { TerminalDrawerComponent } from "../../features/terminal/components/terminal-drawer/terminal-drawer.component";
 
 @Component({
   selector: "app-shell",
@@ -24,6 +26,7 @@ import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component"
     TopbarComponent,
     ToastContainerComponent,
     CodexSidebarComponent,
+    TerminalDrawerComponent,
   ],
   templateUrl: "./app-shell.component.html",
   styleUrl: "./app-shell.component.css",
@@ -38,6 +41,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly repositoryService = inject(RepositoryService);
   private readonly sessionService = inject(SessionService);
   private readonly settingsService = inject(SettingsService);
+  private readonly terminalService = inject(TerminalService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storedLastRoute = this.sessionService.lastRoute();
@@ -52,6 +56,7 @@ export class AppShellComponent implements OnDestroy {
   readonly codexSidebarOpen = signal(false);
   readonly codexSidebarWidth = signal(this.loadCodexSidebarWidth());
   readonly codexResizeActive = signal(false);
+  readonly terminalDrawerOpen = this.terminalService.isDrawerOpen;
 
   private codexResizeStartX = 0;
   private codexResizeStartWidth = 360;
@@ -122,6 +127,27 @@ export class AppShellComponent implements OnDestroy {
 
   closeCodexSidebar(): void {
     this.codexSidebarOpen.set(false);
+  }
+
+  toggleTerminalDrawer(): void {
+    if (this.activeRepository()) {
+      this.terminalService.toggleDrawer();
+    }
+  }
+
+  closeTerminalDrawer(): void {
+    this.terminalService.closeDrawer();
+  }
+
+  @HostListener("window:keydown", ["$event"])
+  onWindowKeydown(event: KeyboardEvent): void {
+    const isModifier = event.ctrlKey || event.metaKey;
+    if (isModifier && (event.key === "`" || event.key === "'")) {
+      if (this.activeRepository()) {
+        event.preventDefault();
+        this.toggleTerminalDrawer();
+      }
+    }
   }
 
   startCodexResize(event: PointerEvent): void {

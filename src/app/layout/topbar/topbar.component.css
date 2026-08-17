@@ -109,6 +109,30 @@
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
+.terminal-launch-button {
+  app-region: no-drag;
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #38bdf8;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.terminal-launch-button:hover,
+.terminal-launch-button.is-active {
+  border-color: #0369a1;
+  background: #0c2d48;
+  color: #bae6fd;
+}
+
 .codex-launch-button:hover,
 .codex-launch-button.is-active {
   border-color: #854d0e;

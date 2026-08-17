@@ -12,6 +12,7 @@ pub fn run() {
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
         .manage(commands::watcher::WatcherState::default())
+        .manage(commands::terminal::TerminalState::default())
         .invoke_handler(tauri::generate_handler![
             commands::codex::check_codex_cli,
             commands::codex::get_codex_models,
@@ -65,6 +66,11 @@ pub fn run() {
             commands::repository::delete_repository_tag,
             commands::repository::push_repository_tags,
             commands::repository::push_repository_tag,
+            commands::terminal::get_available_shells,
+            commands::terminal::create_terminal_session,
+            commands::terminal::write_terminal,
+            commands::terminal::resize_terminal,
+            commands::terminal::close_terminal,
             commands::github::start_device_flow,
             commands::github::poll_device_flow,
             commands::github::list_repositories,

@@ -21,6 +21,20 @@
   <app-workspace-menu />
 
   <div class="topbar-actions">
+    @if (showTerminalButton) {
+      <button
+        type="button"
+        class="terminal-launch-button"
+        [class.is-active]="terminalOpen"
+        [attr.aria-label]="'terminal.toggle' | translate"
+        [title]="'terminal.toggleTooltip' | translate"
+        (mousedown)="$event.stopPropagation()"
+        (click)="terminalRequested.emit()"
+      >
+        <span class="terminal-btn-icon" aria-hidden="true">&gt;_</span>
+      </button>
+    }
+
     @if (showCodexButton) {
       <button
         type="button"

@@ -30,6 +30,13 @@ export const routes: Routes = [
   },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },
+      {
+        path: "terminal",
+        loadComponent: () =>
+          import("./features/terminal/pages/terminal-page.component").then(
+            (module) => module.TerminalPageComponent,
+          ),
+      },
       { path: "repository-settings", component: RepositorySettingsPageComponent },
       { path: "settings", component: SettingsPageComponent },
     ],
