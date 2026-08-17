@@ -735,14 +735,14 @@ h3 {
 
 .commit-row {
   display: grid;
-  grid-template-columns: 2rem 1.75rem minmax(0, 1fr) auto;
+  grid-template-columns: var(--graph-width, 2.2rem) 1.75rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
   border: 1px solid transparent;
   border-bottom-color: #202b3d;
   border-radius: 0.55rem;
-  padding: 0.45rem 0.35rem;
+  padding: 0.25rem 0.35rem;
   background: transparent;
   color: #e5e7eb;
   cursor: pointer;
@@ -787,55 +787,56 @@ h3 {
 
 .graph-column {
   position: relative;
-  min-height: 2.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 38px;
+  height: 38px;
+  overflow: visible;
 }
 
-.graph-line {
-  position: absolute;
-  top: -0.45rem;
-  bottom: -0.45rem;
-  left: 1.08rem;
-  width: 2px;
-  background: #374151;
+.graph-svg {
+  display: block;
+  overflow: visible;
+  height: 38px;
+  flex-shrink: 0;
 }
 
-.commit-row:first-child .graph-line {
-  top: 50%;
+.graph-path {
+  transition: stroke-width 140ms ease, opacity 140ms ease;
+  opacity: 0.85;
 }
 
-.commit-row:last-child .graph-line {
-  bottom: 50%;
+.commit-row:hover .graph-path,
+.commit-row.selected .graph-path {
+  opacity: 1;
+  stroke-width: 2.5px;
 }
 
-.graph-node {
-  position: absolute;
-  top: 50%;
-  left: 0.68rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  border: 2px solid #f97316;
-  border-radius: 50%;
-  background: #172033;
-  box-shadow: 0 0 0 3px #172033;
-  transform: translateY(-50%);
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+.graph-node-dot {
+  transition: transform 140ms ease, filter 140ms ease;
+  transform-origin: center;
 }
 
-.commit-row:hover .graph-node,
-.commit-row.selected .graph-node {
-  background: #f97316;
-  border-color: #fed7aa;
-  transform: translateY(-50%) scale(1.12);
+.commit-row:hover .graph-node-dot,
+.commit-row.selected .graph-node-dot {
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
-.graph-merge-line {
-  position: absolute;
-  top: 50%;
-  left: 1.12rem;
-  width: 1.8rem;
-  border-top: 2px solid #a78bfa;
-  transform: rotate(-28deg);
-  transform-origin: left center;
+.graph-head-ring {
+  animation: graph-pulse 2.4s infinite ease-in-out;
+  transform-origin: center;
+}
+
+@keyframes graph-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
 }
 
 .commit-avatar {

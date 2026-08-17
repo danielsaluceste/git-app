@@ -1195,6 +1195,7 @@ pub fn get_repository_commits(
     arguments.extend([
         format!("--skip={skip}"),
         format!("--max-count={safe_limit}"),
+        "--topo-order".to_string(),
         "--date=iso-strict".to_string(),
         "--decorate=short".to_string(),
         "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%P%x1f%D%x1e".to_string(),
@@ -1530,7 +1531,7 @@ pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> 
 
     if is_running_development_repository(&path) {
         return Err(
-            "Não é possível fazer checkout no próprio repositório do OranGIT enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
+            "Não é possível fazer checkout no próprio repositório do GitPuma enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
         );
     }
 
@@ -2067,7 +2068,7 @@ impl AskpassGuard {
             .map(|duration| duration.as_nanos())
             .unwrap_or_default();
         let path = std::env::temp_dir().join(format!(
-            "orangit-git-askpass-{}-{unique_id}.{extension}",
+            "gitpuma-git-askpass-{}-{unique_id}.{extension}",
             std::process::id()
         ));
         let contents = if cfg!(target_os = "windows") {

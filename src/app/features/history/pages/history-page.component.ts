@@ -24,6 +24,11 @@ import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
 import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
+import {
+  CommitGraphResult,
+  CommitGraphRow,
+  computeCommitGraph,
+} from "../utils/git-graph";
 
 type SyncAction = "fetch" | "pull" | "push" | "";
 type CommitKindFilter = "all" | "merge" | "regular";
@@ -135,6 +140,15 @@ export class HistoryPageComponent implements AfterViewInit {
       return [commit.subject, commit.authorName, commit.authorEmail, commit.hash]
         .some((value) => value.toLocaleLowerCase("pt-BR").includes(query));
     });
+  });
+  readonly commitGraph = computed<CommitGraphResult>(() => {
+    return computeCommitGraph(this.filteredCommits(), this.currentBranch());
+  });
+  readonly graphRows = computed<CommitGraphRow[]>(() => {
+    return this.commitGraph().rows;
+  });
+  readonly graphSvgWidth = computed<number>(() => {
+    return this.commitGraph().svgWidth;
   });
   @ViewChild("historySearch") historySearch?: ElementRef<HTMLInputElement>;
 

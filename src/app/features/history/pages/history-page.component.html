@@ -211,48 +211,87 @@
             }
           </div>
 
-          <div class="commit-graph" role="list" [attr.aria-label]="'history.commitHistory' | translate">
-            @for (commit of filteredCommits(); track commit.hash) {
+          <div class="commit-graph" role="list" [attr.aria-label]="'history.commitHistory' | translate" [style.--graph-width.px]="graphSvgWidth()">
+            @for (row of graphRows(); track row.commit.hash) {
               <button
                 type="button"
                 class="commit-row"
-                [class.selected]="selectedCommit()?.hash === commit.hash"
-                (click)="selectCommit(commit)"
-                (dblclick)="requestCheckoutCommit(commit)"
-                (contextmenu)="openCommitContextMenu($event, commit)"
+                [class.selected]="selectedCommit()?.hash === row.commit.hash"
+                (click)="selectCommit(row.commit)"
+                (dblclick)="requestCheckoutCommit(row.commit)"
+                (contextmenu)="openCommitContextMenu($event, row.commit)"
                 [disabled]="isCheckingOut() || !!syncAction()"
                 role="listitem"
               >
-                <span class="graph-column" [class.merge-commit]="commit.parents.length > 1" aria-hidden="true">
-                  <span class="graph-line"></span>
-                  @if (commit.parents.length > 1) {
-                    <span class="graph-merge-line"></span>
-                  }
-                  <span class="graph-node"></span>
+                <span class="graph-column" aria-hidden="true">
+                  <svg class="graph-svg" [attr.viewBox]="'0 0 ' + graphSvgWidth() + ' 38'" [style.width.px]="graphSvgWidth()" height="38">
+                    @for (path of row.paths; track $index) {
+                      <path
+                        [attr.d]="path.d"
+                        [attr.stroke]="path.color"
+                        [attr.stroke-width]="path.width"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="graph-path"
+                      />
+                    }
+                    @if (row.node.isHead) {
+                      <circle
+                        [attr.cx]="row.node.x"
+                        [attr.cy]="row.node.y"
+                        r="7.5"
+                        fill="none"
+                        [attr.stroke]="row.node.color"
+                        stroke-width="1.5"
+                        stroke-dasharray="2 2"
+                        class="graph-head-ring"
+                      />
+                    }
+                    <circle
+                      [attr.cx]="row.node.x"
+                      [attr.cy]="row.node.y"
+                      [attr.r]="row.node.isMerge ? 5.5 : 4"
+                      [attr.fill]="row.node.color"
+                      stroke="#172033"
+                      stroke-width="2"
+                      class="graph-node-dot"
+                      [class.is-merge]="row.node.isMerge"
+                      [class.is-head]="row.node.isHead"
+                    />
+                    @if (row.node.isMerge) {
+                      <circle
+                        [attr.cx]="row.node.x"
+                        [attr.cy]="row.node.y"
+                        r="2"
+                        fill="#172033"
+                      />
+                    }
+                  </svg>
                 </span>
-                <span class="commit-avatar-tooltip app-tooltip" [attr.data-tooltip]="commit.authorName">
+                <span class="commit-avatar-tooltip app-tooltip" [attr.data-tooltip]="row.commit.authorName">
                   <span class="commit-avatar">
-                    <span class="commit-avatar-fallback" [style.background-color]="avatarColor(commit.authorName)">
-                      {{ commitInitial(commit.authorName) }}
+                    <span class="commit-avatar-fallback" [style.background-color]="avatarColor(row.commit.authorName)">
+                      {{ commitInitial(row.commit.authorName) }}
                     </span>
-                    @if (commit.avatarUrl) {
-                      <img [src]="commit.avatarUrl" [alt]="'Foto de ' + commit.authorName" (error)="hideAvatar($event)" />
+                    @if (row.commit.avatarUrl) {
+                      <img [src]="row.commit.avatarUrl" [alt]="'Foto de ' + row.commit.authorName" (error)="hideAvatar($event)" />
                     }
                   </span>
                 </span>
                 <span class="commit-main">
-                  <strong [title]="commit.subject">{{ commit.subject }}</strong>
-                  @if (commit.references.length > 0) {
+                  <strong [title]="row.commit.subject">{{ row.commit.subject }}</strong>
+                  @if (row.commit.references.length > 0) {
                     <span class="commit-refs" aria-label="Referências">
-                      @for (reference of commit.references; track reference) {
+                      @for (reference of row.commit.references; track reference) {
                         <span class="commit-ref" [title]="reference">{{ formatReference(reference) }}</span>
                       }
                     </span>
                   }
                   <span class="commit-meta">
-                    <span class="commit-author" [title]="commit.authorName">{{ commit.authorName }}</span>
+                    <span class="commit-author" [title]="row.commit.authorName">{{ row.commit.authorName }}</span>
                     <span class="commit-meta-separator" aria-hidden="true">·</span>
-                    <span class="commit-date">{{ formatCompactDate(commit.date) }}</span>
+                    <span class="commit-date">{{ formatCompactDate(row.commit.date) }}</span>
                   </span>
                 </span>
               </button>
