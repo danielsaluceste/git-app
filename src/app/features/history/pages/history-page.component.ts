@@ -44,6 +44,8 @@ interface CommitContextMenu {
   y: number;
 }
 
+const GRAVATAR_HASH_CACHE = new Map<string, string>();
+
 @Component({
   selector: "app-history-page",
   imports: [ConfirmDialogComponent, FileDiffDialogComponent, TagDialogComponent, TranslatePipe],
@@ -98,10 +100,30 @@ export class HistoryPageComponent implements AfterViewInit {
   );
   private historyOffset = 0;
   private overviewLoadVersion = 0;
+  private lastLoadedRepoKey = "";
+  private lastLoadedRefreshVersion = -1;
+
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    this.repositoryService.repositoryRefreshVersion();
-    untracked(() => void this.loadOverview(repository));
+    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+
+    if (!repository) {
+      this.isLoading.set(false);
+      this.hasMoreCommits.set(false);
+      this.commits.set([]);
+      this.lastLoadedRepoKey = "";
+      return;
+    }
+
+    const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
+    const isNewRepo = repoKey !== this.lastLoadedRepoKey;
+    const isNewVersion = refreshVersion !== this.lastLoadedRefreshVersion;
+
+    if (isNewRepo || isNewVersion || this.commits().length === 0) {
+      this.lastLoadedRepoKey = repoKey;
+      this.lastLoadedRefreshVersion = refreshVersion;
+      untracked(() => void this.loadOverview(repository, isNewRepo));
+    }
   });
   private readonly repositoryStatusEffect = effect(() => {
     const status = this.repositoryService.repositoryStatus();
@@ -168,7 +190,7 @@ export class HistoryPageComponent implements AfterViewInit {
       .subscribe(() => this.actionBarScrolled.set(scrollContainer.scrollTop > 8));
   }
 
-  async loadOverview(repository = this.activeRepository()): Promise<void> {
+  async loadOverview(repository = this.activeRepository(), forceFresh = false): Promise<void> {
     if (!repository) {
       this.isLoading.set(false);
       this.hasMoreCommits.set(false);
@@ -180,9 +202,9 @@ export class HistoryPageComponent implements AfterViewInit {
     const cachedCommits = this.repositoryService.getCachedCommits(repository.path, allBranches);
     const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
     const cachedStatus = this.repositoryService.getCachedStatus(repository.path);
-    const hasCachedData = !!cachedCommits;
+    const hasCachedData = !!cachedCommits && cachedCommits.length > 0;
 
-    if (cachedCommits) {
+    if (cachedCommits && (this.commits().length === 0 || forceFresh)) {
       this.commits.set(cachedCommits);
       this.historyOffset = cachedCommits.length;
       this.hasMoreCommits.set(cachedCommits.length === this.historyPageSize);
@@ -207,20 +229,35 @@ export class HistoryPageComponent implements AfterViewInit {
         this.repositoryService.getReferences(repository.path),
         this.repositoryService.getStatus(repository.path),
       ]);
-      const commitsWithAvatars = await this.enrichCommitAvatars(commits);
       if (loadVersion !== this.overviewLoadVersion || !this.isSameRepository(repository, this.activeRepository())) {
         return;
       }
 
-      this.commits.set(commitsWithAvatars);
-      this.historyOffset = commits.length;
-      this.hasMoreCommits.set(commits.length === this.historyPageSize);
       this.currentBranch.set(references.currentBranch || "HEAD destacado");
       this.aheadCount.set(status.aheadCount);
       this.behindCount.set(status.behindCount);
-      if (this.selectedCommit() && !commitsWithAvatars.some((commit) => commit.hash === this.selectedCommit()?.hash)) {
-        this.selectedCommit.set(undefined);
-        this.selectedCommitFiles.set([]);
+
+      const currentList = this.commits();
+      const isIdentical =
+        currentList.length === commits.length &&
+        currentList.length > 0 &&
+        currentList[0]?.hash === commits[0]?.hash &&
+        currentList[currentList.length - 1]?.hash === commits[commits.length - 1]?.hash;
+
+      if (!isIdentical) {
+        const commitsWithAvatars = await this.enrichCommitAvatars(commits);
+        if (loadVersion !== this.overviewLoadVersion || !this.isSameRepository(repository, this.activeRepository())) {
+          return;
+        }
+
+        this.commits.set(commitsWithAvatars);
+        this.historyOffset = commits.length;
+        this.hasMoreCommits.set(commits.length === this.historyPageSize);
+
+        if (this.selectedCommit() && !commitsWithAvatars.some((commit) => commit.hash === this.selectedCommit()?.hash)) {
+          this.selectedCommit.set(undefined);
+          this.selectedCommitFiles.set([]);
+        }
       }
     } catch (error: unknown) {
       if (loadVersion !== this.overviewLoadVersion) {
@@ -847,9 +884,18 @@ export class HistoryPageComponent implements AfterViewInit {
     });
   }
 
+  private readonly compactDateCache = new Map<string, string>();
+  private readonly avatarColorCache = new Map<string, string>();
+
   formatCompactDate(date: string): string {
+    const cached = this.compactDateCache.get(date);
+    if (cached !== undefined) {
+      return cached;
+    }
+
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) {
+      this.compactDateCache.set(date, date);
       return date;
     }
 
@@ -864,27 +910,29 @@ export class HistoryPageComponent implements AfterViewInit {
       && parsedDate.getMonth() === yesterday.getMonth()
       && parsedDate.getDate() === yesterday.getDate();
 
+    let result = "";
     if (isToday) {
-      return `${this.translationService.translate("history.today")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
+      result = `${this.translationService.translate("history.today")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
         hour: "2-digit",
         minute: "2-digit",
       })}`;
-    }
-
-    if (isYesterday) {
-      return `${this.translationService.translate("history.yesterday")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
+    } else if (isYesterday) {
+      result = `${this.translationService.translate("history.yesterday")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
         hour: "2-digit",
         minute: "2-digit",
       })}`;
+    } else {
+      result = parsedDate.toLocaleString(this.translationService.language(), {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
 
-    return parsedDate.toLocaleString(this.translationService.language(), {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    this.compactDateCache.set(date, result);
+    return result;
   }
 
   commitInitial(authorName: string): string {
@@ -892,6 +940,11 @@ export class HistoryPageComponent implements AfterViewInit {
   }
 
   avatarColor(authorName: string): string {
+    const cached = this.avatarColorCache.get(authorName);
+    if (cached !== undefined) {
+      return cached;
+    }
+
     const colors = ["#ea580c", "#0891b2", "#7c3aed", "#059669", "#db2777", "#ca8a04", "#4f46e5"];
     let hash = 0;
 
@@ -899,7 +952,9 @@ export class HistoryPageComponent implements AfterViewInit {
       hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
     }
 
-    return colors[hash % colors.length];
+    const color = colors[hash % colors.length];
+    this.avatarColorCache.set(authorName, color);
+    return color;
   }
 
   hideAvatar(event: Event): void {
@@ -936,28 +991,36 @@ export class HistoryPageComponent implements AfterViewInit {
 
   private async enrichCommitAvatars(commits: Commit[]): Promise<Commit[]> {
     const subtle = globalThis.crypto?.subtle;
-    if (!subtle) {
-      return commits;
-    }
-
-    const hashes = new Map<string, string>();
 
     return Promise.all(
       commits.map(async (commit) => {
+        if (commit.avatarUrl) {
+          return commit;
+        }
+
         const email = commit.authorEmail.trim().toLowerCase();
         if (!email) {
           return commit;
         }
 
+        const cached = GRAVATAR_HASH_CACHE.get(email);
+        if (cached) {
+          return {
+            ...commit,
+            avatarUrl: `https://www.gravatar.com/avatar/${cached}?s=64&d=404`,
+          };
+        }
+
+        if (!subtle) {
+          return commit;
+        }
+
         try {
-          let hash = hashes.get(email);
-          if (!hash) {
-            const digest = await subtle.digest("SHA-256", new TextEncoder().encode(email));
-            hash = Array.from(new Uint8Array(digest))
-              .map((byte) => byte.toString(16).padStart(2, "0"))
-              .join("");
-            hashes.set(email, hash);
-          }
+          const digest = await subtle.digest("SHA-256", new TextEncoder().encode(email));
+          const hash = Array.from(new Uint8Array(digest))
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+          GRAVATAR_HASH_CACHE.set(email, hash);
 
           return {
             ...commit,

@@ -453,6 +453,8 @@ h3 {
   padding: 0.55rem;
   color: #d1d5db;
   font-size: 0.82rem;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
 }
 
 .reference-item.current {
@@ -643,6 +645,8 @@ h3 {
   gap: 0.5rem;
   border-radius: 0.45rem;
   padding: 0.45rem 0.55rem;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
   transition: background 140ms ease;
 }
 

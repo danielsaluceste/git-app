@@ -39,6 +39,26 @@ export class TerminalDrawerComponent {
   private resizeStartY = 0;
   private resizeStartHeight = 0;
 
+  private readonly onDrawerResizeMove = (event: PointerEvent): void => {
+    if (!this.isResizing) {
+      return;
+    }
+    const deltaY = this.resizeStartY - event.clientY;
+    const newHeight = this.resizeStartHeight + deltaY;
+    this.terminalService.setDrawerHeight(newHeight);
+  };
+
+  private readonly onDrawerResizeEnd = (): void => {
+    document.removeEventListener("pointermove", this.onDrawerResizeMove);
+    document.removeEventListener("pointerup", this.onDrawerResizeEnd);
+    document.removeEventListener("pointercancel", this.onDrawerResizeEnd);
+
+    if (this.isResizing) {
+      this.isResizing = false;
+      this.fitActiveTerminal();
+    }
+  };
+
   startResize(event: PointerEvent): void {
     if (this.isMaximized()) {
       return;
@@ -48,25 +68,10 @@ export class TerminalDrawerComponent {
     this.resizeStartHeight = this.drawerHeight();
     (event.target as HTMLElement)?.setPointerCapture?.(event.pointerId);
     event.preventDefault();
-  }
 
-  @HostListener("document:pointermove", ["$event"])
-  onPointerMove(event: PointerEvent): void {
-    if (!this.isResizing) {
-      return;
-    }
-    const deltaY = this.resizeStartY - event.clientY;
-    const newHeight = this.resizeStartHeight + deltaY;
-    this.terminalService.setDrawerHeight(newHeight);
-  }
-
-  @HostListener("document:pointerup")
-  @HostListener("document:pointercancel")
-  onPointerUp(): void {
-    if (this.isResizing) {
-      this.isResizing = false;
-      this.fitActiveTerminal();
-    }
+    document.addEventListener("pointermove", this.onDrawerResizeMove, { passive: true });
+    document.addEventListener("pointerup", this.onDrawerResizeEnd, { once: true });
+    document.addEventListener("pointercancel", this.onDrawerResizeEnd, { once: true });
   }
 
   selectTab(tabId: string): void {

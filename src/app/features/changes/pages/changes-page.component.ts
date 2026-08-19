@@ -71,13 +71,32 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   private statusLoadVersion = 0;
   private statusRefreshTimer: ReturnType<typeof setInterval> | undefined;
   private statusRefreshInFlight = false;
+  private lastLoadedRepoKey = "";
+  private lastLoadedRefreshVersion = -1;
+
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    this.repositoryService.repositoryRefreshVersion();
-    this.repositoryService.repositoryStatus();
+    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+
+    if (!repository) {
+      this.isLoading.set(false);
+      this.status.set(undefined);
+      this.operation.set(undefined);
+      this.lastLoadedRepoKey = "";
+      return;
+    }
+
+    const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
+    const isNewRepo = repoKey !== this.lastLoadedRepoKey;
+    const isNewVersion = refreshVersion !== this.lastLoadedRefreshVersion;
+
     untracked(() => {
       this.restoreCommitDraft(repository);
-      void this.loadStatus(repository, true);
+      if (isNewRepo || isNewVersion || !this.status()) {
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        void this.loadStatus(repository);
+      }
     });
   });
 

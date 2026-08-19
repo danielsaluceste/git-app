@@ -588,6 +588,8 @@ h3 {
   padding: 0.5rem 0.55rem;
   background: transparent;
   color: #e5e7eb;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 38px;
   transition: background 140ms ease, color 140ms ease;
 }
 

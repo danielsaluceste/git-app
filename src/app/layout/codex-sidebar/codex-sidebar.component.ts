@@ -214,6 +214,10 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
 
   @HostListener("document:pointerdown", ["$event"])
   closePopoversOnOutsideClick(event: PointerEvent): void {
+    if (!this.sessionMenuOpen && !this.usagePanelOpen && !this.settingsPanelOpen && !this.modelMenuOpen && !this.reasoningMenuOpen) {
+      return;
+    }
+
     const target = event.target;
     if (!(target instanceof Element)) {
       return;

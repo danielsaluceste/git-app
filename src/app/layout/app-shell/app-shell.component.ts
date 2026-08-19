@@ -1,6 +1,7 @@
 import { Component, DestroyRef, HostListener, effect, inject, OnDestroy, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
+import { invoke } from "@tauri-apps/api/core";
 import { filter } from "rxjs";
 import { LayoutService } from "../../core/services/layout.service";
 import { CodexService } from "../../core/services/codex.service";
@@ -142,6 +143,13 @@ export class AppShellComponent implements OnDestroy {
   @HostListener("window:keydown", ["$event"])
   onWindowKeydown(event: KeyboardEvent): void {
     const isModifier = event.ctrlKey || event.metaKey;
+
+    if (event.key === "F12" || (isModifier && event.shiftKey && event.key.toLowerCase() === "i")) {
+      event.preventDefault();
+      void invoke("toggle_devtools").catch(() => undefined);
+      return;
+    }
+
     if (isModifier && (event.key === "`" || event.key === "'")) {
       if (this.activeRepository()) {
         event.preventDefault();
@@ -149,6 +157,20 @@ export class AppShellComponent implements OnDestroy {
       }
     }
   }
+
+  private readonly onCodexPointerMove = (event: PointerEvent): void => {
+    if (!this.codexResizeActive()) {
+      return;
+    }
+    const width = this.codexResizeStartWidth + this.codexResizeStartX - event.clientX;
+    this.codexSidebarWidth.set(
+      Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, width)),
+    );
+  };
+
+  private readonly onCodexPointerUp = (): void => {
+    this.stopCodexResize();
+  };
 
   startCodexResize(event: PointerEvent): void {
     if (event.button !== 0) {
@@ -159,22 +181,17 @@ export class AppShellComponent implements OnDestroy {
     this.codexResizeActive.set(true);
     this.codexResizeStartX = event.clientX;
     this.codexResizeStartWidth = this.codexSidebarWidth();
+
+    document.addEventListener("pointermove", this.onCodexPointerMove, { passive: true });
+    document.addEventListener("pointerup", this.onCodexPointerUp, { once: true });
+    document.addEventListener("pointercancel", this.onCodexPointerUp, { once: true });
   }
 
-  @HostListener("document:pointermove", ["$event"])
-  onCodexResize(event: PointerEvent): void {
-    if (!this.codexResizeActive()) {
-      return;
-    }
-
-    const width = this.codexResizeStartWidth + this.codexResizeStartX - event.clientX;
-    this.codexSidebarWidth.set(
-      Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, width)),
-    );
-  }
-
-  @HostListener("document:pointerup")
   stopCodexResize(): void {
+    document.removeEventListener("pointermove", this.onCodexPointerMove);
+    document.removeEventListener("pointerup", this.onCodexPointerUp);
+    document.removeEventListener("pointercancel", this.onCodexPointerUp);
+
     if (!this.codexResizeActive()) {
       return;
     }
@@ -185,11 +202,6 @@ export class AppShellComponent implements OnDestroy {
     } catch {
       // A largura continua funcionando mesmo se o armazenamento não estiver disponível.
     }
-  }
-
-  @HostListener("document:pointercancel")
-  cancelCodexResize(): void {
-    this.stopCodexResize();
   }
 
   private refreshActiveRepository(): void {

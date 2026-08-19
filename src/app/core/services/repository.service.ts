@@ -1,6 +1,8 @@
-import { Injectable, signal } from "@angular/core";
+import { inject, Injectable, signal } from "@angular/core";
+import { RouteReuseStrategy } from "@angular/router";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { AppRouteReuseStrategy } from "../strategies/app-route-reuse-strategy";
 import {
   LocalRepositoryInfo,
   Repository,
@@ -40,6 +42,7 @@ interface RepositoryCache {
 
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
+  private readonly routeReuseStrategy = inject(RouteReuseStrategy, { optional: true });
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
   private readonly openRepositoriesState = signal<Repository[]>(this.loadOpenRepositories());
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
@@ -301,23 +304,27 @@ export class RepositoryService {
 
     this.backgroundRefreshes.add(cacheKey);
     try {
-      try {
-        const syncCredentials = this.getSyncCredentials(repository);
-        await this.fetch(
-          repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
-        );
-      } catch {
-        // Os dados locais continuam sendo atualizados mesmo sem conexão remota.
-      }
-
+      // 1. Atualização instantânea dos dados locais
       await Promise.allSettled([
         this.getReferences(repository.path),
         this.getStatus(repository.path),
         this.getOperation(repository.path),
       ]);
       this.repositoryRefreshVersionState.update((version) => version + 1);
+
+      // 2. Fetch remoto assíncrono em segundo plano (sem travar a interface)
+      const syncCredentials = this.getSyncCredentials(repository);
+      void this.fetch(
+        repository.path,
+        syncCredentials.workspaceId,
+        syncCredentials.githubUserId,
+      ).then(async () => {
+        await Promise.allSettled([
+          this.getReferences(repository.path),
+          this.getStatus(repository.path),
+        ]);
+        this.repositoryRefreshVersionState.update((version) => version + 1);
+      }).catch(() => undefined);
     } finally {
       this.backgroundRefreshes.delete(cacheKey);
     }
@@ -455,6 +462,17 @@ export class RepositoryService {
   }
 
   setActive(repository: Repository | undefined): void {
+    const prev = this.activeRepositoryState();
+    const isDifferent =
+      !prev ||
+      !repository ||
+      prev.path !== repository.path ||
+      prev.workspaceId !== repository.workspaceId;
+
+    if (isDifferent && this.routeReuseStrategy instanceof AppRouteReuseStrategy) {
+      this.routeReuseStrategy.clearHandles();
+    }
+
     this.activeRepositoryState.set(repository);
     this.repositoryStatusState.set(repository ? this.getCachedStatus(repository.path) : undefined);
     this.repositoryReferencesState.set(repository ? this.getCachedReferences(repository.path) : undefined);

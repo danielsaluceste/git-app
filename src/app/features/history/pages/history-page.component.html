@@ -280,14 +280,16 @@
                   </span>
                 </span>
                 <span class="commit-main">
-                  <strong [title]="row.commit.subject">{{ row.commit.subject }}</strong>
-                  @if (row.commit.references.length > 0) {
-                    <span class="commit-refs" aria-label="Referências">
-                      @for (reference of row.commit.references; track reference) {
-                        <span class="commit-ref" [title]="reference">{{ formatReference(reference) }}</span>
-                      }
-                    </span>
-                  }
+                  <span class="commit-subject-wrap">
+                    <strong class="commit-subject-text" [title]="row.commit.subject">{{ row.commit.subject }}</strong>
+                    @if (row.commit.references.length > 0) {
+                      <span class="commit-refs" aria-label="Referências">
+                        @for (reference of row.commit.references; track reference) {
+                          <span class="commit-ref" [title]="reference">{{ formatReference(reference) }}</span>
+                        }
+                      </span>
+                    }
+                  </span>
                   <span class="commit-meta">
                     <span class="commit-author" [title]="row.commit.authorName">{{ row.commit.authorName }}</span>
                     <span class="commit-meta-separator" aria-hidden="true">·</span>

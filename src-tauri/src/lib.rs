@@ -77,7 +77,8 @@ pub fn run() {
             commands::github::disconnect_account,
             commands::watcher::watch_repository,
             commands::watcher::unwatch_repository,
-            commands::system::ping
+            commands::system::ping,
+            commands::system::toggle_devtools
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -224,22 +224,7 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     void this.checkoutBranch(branch);
   }
 
-  startBranchPointerDrag(branch: string, event: PointerEvent): void {
-    if (event.button !== 0 || this.isBranchActionRunning()) {
-      return;
-    }
-
-    this.pressedBranch = branch;
-    this.branchDragStartX = event.clientX;
-    this.branchDragStartY = event.clientY;
-    this.draggingBranch.set(undefined);
-    this.dragOverBranch.set(undefined);
-    this.closeBranchContextMenu();
-    this.closeBranchOperationMenu();
-  }
-
-  @HostListener("document:pointermove", ["$event"])
-  onBranchPointerMove(event: PointerEvent): void {
+  private readonly onBranchDragMove = (event: PointerEvent): void => {
     const pressedBranch = this.pressedBranch;
     if (!pressedBranch) {
       return;
@@ -260,10 +245,9 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     event.preventDefault();
     const targetBranch = this.localBranchAtPoint(event.clientX, event.clientY);
     this.dragOverBranch.set(targetBranch && targetBranch !== pressedBranch ? targetBranch : undefined);
-  }
+  };
 
-  @HostListener("document:pointerup", ["$event"])
-  onBranchPointerUp(event: PointerEvent): void {
+  private readonly onBranchDragEnd = (event: PointerEvent): void => {
     const sourceBranch = this.draggingBranch();
     const targetBranch = this.dragOverBranch();
 
@@ -273,14 +257,31 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     }
 
     this.finishBranchPointerDrag();
-  }
+  };
 
-  @HostListener("document:pointercancel")
-  onBranchPointerCancel(): void {
-    this.finishBranchPointerDrag();
+  startBranchPointerDrag(branch: string, event: PointerEvent): void {
+    if (event.button !== 0 || this.isBranchActionRunning()) {
+      return;
+    }
+
+    this.pressedBranch = branch;
+    this.branchDragStartX = event.clientX;
+    this.branchDragStartY = event.clientY;
+    this.draggingBranch.set(undefined);
+    this.dragOverBranch.set(undefined);
+    this.closeBranchContextMenu();
+    this.closeBranchOperationMenu();
+
+    document.addEventListener("pointermove", this.onBranchDragMove, { passive: true });
+    document.addEventListener("pointerup", this.onBranchDragEnd, { once: true });
+    document.addEventListener("pointercancel", this.onBranchDragEnd, { once: true });
   }
 
   finishBranchPointerDrag(): void {
+    document.removeEventListener("pointermove", this.onBranchDragMove);
+    document.removeEventListener("pointerup", this.onBranchDragEnd);
+    document.removeEventListener("pointercancel", this.onBranchDragEnd);
+
     this.pressedBranch = undefined;
     this.draggingBranch.set(undefined);
     this.dragOverBranch.set(undefined);
