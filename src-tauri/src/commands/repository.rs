@@ -1591,7 +1591,7 @@ pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> 
 
     if is_running_development_repository(&path) {
         return Err(
-            "Não é possível fazer checkout no próprio repositório do GitPuma enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
+            "Não é possível fazer checkout no próprio repositório do GitLuna enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
         );
     }
 
@@ -2276,7 +2276,7 @@ impl AskpassGuard {
             .map(|duration| duration.as_nanos())
             .unwrap_or_default();
         let path = std::env::temp_dir().join(format!(
-            "gitpuma-git-askpass-{}-{unique_id}.{extension}",
+            "gitluna-git-askpass-{}-{unique_id}.{extension}",
             std::process::id()
         ));
         let contents = if cfg!(target_os = "windows") {

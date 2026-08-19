@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use tauri::State;
 
 const GITHUB_API_VERSION: &str = "2022-11-28";
-const TOKEN_SERVICE: &str = "org.gitpuma.desktop.github";
+const TOKEN_SERVICE: &str = "org.gitluna.desktop.github";
 
 #[derive(Default)]
 pub struct GithubCredentialState {
@@ -333,7 +333,7 @@ async fn get_github_user(
 
 fn github_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
-        .user_agent("GitPuma/0.1.0")
+        .user_agent("GitLuna/0.1.0")
         .build()
         .map_err(|error| format!("Não foi possível preparar a conexão com o GitHub: {error}"))
 }

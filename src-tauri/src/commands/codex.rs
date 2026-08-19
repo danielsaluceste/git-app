@@ -338,7 +338,7 @@ pub async fn run_codex(
     .map_err(|error| format!("Não foi possível acompanhar o Codex CLI: {error}"))?;
 
     task_result.map_err(|_| {
-        "O Codex encontrou um erro interno, mas o GitPuma continua aberto.".to_string()
+        "O Codex encontrou um erro interno, mas o GitLuna continua aberto.".to_string()
     })?
 }
 
@@ -635,7 +635,7 @@ impl CodexServer {
         server.request(
             "initialize",
             json!({
-                "clientInfo": { "name": "gitpuma", "version": "0.1.0" },
+                "clientInfo": { "name": "gitluna", "version": "0.1.0" },
                 "capabilities": { "experimentalApi": true }
             }),
         )?;
@@ -801,7 +801,7 @@ fn limit_prompt(prompt: String) -> String {
 
     let shortened = prompt.chars().take(MAX_PROMPT_LENGTH).collect::<String>();
     format!(
-        "{shortened}\n\n[Contexto anterior reduzido pelo GitPuma para manter a execução estável.]"
+        "{shortened}\n\n[Contexto anterior reduzido pelo GitLuna para manter a execução estável.]"
     )
 }
 
@@ -810,7 +810,7 @@ fn output_paths() -> (PathBuf, PathBuf) {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
-    let prefix = format!("gitpuma-codex-{}-{timestamp}", std::process::id());
+    let prefix = format!("gitluna-codex-{}-{timestamp}", std::process::id());
     let temporary_directory = env::temp_dir();
 
     (
@@ -835,7 +835,7 @@ fn limit_output(output: String) -> String {
     }
 
     let shortened = output.chars().take(MAX_OUTPUT_LENGTH).collect::<String>();
-    format!("{shortened}\n\n[Saída truncada pelo GitPuma]")
+    format!("{shortened}\n\n[Saída truncada pelo GitLuna]")
 }
 
 fn resolve_codex_command() -> Option<PathBuf> {

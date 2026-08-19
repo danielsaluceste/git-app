@@ -31,6 +31,20 @@
   font-weight: 700;
 }
 
+.brand-mark-luna {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex-shrink: 0;
+}
+
+.brand-luna-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
 .brand-name {
   white-space: nowrap;
 }

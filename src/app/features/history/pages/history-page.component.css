@@ -817,30 +817,26 @@ h3 {
 }
 
 .graph-node-dot {
-  transition: transform 140ms ease, stroke 140ms ease;
-  transform-origin: center;
+  transition: stroke 140ms ease, stroke-width 140ms ease;
 }
 
 .commit-row:hover .graph-node-dot,
 .commit-row.selected .graph-node-dot {
-  transform: scale(1.2);
   stroke: #ffffff;
+  stroke-width: 2.5px;
 }
 
 .graph-head-ring {
   animation: graph-pulse 2.4s infinite ease-in-out;
-  transform-origin: center;
-  will-change: transform, opacity;
+  will-change: opacity;
 }
 
 @keyframes graph-pulse {
   0%, 100% {
     opacity: 0.35;
-    transform: scale(0.92);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1.15);
+    opacity: 0.95;
   }
 }
 

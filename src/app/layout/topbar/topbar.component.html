@@ -14,7 +14,20 @@
   }
 
   <div class="window-title" data-tauri-drag-region>
-    <span class="brand-mark" data-tauri-drag-region>G</span>
+    <div class="brand-mark-luna" data-tauri-drag-region>
+      <svg class="brand-luna-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="topbar-luna-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f97316" />
+            <stop offset="100%" stop-color="#fb923c" />
+          </linearGradient>
+        </defs>
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="url(#topbar-luna-grad)" />
+        <circle cx="15" cy="8" r="2" fill="#ffffff" />
+        <circle cx="9" cy="14" r="1.6" fill="#f97316" />
+        <path d="M15 10v1.8a2.2 2.2 0 0 1-2.2 2.2H10.6" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" fill="none" />
+      </svg>
+    </div>
     <span class="brand-name" data-tauri-drag-region>{{ "brand.name" | translate }}</span>
   </div>
 
