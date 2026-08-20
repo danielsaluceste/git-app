@@ -18,10 +18,10 @@ pub fn toggle_devtools(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn set_window_theme_effect(window: tauri::WebviewWindow, _theme: String) {
+pub fn set_window_theme_effect(window: tauri::WebviewWindow, theme: String) {
     #[cfg(target_os = "windows")]
     {
-        if _theme == "glassmorphism" {
+        if theme == "glassmorphism" {
             if window_vibrancy::apply_acrylic(&window, Some((15, 17, 20, 45))).is_err() {
                 if window_vibrancy::apply_mica(&window, Some(true)).is_err() {
                     let _ = window_vibrancy::apply_blur(&window, Some((15, 17, 20, 45)));
@@ -47,5 +47,10 @@ pub fn set_window_theme_effect(window: tauri::WebviewWindow, _theme: String) {
         } else {
             let _ = window_vibrancy::clear_vibrancy(&window);
         }
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = (window, theme);
     }
 }
