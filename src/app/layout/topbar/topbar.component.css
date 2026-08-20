@@ -1,4 +1,4 @@
-﻿.topbar {
+.topbar {
   display: flex;
   position: relative;
   z-index: 100;
@@ -70,8 +70,12 @@
   background: var(--app-accent);
   box-shadow: 2px 2px 0 var(--app-shadow-color);
   color: var(--app-on-accent);
-  font-size: 0.72rem;
-  font-weight: 800;
+}
+
+.brand-luna-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
 }
 
 .brand-name {
@@ -101,18 +105,45 @@
   margin-left: 0.75rem;
 }
 
-.codex-launch-button {
+.terminal-launch-button {
   display: grid;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.2rem;
+  height: 2.2rem;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 0.5rem;
+  border-radius: var(--app-small-radius);
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  margin-right: 0.35rem;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.terminal-launch-button:hover,
+.terminal-launch-button.is-active {
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-text-bright);
+}
+
+.terminal-launch-button .terminal-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
+}
+
+.codex-launch-button {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--app-small-radius);
   background: transparent;
   color: #fb923c;
   cursor: pointer;
   font-size: 1.05rem;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .codex-launch-button:hover,

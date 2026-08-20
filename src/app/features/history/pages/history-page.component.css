@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   display: grid;
   gap: 1rem;
   max-width: 1550px;
@@ -739,19 +739,21 @@ h3 {
 
 .commit-row {
   display: grid;
-  grid-template-columns: 2rem 1.75rem minmax(0, 1fr) auto;
+  grid-template-columns: minmax(1.75rem, var(--graph-width, 2.2rem)) 1.75rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
   border: 1px solid transparent;
   border-bottom-color: var(--app-border-subtle);
   border-radius: 0.55rem;
-  padding: 0.45rem 0.35rem;
+  padding: 0.25rem 0.35rem;
   background: transparent;
   color: var(--app-text-strong);
   cursor: pointer;
   font: inherit;
   text-align: left;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 38px;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
@@ -791,55 +793,55 @@ h3 {
 
 .graph-column {
   position: relative;
-  min-height: 2.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 38px;
+  height: 38px;
+  max-width: var(--graph-width, 110px);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.graph-line {
-  position: absolute;
-  top: -0.45rem;
-  bottom: -0.45rem;
-  left: 1.08rem;
-  width: 2px;
-  background: var(--app-border);
+.graph-svg {
+  display: block;
+  height: 38px;
+  flex-shrink: 0;
 }
 
-.commit-row:first-child .graph-line {
-  top: 50%;
+.graph-path {
+  transition: stroke-width 140ms ease, opacity 140ms ease;
+  opacity: 0.85;
 }
 
-.commit-row:last-child .graph-line {
-  bottom: 50%;
+.commit-row:hover .graph-path,
+.commit-row.selected .graph-path {
+  opacity: 1;
+  stroke-width: 2.5px;
 }
 
-.graph-node {
-  position: absolute;
-  top: 50%;
-  left: 0.68rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  border: 2px solid var(--app-accent);
-  border-radius: 50%;
-  background: var(--app-surface-2);
-  box-shadow: 0 0 0 3px var(--app-surface-2);
-  transform: translateY(-50%);
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+.graph-node-dot {
+  transition: stroke 140ms ease, stroke-width 140ms ease;
 }
 
-.commit-row:hover .graph-node,
-.commit-row.selected .graph-node {
-  background: var(--app-accent);
-  border-color: var(--app-accent-pale);
-  transform: translateY(-50%) scale(1.12);
+.commit-row:hover .graph-node-dot,
+.commit-row.selected .graph-node-dot {
+  stroke: #ffffff;
+  stroke-width: 2.5px;
 }
 
-.graph-merge-line {
-  position: absolute;
-  top: 50%;
-  left: 1.12rem;
-  width: 1.8rem;
-  border-top: 2px solid var(--app-purple);
-  transform: rotate(-28deg);
-  transform-origin: left center;
+.graph-head-ring {
+  animation: graph-pulse 2.4s infinite ease-in-out;
+  will-change: opacity;
+}
+
+@keyframes graph-pulse {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.95;
+  }
 }
 
 .commit-avatar {
@@ -884,13 +886,25 @@ h3 {
 .commit-main {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-width: 0;
-  gap: 0.55rem;
+  gap: 0.65rem;
+  overflow: hidden;
 }
 
-.commit-main strong {
+.commit-subject-wrap {
+  display: flex;
+  align-items: center;
   min-width: 0;
   flex: 1 1 auto;
+  gap: 0.45rem;
+  overflow: hidden;
+}
+
+.commit-subject-text,
+.commit-main strong {
+  min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   color: var(--app-text-strong);
   font-size: 0.88rem;
@@ -902,42 +916,45 @@ h3 {
 .commit-meta {
   display: flex;
   align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 13rem;
-  gap: 0.3rem;
+  flex: 0 0 auto;
+  gap: 0.45rem;
   color: var(--app-muted);
   font-size: 0.75rem;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .commit-author {
-  min-width: 0;
+  max-width: 8.5rem;
   overflow: hidden;
-  flex: 1 1 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .commit-refs {
   display: inline-flex;
+  align-items: center;
   min-width: 0;
-  max-width: 12rem;
-  gap: 0.3rem;
+  max-width: 14rem;
+  gap: 0.25rem;
   overflow: hidden;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  margin-right: 0.2rem;
 }
 
 .commit-ref {
   overflow: hidden;
+  max-width: 9rem;
   border: 1px solid var(--app-positive-border);
   border-radius: 0.3rem;
-  padding: 0.14rem 0.35rem;
+  padding: 0.12rem 0.35rem;
   background: var(--app-positive-surface);
   color: var(--app-positive-strong);
   font-size: 0.63rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .commit-meta-separator,

@@ -1,4 +1,4 @@
-﻿:host {
+:host {
   display: block;
   flex: 0 0 240px;
   transition: flex-basis 180ms ease;
@@ -72,10 +72,17 @@
   display: grid;
   width: 2rem;
   height: 2rem;
+  flex: 0 0 2rem;
   place-items: center;
   border-radius: 0.6rem;
   background: var(--app-accent);
   color: var(--app-on-accent);
+}
+
+.brand-luna-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
 }
 
 nav,

@@ -16,9 +16,13 @@ export class ThemeService {
   readonly themes = THEME_OPTIONS;
 
   constructor() {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      document.documentElement.dataset["tauriWindow"] = "true";
+    }
     const themeId = this.themeState();
     this.applyTheme(themeId);
     void this.applyNativeWindowEffect(themeId);
+    void this.initWindowMaximizedListener();
   }
 
   setTheme(themeId: ThemeId): void {
@@ -54,23 +58,43 @@ export class ThemeService {
     }
 
     try {
-      const currentWindow = getCurrentWindow();
-
-      if (themeId === "glassmorphism") {
-        await currentWindow.setEffects({
-          effects: [
-            Effect.Acrylic,
-            Effect.HudWindow,
-            Effect.ContentBackground,
-          ],
-          state: EffectState.Active,
-          radius: 18,
-        });
-      } else {
-        await currentWindow.clearEffects();
-      }
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_window_theme_effect", { theme: themeId });
     } catch (error) {
-      console.debug("Native window effect not available on this platform", error);
+      console.debug("Native window effect command error:", error);
+    }
+  }
+
+  private async initWindowMaximizedListener(): Promise<void> {
+    if (
+      typeof window === "undefined" ||
+      !("__TAURI_INTERNALS__" in window)
+    ) {
+      return;
+    }
+
+    try {
+      const currentWindow = getCurrentWindow();
+      const updateMaximized = async () => {
+        try {
+          const isMax = await currentWindow.isMaximized();
+          if (typeof document !== "undefined") {
+            document.documentElement.dataset["maximized"] = String(isMax);
+            if (isMax) {
+              document.documentElement.classList.add("is-maximized");
+            } else {
+              document.documentElement.classList.remove("is-maximized");
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+
+      await updateMaximized();
+      await currentWindow.onResized(updateMaximized);
+    } catch (error) {
+      console.debug("Could not attach window resize listener", error);
     }
   }
 

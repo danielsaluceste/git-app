@@ -1,4 +1,5 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
+@import "@xterm/xterm/css/xterm.css";
 
 :root,
 :root[data-theme="default"] {
@@ -126,20 +127,20 @@
 
 :root[data-theme="glassmorphism"] {
   color-scheme: dark;
-  --app-bg: #0b0c0f;
-  --app-surface-0: rgb(20 22 25 / 42%);
-  --app-surface-1: rgb(30 32 36 / 48%);
-  --app-surface-2: rgb(24 26 29 / 40%);
+  --app-bg: transparent;
+  --app-surface-0: rgb(15 17 20 / 15%);
+  --app-surface-1: rgb(255 255 255 / 6%);
+  --app-surface-2: rgb(255 255 255 / 4%);
   --app-surface-3: rgb(255 255 255 / 5%);
-  --app-surface-hover: rgb(255 255 255 / 10%);
+  --app-surface-hover: rgb(255 255 255 / 12%);
   --app-border: rgb(255 255 255 / 22.2%);
   --app-border-strong: rgb(255 255 255 / 45.4%);
   --app-border-subtle: rgb(255 255 255 / 14%);
-  --app-text: rgb(255 255 255 / 78%);
-  --app-text-strong: rgb(255 255 255 / 90%);
+  --app-text: rgb(255 255 255 / 85%);
+  --app-text-strong: #ffffff;
   --app-text-bright: #ffffff;
-  --app-muted: rgb(238 238 242 / 66%);
-  --app-muted-strong: rgb(224 224 230 / 48%);
+  --app-muted: rgb(238 238 242 / 72%);
+  --app-muted-strong: rgb(224 224 230 / 55%);
   --app-accent: #d5d6dc;
   --app-accent-hover: #ffffff;
   --app-accent-soft: #f2f2f4;
@@ -180,12 +181,12 @@
   --app-dialog-text: #ffffff;
   --app-dark-button-shadow: rgb(255 255 255 / 12%);
   --app-modal-overlay: rgb(0 0 0 / 62%);
-  --app-modal-blur: 28px;
+  --app-modal-blur: 14px;
   /* Parâmetro de teste do fundo global: experimente 0px, 16px, 28px, 40px... */
-  --app-global-background-blur: 28px;
-  --app-glass-blur: 36px;
+  --app-global-background-blur: 14px;
+  --app-glass-blur: 18px;
   --app-glass-saturate: 105%;
-  --app-workspace-surface: rgb(20 22 25 / 42%);
+  --app-workspace-surface: rgb(15 17 20 / 12%);
   --app-sidebar-bg: rgb(255 255 255 / 7.4%);
   --app-sidebar-text: #ffffff;
   --app-sidebar-muted: rgb(239 243 255 / 70%);
@@ -202,30 +203,28 @@ body {
   height: 100%;
   min-height: 100%;
   margin: 0;
+  background: transparent !important;
 }
 
 body {
   min-width: 320px;
   overflow: hidden;
-  background: var(--app-bg);
   color: var(--app-text);
   font-family: var(--app-font-body);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background 240ms ease, color 240ms ease;
+  padding: 0;
+  box-sizing: border-box;
+  transition: color 240ms ease;
 }
 
 :root[data-theme="neo-brutalist"] body {
-  background:
-    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
-    var(--app-bg);
+  padding: 8px 10px 10px 8px;
 }
 
 :root[data-theme="glassmorphism"] body {
-  background: transparent !important;
   backdrop-filter: none !important;
-  transition: color 240ms ease;
 }
 
 :root[data-theme="glassmorphism"] {
@@ -286,104 +285,149 @@ a {
   min-height: 100vh;
 }
 
-/* A transparência nativa fica encapsulada no layout. Cada tema define sua
-   própria moldura para não vazar sombra ou margem para o outro tema. */
-:root[data-tauri-window] {
-  background: var(--app-bg);
-}
-
-:root[data-tauri-window] body {
-  padding: 0;
-  overflow: hidden;
-  background: var(--app-bg);
-}
-
-:root[data-tauri-window] app-root {
+/* Molduras arredondadas limpas para cada tema */
+app-root,
+:root[data-theme="default"] app-root {
   display: block;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.85rem;
   background: var(--app-bg);
   box-shadow: none;
 }
 
-:root[data-tauri-window][data-theme="neo-brutalist"] {
-  background: transparent;
-}
-
-:root[data-tauri-window][data-theme="neo-brutalist"] body {
-  padding: 10px 12px 12px 10px;
-  background: transparent;
-}
-
-:root[data-tauri-window][data-theme="neo-brutalist"] app-root {
+:root[data-theme="neo-brutalist"] app-root {
+  display: block;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   border: 3px solid var(--app-border);
   border-radius: calc(var(--app-panel-radius) + 0.2rem);
-  background: var(--app-bg);
-  box-shadow: 10px 10px 0 var(--app-shadow-color);
+  background:
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
+    var(--app-bg);
+  box-shadow: 8px 8px 0 var(--app-shadow-color);
 }
 
-:root[data-tauri-window][data-theme="glassmorphism"] {
-  background: transparent;
-}
-
-:root[data-tauri-window][data-theme="glassmorphism"] body {
-  padding: 10px 12px 12px 10px;
-  background: transparent;
-}
-
+:root[data-theme="glassmorphism"] app-root,
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  display: block;
+  height: 100%;
+  min-height: 0;
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 16%);
-  border-radius: 1.35rem;
-  background: transparent;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
+  border: none !important;
+  border-radius: 0 !important;
+  background: rgba(15, 17, 20, 0.18);
+  box-shadow: none !important;
 }
 
-:root[data-tauri-window][data-theme="glassmorphism"] app-root::before {
+:root[data-theme="glassmorphism"] app-root::before {
   position: absolute;
   z-index: 0;
   inset: 0;
   display: block;
-  background: rgb(15 17 20 / 26%);
-  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
-  backdrop-filter: blur(var(--app-global-background-blur));
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.08), transparent),
+    rgba(12, 14, 18, 0.12);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
   content: "";
   pointer-events: none;
 }
 
-:root[data-tauri-window][data-theme="glassmorphism"] app-root app-shell {
+:root[data-theme="glassmorphism"] app-root app-shell {
   position: relative;
   z-index: 1;
 }
 
-:root[data-tauri-window] app-shell,
-:root[data-tauri-window] app-shell .app-shell,
-:root[data-tauri-window] app-shell .workspace,
-:root[data-tauri-window] app-shell app-sidebar,
-:root[data-tauri-window] app-shell app-repository-sidebar,
-:root[data-tauri-window] app-shell .sidebar,
-:root[data-tauri-window] app-shell .repository-sidebar {
+app-shell,
+app-shell .app-shell,
+app-shell .workspace,
+app-shell app-sidebar,
+app-shell app-repository-sidebar,
+app-shell .sidebar,
+app-shell .repository-sidebar {
   height: 100% !important;
   min-height: 0 !important;
 }
 
-:root[data-tauri-window] app-shell .app-shell {
+app-shell .app-shell {
   border-radius: 0;
   overflow: hidden;
 }
 
-:root[data-tauri-window][data-theme="neo-brutalist"] app-shell .app-shell {
+:root[data-theme="neo-brutalist"] app-shell .app-shell {
   border-radius: var(--app-panel-radius);
+}
+
+/* Quando a janela estiver MAXIMIZADA, removemos o arredondamento, bordas e paddings em TODOS os temas */
+:root[data-maximized="true"] body,
+:root.is-maximized body {
+  padding: 0 !important;
+}
+
+:root[data-maximized="true"] app-root,
+:root.is-maximized app-root,
+:root[data-maximized="true"] app-shell .app-shell,
+:root.is-maximized app-shell .app-shell {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .page {
   view-transition-name: route-page;
+  animation: page-enter 280ms ease-out both;
+}
+
+/* Transições suaves e táteis para Midnight e Neo-Brutalista */
+:root[data-theme="default"] button,
+:root[data-theme="default"] .primary-button,
+:root[data-theme="default"] .commit-button,
+:root[data-theme="default"] .refresh-button,
+:root[data-theme="default"] .sync-button,
+:root[data-theme="default"] .settings-card,
+:root[data-theme="default"] .panel,
+:root[data-theme="default"] .commit-row {
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+:root[data-theme="default"] button:hover:not(:disabled),
+:root[data-theme="default"] .primary-button:hover:not(:disabled),
+:root[data-theme="default"] .commit-button:hover:not(:disabled),
+:root[data-theme="default"] .refresh-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+:root[data-theme="neo-brutalist"] button,
+:root[data-theme="neo-brutalist"] .primary-button,
+:root[data-theme="neo-brutalist"] .commit-button,
+:root[data-theme="neo-brutalist"] .refresh-button,
+:root[data-theme="neo-brutalist"] .sync-button,
+:root[data-theme="neo-brutalist"] .settings-card,
+:root[data-theme="neo-brutalist"] .panel,
+:root[data-theme="neo-brutalist"] .repository-card {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1), background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+:root[data-theme="neo-brutalist"] button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .primary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .commit-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .refresh-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .sync-button:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+}
+
+:root[data-theme="neo-brutalist"] button:active:not(:disabled),
+:root[data-theme="neo-brutalist"] .primary-button:active:not(:disabled),
+:root[data-theme="neo-brutalist"] .commit-button:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
 }
 
 /* No glass, a entrada acontece no elemento real da rota. Isso mantém o shell
@@ -391,12 +435,12 @@ a {
  * composição semitransparente que alterava o preto entre telas. */
 :root[data-theme="glassmorphism"] .page {
   view-transition-name: none;
-  animation: glass-route-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: glass-route-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 ::view-transition-old(route-page),
 ::view-transition-new(route-page) {
-  animation-duration: 220ms;
+  animation-duration: 280ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: center top;
 }
@@ -417,14 +461,14 @@ a {
 
   to {
     opacity: 0;
-    transform: translateY(-0.25rem) scale(0.995);
+    transform: translateY(-0.35rem) scale(0.99);
   }
 }
 
 @keyframes route-page-enter {
   from {
     opacity: 0;
-    transform: translateY(0.35rem) scale(0.995);
+    transform: translateY(0.45rem) scale(0.99);
   }
 
   to {
@@ -436,7 +480,7 @@ a {
 @keyframes glass-route-enter {
   from {
     opacity: 0;
-    transform: translateY(0.35rem) scale(0.995);
+    transform: translateY(0.45rem) scale(0.99);
   }
 
   to {
@@ -505,7 +549,7 @@ a {
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(0.35rem);
+    transform: translateY(0.45rem);
   }
 
   to {
@@ -574,6 +618,54 @@ a {
   border: 2px solid var(--app-border) !important;
   border-radius: var(--app-small-radius) !important;
   box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-launch-button,
+:root[data-theme="neo-brutalist"] .codex-launch-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-2) !important;
+  color: var(--app-text-strong) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-launch-button:hover,
+:root[data-theme="neo-brutalist"] .codex-launch-button:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  background: var(--app-surface-hover) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-launch-button:active,
+:root[data-theme="neo-brutalist"] .terminal-launch-button.is-active,
+:root[data-theme="neo-brutalist"] .codex-launch-button:active,
+:root[data-theme="neo-brutalist"] .codex-launch-button.is-active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  background: var(--app-accent) !important;
+  color: var(--app-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-drawer {
+  border-top: 3px solid var(--app-border) !important;
+  box-shadow: 0 -4px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-drawer .drawer-header {
+  border-bottom: 2px solid var(--app-border) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-drawer .tab-item.active {
+  border: 2px solid var(--app-border) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-ink-on-accent) !important;
+  background: var(--app-yellow) !important;
+}
+
+:root[data-theme="neo-brutalist"] .terminal-drawer .terminal-badge,
+:root[data-theme="neo-brutalist"] .terminal-drawer .new-tab-split-group {
+  border: 2px solid var(--app-border) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
 }
 
 :root[data-theme="neo-brutalist"] .overview-action-bar.is-scrolled {
@@ -1371,13 +1463,14 @@ a {
   color: #ffffff !important;
 }
 
-/* O vidro não usa brilho especular: apenas translucidez, blur e sombra preta
- * muito discreta para separar as camadas. */
 :root[data-theme="glassmorphism"] .sidebar,
 :root[data-theme="glassmorphism"] .repository-sidebar,
 :root[data-theme="glassmorphism"] .topbar,
 :root[data-theme="glassmorphism"] .repository-tabs,
-:root[data-theme="glassmorphism"] .codex-sidebar,
+:root[data-theme="glassmorphism"] .codex-sidebar {
+  box-shadow: none !important;
+}
+
 :root[data-theme="glassmorphism"] .settings-card,
 :root[data-theme="glassmorphism"] .panel,
 :root[data-theme="glassmorphism"] .integration-card,
@@ -1391,7 +1484,7 @@ a {
 :root[data-theme="glassmorphism"] .stash-dialog,
 :root[data-theme="glassmorphism"] .diff-dialog,
 :root[data-theme="glassmorphism"] .conflict-dialog {
-  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 18%) !important;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 12%) !important;
 }
 
 :root[data-theme="glassmorphism"] .brand-mark,
@@ -1422,13 +1515,46 @@ a {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 0.8rem;
+  border: none !important;
+  border-radius: 0 !important;
   background: transparent !important;
+  box-shadow: none !important;
 }
 
 :root[data-theme="glassmorphism"] .app-shell,
 :root[data-theme="glassmorphism"] .workspace {
   background: transparent !important;
+}
+
+:root[data-theme="glassmorphism"] .terminal-launch-button,
+:root[data-theme="glassmorphism"] .codex-launch-button {
+  border: 1px solid var(--app-border-subtle) !important;
+  background: var(--app-surface-1) !important;
+  color: var(--app-text) !important;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%) !important;
+}
+
+:root[data-theme="glassmorphism"] .terminal-launch-button:hover,
+:root[data-theme="glassmorphism"] .terminal-launch-button.is-active {
+  border-color: var(--app-border-strong) !important;
+  background: var(--app-accent-surface) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .terminal-drawer {
+  background: var(--app-workspace-surface) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) !important;
+  backdrop-filter: blur(var(--app-glass-blur)) !important;
+  border-top: 1px solid var(--app-border-subtle) !important;
+}
+
+:root[data-theme="glassmorphism"] .terminal-drawer .drawer-header {
+  background: var(--app-surface-1) !important;
+  border-bottom: 1px solid var(--app-border-subtle) !important;
+}
+
+:root[data-theme="glassmorphism"] .terminal-drawer .drawer-body {
+  background: rgb(15 17 20 / 15%) !important;
 }
 
 :root[data-theme="glassmorphism"] .app-shell {
