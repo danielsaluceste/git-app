@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: contents;
 }
 
@@ -11,19 +11,19 @@
   gap: 1rem;
   margin: auto;
   overflow: hidden;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.9rem;
   padding: 1.25rem;
-  background: #172033;
-  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
-  color: #e5e7eb;
+  background: var(--app-dialog-bg);
+  box-shadow: var(--app-panel-shadow);
+  color: var(--app-dialog-text);
   animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .diff-dialog::backdrop {
-  background: rgb(3 7 18 / 68%);
-  backdrop-filter: blur(0.2rem);
-  animation: dialog-backdrop-enter 160ms ease-out both;
+  background: transparent;
+  backdrop-filter: none;
+  animation: none;
 }
 
 .diff-header,
@@ -50,7 +50,7 @@
 
 .eyebrow {
   margin: 0 0 0.3rem;
-  color: #f97316;
+  color: var(--app-accent);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -61,7 +61,7 @@ h2 {
   max-width: 58rem;
   margin: 0;
   overflow: hidden;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 1.05rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -73,11 +73,11 @@ h2 {
   height: 2.6rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #7c4a1d;
+  border: 1px solid var(--app-accent-border);
   border-radius: 0.7rem;
-  background: #332313;
-  color: #fdba74;
-  font-family: "Cascadia Code", Consolas, monospace;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+  font-family: var(--app-font-mono);
   font-size: 0.95rem;
   font-weight: 800;
 }
@@ -91,7 +91,7 @@ h2 {
   border: 1px solid transparent;
   border-radius: 0.45rem;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 1.35rem;
@@ -99,67 +99,67 @@ h2 {
 }
 
 .close-button:hover {
-  border-color: #4b5563;
-  background: #263244;
-  color: #f9fafb;
+  border-color: var(--app-border-strong);
+  background: var(--app-border-subtle);
+  color: var(--app-text-bright);
 }
 
 .diff-meta {
   gap: 0.65rem;
-  border-bottom: 1px solid #263244;
+  border-bottom: 1px solid var(--app-border-subtle);
   padding-bottom: 0.85rem;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.78rem;
 }
 
 .status-badge {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--app-border-strong);
   border-radius: 999px;
   padding: 0.25rem 0.55rem;
-  background: #263244;
-  color: #d1d5db;
+  background: var(--app-border-subtle);
+  color: var(--app-text);
   font-size: 0.7rem;
   font-weight: 800;
 }
 
 .status-added {
-  border-color: #286047;
-  background: #123b2e;
-  color: #6ee7b7;
+  border-color: var(--app-positive-border);
+  background: var(--app-positive-surface);
+  color: var(--app-positive-strong);
 }
 
 .status-deleted {
-  border-color: #991b1b;
-  background: #450a0a;
-  color: #fca5a5;
+  border-color: var(--app-danger);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .status-untracked {
-  border-color: #9a5b18;
-  background: #4a2d14;
-  color: #fdba74;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
 }
 
 .status-renamed {
-  border-color: #155e75;
-  background: #164e63;
-  color: #67e8f9;
+  border-color: var(--app-info);
+  background: var(--app-info-surface);
+  color: var(--app-info);
 }
 
 .diff-content {
   min-height: 0;
   overflow: auto;
-  border: 1px solid #263244;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.6rem;
-  background: #0d1422;
+  background: var(--app-surface-3);
 }
 
 .diff-code {
   min-width: max-content;
   margin: 0;
   padding: 0.65rem 0;
-  color: #d1d5db;
-  font-family: "Cascadia Code", Consolas, monospace;
+  color: var(--app-text);
+  font-family: var(--app-font-mono);
   font-size: 0.76rem;
   line-height: 1.6;
   white-space: pre;
@@ -173,26 +173,26 @@ h2 {
 
 .diff-added {
   background: rgb(22 101 52 / 28%);
-  color: #86efac;
+  color: var(--app-positive-strong);
 }
 
 .diff-removed {
   background: rgb(127 29 29 / 28%);
-  color: #fca5a5;
+  color: var(--app-danger-text);
 }
 
 .diff-hunk {
   background: rgb(88 28 135 / 25%);
-  color: #d8b4fe;
+  color: var(--app-purple);
 }
 
 .diff-file-header {
   background: rgb(30 64 175 / 18%);
-  color: #93c5fd;
+  color: var(--app-info-text);
 }
 
 .diff-context {
-  color: #cbd5e1;
+  color: var(--app-text);
 }
 
 .diff-state {
@@ -201,22 +201,22 @@ h2 {
   box-sizing: border-box;
   place-items: center;
   padding: 2rem;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.85rem;
   line-height: 1.5;
   text-align: center;
 }
 
 .error-state {
-  color: #fecaca;
+  color: var(--app-danger-text);
 }
 
 .loading-spinner {
   width: 1rem;
   height: 1rem;
   margin-bottom: 0.7rem;
-  border: 2px solid #7c4a1d;
-  border-top-color: #fb923c;
+  border: 2px solid var(--app-accent-border);
+  border-top-color: var(--app-accent-hover);
   border-radius: 50%;
   animation: spin 700ms linear infinite;
 }
@@ -224,7 +224,7 @@ h2 {
 .diff-footer {
   justify-content: space-between;
   gap: 1rem;
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 0.72rem;
 }
 
@@ -232,15 +232,16 @@ h2 {
   border: 0;
   border-radius: 0.45rem;
   padding: 0.65rem 0.9rem;
-  background: #374151;
-  color: #e5e7eb;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
 }
 
 .close-action:hover {
-  background: #4b5563;
+  background: var(--app-border-strong);
+  color: var(--app-secondary-text);
 }
 
 @keyframes dialog-backdrop-enter {

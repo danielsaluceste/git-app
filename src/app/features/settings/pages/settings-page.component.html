@@ -7,6 +7,42 @@
     </div>
   </div>
 
+  <section class="settings-card theme-settings-card" aria-labelledby="theme-settings-title">
+    <div class="settings-card-heading">
+      <div class="theme-settings-icon" aria-hidden="true">✦</div>
+      <div>
+        <h3 id="theme-settings-title">Tema da interface</h3>
+        <p>Troque a personalidade visual do Git App. Sua escolha fica salva neste dispositivo.</p>
+      </div>
+    </div>
+
+    <div class="theme-settings-options" role="radiogroup" aria-label="Tema da interface">
+      @for (theme of themes; track theme.id) {
+        <button
+          type="button"
+          class="theme-settings-option"
+          [class.selected]="activeTheme() === theme.id"
+          role="radio"
+          [attr.aria-checked]="activeTheme() === theme.id"
+          (click)="selectTheme(theme.id)"
+        >
+          <span
+            class="theme-settings-preview"
+            aria-hidden="true"
+            [style.--preview-background]="theme.preview.background"
+            [style.--preview-accent]="theme.preview.accent"
+            [style.--preview-ink]="theme.preview.ink"
+          ></span>
+          <span class="theme-settings-copy">
+            <strong>{{ theme.name }}</strong>
+            <small>{{ theme.description }}</small>
+          </span>
+          <span class="theme-radio" aria-hidden="true"></span>
+        </button>
+      }
+    </div>
+  </section>
+
   <section class="settings-card" aria-labelledby="ai-settings-title">
     <div class="settings-card-heading">
       <div class="ai-icon" aria-hidden="true">✦</div>

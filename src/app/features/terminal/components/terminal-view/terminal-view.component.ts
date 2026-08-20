@@ -60,13 +60,27 @@ const GITPUMA_TERMINAL_THEME = {
         width: 100%;
         height: 100%;
         padding: 0.35rem 0.5rem;
-        background: #0f172a;
+        background: var(--app-bg, #0f172a);
       }
       :host ::ng-deep .xterm {
         height: 100%;
       }
       :host ::ng-deep .xterm-viewport {
         overflow-y: auto !important;
+        background-color: transparent !important;
+      }
+      :host ::ng-deep .xterm-helper-textarea {
+        position: absolute !important;
+        opacity: 0 !important;
+        left: -9999px !important;
+        top: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        border: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        resize: none !important;
+        overflow: hidden !important;
       }
     `,
   ],

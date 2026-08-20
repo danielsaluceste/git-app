@@ -5,19 +5,21 @@
   (click)="onBackdropClick($event)"
   aria-labelledby="dialog-title"
 >
-    <div class="dialog-icon" [class.danger]="destructive" aria-hidden="true">
-      <span>{{ destructive ? "!" : "?" }}</span>
-    </div>
+    <div class="dialog-heading">
+      <div class="dialog-icon" [class.danger]="destructive" aria-hidden="true">
+        <span>{{ destructive ? "!" : "?" }}</span>
+      </div>
 
-    <div class="dialog-content">
-      <h2 id="dialog-title">{{ title || ("common.confirmTitle" | translate) }}</h2>
-      @if (messageHighlight && message.includes(messageHighlight)) {
-        <p>
-          {{ messageBeforeHighlight }}<strong class="dialog-highlight">{{ messageHighlight }}</strong>{{ messageAfterHighlight }}
-        </p>
-      } @else {
-        <p>{{ message || ("common.confirmMessage" | translate) }}</p>
-      }
+      <div class="dialog-content">
+        <h2 id="dialog-title">{{ title || ("common.confirmTitle" | translate) }}</h2>
+        @if (messageHighlight && message.includes(messageHighlight)) {
+          <p>
+            {{ messageBeforeHighlight }}<strong class="dialog-highlight">{{ messageHighlight }}</strong>{{ messageAfterHighlight }}
+          </p>
+        } @else {
+          <p>{{ message || ("common.confirmMessage" | translate) }}</p>
+        }
+      </div>
     </div>
 
     <div class="dialog-actions">

@@ -1,32 +1,32 @@
-:host {
+﻿:host {
   display: contents;
 }
 
 .dialog {
   display: grid;
   width: min(calc(100vw - 2.5rem), 27rem);
-  height: fit-content;
+  height: auto;
   min-height: 0;
   max-height: calc(100vh - 2.5rem);
   box-sizing: border-box;
+  align-content: start;
   gap: 1rem;
   margin: auto;
   overflow: auto;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.9rem;
   padding: 1.5rem;
-  background: #172033;
-  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
-  color: #e5e7eb;
+  background: var(--app-dialog-bg);
+  box-shadow: var(--app-panel-shadow);
+  color: var(--app-dialog-text);
   animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  align-self: center;
-  justify-self: center;
+  place-self: center;
 }
 
 .dialog::backdrop {
-  background: rgb(3 7 18 / 68%);
-  backdrop-filter: blur(0.2rem);
-  animation: dialog-backdrop-enter 160ms ease-out both;
+  background: transparent;
+  backdrop-filter: none;
+  animation: none;
 }
 
 @keyframes dialog-backdrop-enter {
@@ -55,35 +55,46 @@
   display: grid;
   width: 2.75rem;
   height: 2.75rem;
+  flex: 0 0 2.75rem;
   place-items: center;
-  border: 1px solid #075985;
+  border: 1px solid var(--app-info);
   border-radius: 0.75rem;
-  background: #082f49;
-  color: #7dd3fc;
+  background: var(--app-info-surface);
+  color: var(--app-info-text);
   font-size: 1.25rem;
   font-weight: 800;
 }
 
+.dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 0.85rem;
+}
+
 .dialog-icon.danger {
-  border-color: #991b1b;
-  background: #450a0a;
-  color: #fca5a5;
+  border-color: var(--app-danger);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .dialog-content {
   display: grid;
+  min-width: 0;
+  align-content: start;
   gap: 0.5rem;
+  padding-top: 0.15rem;
 }
 
 h2 {
   margin: 0;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 1.15rem;
 }
 
 p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -91,20 +102,21 @@ p {
 .dialog-highlight {
   display: inline-block;
   margin: 0 0.15rem;
-  border: 1px solid #ef4444;
+  border: 1px solid var(--app-danger);
   border-radius: 0.35rem;
   padding: 0.08rem 0.35rem;
-  background: #450a0a;
-  color: #fecaca;
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
   font-weight: 800;
   line-height: 1.35;
 }
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: end;
   gap: 0.6rem;
-  margin-top: 0.5rem;
+  margin-top: 0.1rem;
 }
 
 button {
@@ -118,31 +130,42 @@ button {
 }
 
 .cancel-button {
-  background: #374151;
-  color: #e5e7eb;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
 }
 
 .cancel-button:hover {
-  background: #4b5563;
+  background: var(--app-border-strong);
   transform: translateY(-1px);
 }
 
 .confirm-button {
-  background: #0ea5e9;
-  color: #082f49;
+  background: var(--app-info);
+  color: var(--app-info-surface);
 }
 
 .confirm-button:hover {
-  background: #38bdf8;
+  background: var(--app-info);
   transform: translateY(-1px);
 }
 
 .confirm-button.danger {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--app-danger);
+  color: var(--app-on-surface);
 }
 
 .confirm-button.danger:hover {
-  background: #ef4444;
+  background: var(--app-danger);
   transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    width: calc(100vw - 1.25rem);
+    padding: 1.15rem;
+  }
+
+  .dialog-actions > button {
+    flex: 1 1 8rem;
+  }
 }

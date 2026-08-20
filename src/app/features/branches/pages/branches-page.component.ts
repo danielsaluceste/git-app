@@ -2,19 +2,17 @@ import { Component, computed, effect, inject, OnInit, signal, untracked } from "
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
-import { CreateTagRequest, GitTag } from "../../../core/models/tag.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
-import { TagDialogComponent } from "../../../shared/dialogs/tag-dialog/tag-dialog.component";
 import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type BranchFormMode = "create" | "rename";
 
 @Component({
   selector: "app-branches-page",
-  imports: [ConfirmDialogComponent, FormsModule, TranslatePipe, TagDialogComponent],
+  imports: [ConfirmDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./branches-page.component.html",
   styleUrl: "./branches-page.component.css",
 })
@@ -27,14 +25,10 @@ export class BranchesPageComponent implements OnInit {
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly references = signal<RepositoryReferences | undefined>(undefined);
   readonly repositoryStatus = signal<RepositoryStatus | undefined>(undefined);
-  readonly tags = signal<GitTag[]>([]);
-  readonly isTagsLoading = signal(false);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
-  readonly isPushingTags = signal(false);
   readonly branchSearch = signal("");
   readonly showBranchForm = signal(false);
-  readonly showTagDialog = signal(false);
   readonly branchFormMode = signal<BranchFormMode>("create");
   readonly branchName = signal("");
   readonly branchFormError = signal("");
@@ -43,50 +37,12 @@ export class BranchesPageComponent implements OnInit {
   readonly pendingCreateBranch = signal<{ name: string; startPoint?: string } | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingDeleteBranch = signal<string | undefined>(undefined);
-  readonly pendingDeleteTag = signal<GitTag | undefined>(undefined);
-  readonly deleteTagRemote = signal(false);
-
   readonly filteredLocalBranches = computed(() => this.filterBranches(this.references()?.localBranches ?? []));
   readonly filteredRemoteBranches = computed(() => this.filterBranches(this.references()?.remoteBranches ?? []));
-  readonly filteredTags = computed(() => {
-    const query = this.branchSearch().trim().toLocaleLowerCase("pt-BR");
-    const allTags = this.tags();
-    if (!query) {
-      return allTags;
-    }
-    return allTags.filter(
-      (tag) =>
-        tag.name.toLocaleLowerCase("pt-BR").includes(query) ||
-        tag.shortHash.toLocaleLowerCase("pt-BR").includes(query) ||
-        tag.message.toLocaleLowerCase("pt-BR").includes(query)
-    );
-  });
-
-  private lastLoadedRepoKey = "";
-  private lastLoadedRefreshVersion = -1;
-
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
-
-    if (!repository) {
-      this.isLoading.set(false);
-      this.lastLoadedRepoKey = "";
-      return;
-    }
-
-    const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
-    const isNewRepo = repoKey !== this.lastLoadedRepoKey;
-    const isNewVersion = refreshVersion !== this.lastLoadedRefreshVersion;
-
-    if (isNewRepo || isNewVersion || !this.references()) {
-      this.lastLoadedRepoKey = repoKey;
-      this.lastLoadedRefreshVersion = refreshVersion;
-      untracked(() => {
-        void this.loadReferences(repository);
-        void this.loadTags(repository);
-      });
-    }
+    this.repositoryService.repositoryRefreshVersion();
+    untracked(() => void this.loadReferences(repository));
   });
 
   ngOnInit(): void {
@@ -147,155 +103,12 @@ export class BranchesPageComponent implements OnInit {
     }
   }
 
-  async loadTags(repository = this.activeRepository()): Promise<void> {
-    if (!repository) {
-      this.tags.set([]);
-      return;
-    }
-
-    this.isTagsLoading.set(true);
-    try {
-      const tags = await this.repositoryService.getTags(repository.path);
-      this.tags.set(tags);
-    } catch (error) {
-      console.warn("Falha ao carregar tags:", error);
-    } finally {
-      this.isTagsLoading.set(false);
-    }
-  }
-
   openCreateBranch(): void {
     this.branchFormMode.set("create");
     this.branchName.set("");
     this.renameTarget.set("");
     this.branchFormError.set("");
     this.showBranchForm.set(true);
-  }
-
-  openCreateTag(): void {
-    this.showTagDialog.set(true);
-  }
-
-  closeTagDialog(): void {
-    this.showTagDialog.set(false);
-  }
-
-  async confirmCreateTag(request: CreateTagRequest): Promise<void> {
-    const repository = this.activeRepository();
-    if (!repository) {
-      return;
-    }
-
-    this.isSaving.set(true);
-    try {
-      await this.repositoryService.createTag(repository.path, request);
-      this.toastService.success(
-        this.translationService.translate("tags.createSuccess", { name: request.name }),
-        this.translationService.translate("tags.title"),
-      );
-      this.showTagDialog.set(false);
-      await Promise.all([this.loadTags(repository), this.loadReferences(repository)]);
-    } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("tags.title"));
-    } finally {
-      this.isSaving.set(false);
-    }
-  }
-
-  requestDeleteTag(tag: GitTag, event?: Event): void {
-    event?.stopPropagation();
-    this.pendingDeleteTag.set(tag);
-    this.deleteTagRemote.set(false);
-  }
-
-  cancelDeleteTag(): void {
-    this.pendingDeleteTag.set(undefined);
-  }
-
-  async confirmDeleteTag(): Promise<void> {
-    const repository = this.activeRepository();
-    const tag = this.pendingDeleteTag();
-    const deleteRemote = this.deleteTagRemote();
-    this.pendingDeleteTag.set(undefined);
-    if (!repository || !tag) {
-      return;
-    }
-
-    this.isSaving.set(true);
-    try {
-      await this.repositoryService.deleteTag(repository.path, tag.name, deleteRemote);
-      this.toastService.success(
-        this.translationService.translate("tags.deleteSuccess", { name: tag.name }),
-        this.translationService.translate("tags.title"),
-      );
-      await Promise.all([this.loadTags(repository), this.loadReferences(repository)]);
-    } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("tags.title"));
-    } finally {
-      this.isSaving.set(false);
-    }
-  }
-
-  async pushAllTags(): Promise<void> {
-    const repository = this.activeRepository();
-    if (!repository || this.isPushingTags()) {
-      return;
-    }
-
-    this.isPushingTags.set(true);
-    try {
-      await this.repositoryService.pushTags(repository.path);
-      this.toastService.success(
-        this.translationService.translate("tags.pushSuccess"),
-        this.translationService.translate("tags.title"),
-      );
-    } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("tags.title"));
-    } finally {
-      this.isPushingTags.set(false);
-    }
-  }
-
-  async pushSingleTag(tag: GitTag, event?: Event): Promise<void> {
-    event?.stopPropagation();
-    const repository = this.activeRepository();
-    if (!repository || this.isSaving()) {
-      return;
-    }
-
-    this.isSaving.set(true);
-    try {
-      await this.repositoryService.pushTag(repository.path, tag.name);
-      this.toastService.success(
-        this.translationService.translate("tags.pushSingleSuccess", { name: tag.name }),
-        this.translationService.translate("tags.title"),
-      );
-    } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("tags.title"));
-    } finally {
-      this.isSaving.set(false);
-    }
-  }
-
-  async checkoutTagCommit(tag: GitTag): Promise<void> {
-    const repository = this.activeRepository();
-    if (!repository || this.isSaving()) {
-      return;
-    }
-
-    this.isSaving.set(true);
-    try {
-      await this.repositoryService.checkoutCommit(repository.path, tag.commitHash);
-      this.toastService.success(
-        this.translationService.translate("branches.activatedMessage", { name: tag.name }),
-        this.translationService.translate("branches.updatedTitle"),
-      );
-      await this.loadReferences();
-    } catch (error: unknown) {
-      this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("branches.operationErrorTitle"));
-    } finally {
-      this.isSaving.set(false);
-    }
   }
 
   openRenameBranch(branch: string, event?: Event): void {

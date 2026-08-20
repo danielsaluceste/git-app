@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   flex: 0 0 240px;
   transition: flex-basis 180ms ease;
@@ -17,8 +17,8 @@
   flex-direction: column;
   gap: 2rem;
   padding: 1.5rem 1rem;
-  border-right: 1px solid #263244;
-  background: #0b1220;
+  border-right: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-0);
 }
 
 .brand {
@@ -26,23 +26,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0 0.75rem;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 1.1rem;
   font-weight: 700;
-}
-
-.brand-mark-luna {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  flex-shrink: 0;
-}
-
-.brand-luna-icon {
-  width: 1.6rem;
-  height: 1.6rem;
 }
 
 .brand-name {
@@ -59,7 +45,7 @@
   border-radius: 0.35rem;
   padding: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 1.4rem;
@@ -67,8 +53,8 @@
 }
 
 .collapse-button:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
 }
 
 .sidebar-toggle-icon {
@@ -88,8 +74,8 @@
   height: 2rem;
   place-items: center;
   border-radius: 0.6rem;
-  background: #f97316;
-  color: #111827;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 nav,
@@ -109,7 +95,7 @@ a {
   gap: 0.75rem;
   padding: 0.55rem 0.75rem;
   border-radius: 0.5rem;
-  color: #9ca3af;
+  color: var(--app-muted);
   text-decoration: none;
   transition: background 120ms ease, color 120ms ease;
 }
@@ -164,7 +150,7 @@ a {
   top: 50%;
   left: calc(100% + 0.35rem);
   border: 0.35rem solid transparent;
-  border-right-color: #374151;
+  border-right-color: var(--app-border);
   content: "";
   transform: translate(-0.35rem, -50%);
 }
@@ -173,12 +159,12 @@ a {
   top: 50%;
   left: calc(100% + 0.95rem);
   width: max-content;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.45rem;
   padding: 0.5rem 0.7rem;
-  background: #1f2937;
+  background: var(--app-surface-1);
   box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 28%);
-  color: #f9fafb;
+  color: var(--app-text-bright);
   content: attr(data-tooltip);
   font-size: 0.78rem;
   font-weight: 600;
@@ -201,6 +187,6 @@ a {
 
 a:hover,
 a.active {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
 }

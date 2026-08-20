@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   display: grid;
   gap: 1.5rem;
   max-width: 1550px;
@@ -6,6 +6,8 @@
 }
 
 .page.modal-open {
+  position: relative;
+  z-index: 1300;
   animation: none;
   transform: none;
 }
@@ -19,7 +21,7 @@
 
 .eyebrow {
   margin: 0 0 0.5rem;
-  color: #f97316;
+  color: var(--app-accent);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -29,7 +31,7 @@
 h2,
 h3 {
   margin: 0;
-  color: #f9fafb;
+  color: var(--app-text-bright);
 }
 
 h2 {
@@ -40,7 +42,7 @@ h2 {
 .empty-state p,
 .repository-info p {
   margin: 0.5rem 0 0;
-  color: #9ca3af;
+  color: var(--app-muted);
 }
 
 .primary-button,
@@ -55,22 +57,22 @@ h2 {
 }
 
 .primary-button {
-  background: #f97316;
-  color: #111827;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 .primary-button:hover:not(:disabled) {
-  background: #fb923c;
+  background: var(--app-accent-hover);
   transform: translateY(-1px);
 }
 
 .secondary-button {
-  background: #374151;
-  color: #e5e7eb;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
 }
 
 .secondary-button:hover:not(:disabled) {
-  background: #4b5563;
+  background: var(--app-border-strong);
   transform: translateY(-1px);
 }
 
@@ -83,11 +85,11 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  border: 1px solid #7f1d1d;
+  border: 1px solid var(--app-danger-surface);
   border-radius: 0.6rem;
   padding: 0.8rem 1rem;
-  background: #450a0a;
-  color: #fecaca;
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .error-message span {
@@ -97,8 +99,8 @@ button:disabled {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--app-danger);
+  color: var(--app-on-surface);
   font-size: 0.75rem;
   font-weight: 800;
 }
@@ -112,16 +114,16 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 1px solid #263244;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.75rem;
   padding: 1rem;
-  background: #172033;
+  background: var(--app-surface-2);
   cursor: pointer;
   transition: border-color 140ms ease, transform 140ms ease;
 }
 
 .repository-card:hover {
-  border-color: #4b5563;
+  border-color: var(--app-border-strong);
   transform: translateY(-1px);
 }
 
@@ -132,8 +134,8 @@ button:disabled {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 0.6rem;
-  background: #1f2937;
-  color: #f97316;
+  background: var(--app-surface-1);
+  color: var(--app-accent);
   font-size: 1.25rem;
 }
 
@@ -153,10 +155,10 @@ button:disabled {
 }
 
 .local-badge {
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 999px;
   padding: 0.3rem 0.6rem;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.75rem;
 }
 
@@ -165,7 +167,7 @@ button:disabled {
   min-height: 280px;
   place-items: center;
   align-content: center;
-  border: 1px dashed #374151;
+  border: 1px dashed var(--app-border);
   border-radius: 0.75rem;
   padding: 2rem;
   text-align: center;
@@ -182,23 +184,20 @@ button:disabled {
   margin-bottom: 1rem;
   place-items: center;
   border-radius: 0.75rem;
-  background: #1f2937;
-  color: #f97316;
+  background: var(--app-surface-1);
+  color: var(--app-accent);
   font-size: 1.5rem;
 }
 
 .repository-modal-backdrop {
   position: fixed;
-  z-index: 1100;
-  top: 3rem;
-  right: 0;
-  bottom: 0;
-  left: calc(var(--main-sidebar-width, 240px) + var(--repository-sidebar-width, 0px));
+  z-index: 1;
+  inset: 0;
   display: grid;
   place-items: center;
-  padding: 2.25rem 1.25rem 1.25rem;
-  background: rgb(3 7 18 / 70%);
-  backdrop-filter: blur(0.25rem);
+  padding: 1.5rem;
+  background: var(--app-modal-overlay);
+  backdrop-filter: blur(var(--app-modal-blur));
   animation: repository-modal-backdrop-in 160ms ease-out both;
 }
 
@@ -209,11 +208,11 @@ button:disabled {
   min-height: 0;
   max-height: calc(100vh - 6.5rem);
   overflow: auto;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.9rem;
-  background: #172033;
+  background: var(--app-surface-2);
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
-  color: #e5e7eb;
+  color: var(--app-text-strong);
   animation: repository-modal-in 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   align-self: center;
   justify-self: center;
@@ -224,7 +223,7 @@ button:disabled {
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid #263244;
+  border-bottom: 1px solid var(--app-border-subtle);
   padding: 1.35rem 1.5rem;
 }
 
@@ -234,7 +233,7 @@ button:disabled {
 
 .repository-modal-header p:not(.eyebrow) {
   margin: 0.4rem 0 0;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -245,11 +244,11 @@ button:disabled {
   height: 2rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0;
-  background: #1f2937;
-  color: #9ca3af;
+  background: var(--app-surface-1);
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 1.35rem;
@@ -258,8 +257,8 @@ button:disabled {
 }
 
 .modal-close-button:hover:not(:disabled) {
-  background: #374151;
-  color: #f9fafb;
+  background: var(--app-border);
+  color: var(--app-secondary-text);
   transform: translateY(-1px);
 }
 
@@ -274,11 +273,11 @@ button:disabled {
   align-items: center;
   gap: 0.85rem;
   width: 100%;
-  border: 1px solid #2b384d;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.7rem;
   padding: 0.9rem;
-  background: #131c2d;
-  color: #e5e7eb;
+  background: var(--app-surface-3);
+  color: var(--app-text-strong);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -286,8 +285,8 @@ button:disabled {
 }
 
 .repository-option:hover:not(:disabled) {
-  border-color: #f97316;
-  background: #1c293d;
+  border-color: var(--app-accent);
+  background: var(--app-surface-1);
   transform: translateY(-1px);
 }
 
@@ -297,30 +296,30 @@ button:disabled {
   height: 2.45rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.65rem;
-  background: #1f2937;
-  color: #cbd5e1;
+  background: var(--app-surface-1);
+  color: var(--app-text);
   font-size: 1.1rem;
   font-weight: 800;
 }
 
 .local-option-icon {
-  border-color: #7c4a1d;
-  background: #431407;
-  color: #fb923c;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-hover);
 }
 
 .clone-option-icon {
-  border-color: #1d4ed8;
-  background: #172554;
-  color: #93c5fd;
+  border-color: var(--app-info);
+  background: var(--app-info-surface);
+  color: var(--app-info-text);
 }
 
 .github-option-icon {
-  border-color: #4c1d95;
-  background: #2e1065;
-  color: #c4b5fd;
+  border-color: var(--app-accent-surface);
+  background: var(--app-accent-surface);
+  color: var(--app-purple);
 }
 
 .repository-option-copy {
@@ -331,26 +330,26 @@ button:disabled {
 }
 
 .repository-option-copy strong {
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.86rem;
 }
 
 .repository-option-copy span {
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.76rem;
   line-height: 1.4;
 }
 
 .repository-option-arrow {
   flex: 0 0 auto;
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 1.45rem;
   line-height: 1;
   transition: color 140ms ease, transform 140ms ease;
 }
 
 .repository-option:hover:not(:disabled) .repository-option-arrow {
-  color: #fb923c;
+  color: var(--app-accent-hover);
   transform: translateX(0.15rem);
 }
 
@@ -363,7 +362,7 @@ button:disabled {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #fb923c;
+  color: var(--app-accent-hover);
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
@@ -371,7 +370,7 @@ button:disabled {
 }
 
 .modal-back-button:hover:not(:disabled) {
-  color: #fdba74;
+  color: var(--app-accent-soft);
 }
 
 .clone-form {
@@ -384,10 +383,10 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem;
-  border: 1px solid #2b384d;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.65rem;
   padding: 0.25rem;
-  background: #111827;
+  background: var(--app-surface-0);
 }
 
 .clone-source-tabs button {
@@ -395,7 +394,7 @@ button:disabled {
   border-radius: 0.45rem;
   padding: 0.55rem 0.7rem;
   background: transparent;
-  color: #94a3b8;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.74rem;
@@ -404,12 +403,12 @@ button:disabled {
 }
 
 .clone-source-tabs button:hover:not(:disabled) {
-  color: #e2e8f0;
+  color: var(--app-text-strong);
 }
 
 .clone-source-tabs button.active {
-  background: #263449;
-  color: #fb923c;
+  background: var(--app-border-subtle);
+  color: var(--app-accent-hover);
   box-shadow: 0 0.2rem 0.7rem rgb(2 6 23 / 18%);
 }
 
@@ -421,7 +420,7 @@ button:disabled {
 .github-clone-panel {
   display: grid;
   gap: 0.85rem;
-  border: 1px solid #2b384d;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.7rem;
   padding: 0.85rem;
   background: rgb(15 23 42 / 48%);
@@ -430,12 +429,12 @@ button:disabled {
 .clone-field select {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0.7rem 0.75rem;
   outline: 0;
-  background: #111827;
-  color: #f9fafb;
+  background: var(--app-surface-0);
+  color: var(--app-text-bright);
   cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
@@ -443,7 +442,7 @@ button:disabled {
 }
 
 .clone-field select:focus {
-  border-color: #f97316;
+  border-color: var(--app-accent);
   box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
 }
 
@@ -460,13 +459,13 @@ button:disabled {
 }
 
 .github-repositories-heading span {
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .github-repositories-heading small {
-  color: #64748b;
+  color: var(--app-muted-strong);
   font-size: 0.7rem;
   font-weight: 400;
 }
@@ -476,10 +475,10 @@ button:disabled {
   width: 1.9rem;
   height: 1.9rem;
   place-items: center;
-  border: 1px solid #334155;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.5rem;
-  background: #1e293b;
-  color: #cbd5e1;
+  background: var(--app-surface-1);
+  color: var(--app-text);
   cursor: pointer;
   font: inherit;
   font-size: 1.05rem;
@@ -487,8 +486,8 @@ button:disabled {
 }
 
 .refresh-repositories-button:hover:not(:disabled) {
-  background: #334155;
-  color: #fb923c;
+  background: var(--app-border-subtle);
+  color: var(--app-accent-hover);
   transform: rotate(18deg);
 }
 
@@ -498,7 +497,7 @@ button:disabled {
   gap: 0.4rem;
   overflow-y: auto;
   padding-right: 0.25rem;
-  scrollbar-color: #475569 transparent;
+  scrollbar-color: var(--app-border-strong) transparent;
   scrollbar-width: thin;
 }
 
@@ -507,11 +506,11 @@ button:disabled {
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  border: 1px solid #29384d;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.55rem;
   padding: 0.6rem;
-  background: #151f31;
-  color: #e5e7eb;
+  background: var(--app-surface-3);
+  color: var(--app-text-strong);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -519,13 +518,13 @@ button:disabled {
 }
 
 .github-repository-option:hover {
-  border-color: #64748b;
-  background: #1c293d;
+  border-color: var(--app-muted-strong);
+  background: var(--app-surface-1);
   transform: translateX(0.1rem);
 }
 
 .github-repository-option.selected {
-  border-color: #f97316;
+  border-color: var(--app-accent);
   background: rgb(124 45 18 / 20%);
   box-shadow: inset 0 0 0 1px rgb(249 115 22 / 12%);
 }
@@ -537,8 +536,8 @@ button:disabled {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 0.45rem;
-  background: #263449;
-  color: #cbd5e1;
+  background: var(--app-border-subtle);
+  color: var(--app-text);
   font-size: 0.85rem;
 }
 
@@ -556,18 +555,18 @@ button:disabled {
 }
 
 .github-repository-copy strong {
-  color: #e2e8f0;
+  color: var(--app-text-strong);
   font-size: 0.76rem;
 }
 
 .github-repository-copy small {
-  color: #64748b;
+  color: var(--app-muted-strong);
   font-size: 0.68rem;
 }
 
 .github-repository-check {
   margin-left: auto;
-  color: #fb923c;
+  color: var(--app-accent-hover);
   font-weight: 900;
 }
 
@@ -580,7 +579,7 @@ button:disabled {
   min-height: 2.7rem;
   border-radius: 0.5rem;
   padding: 0.6rem 0.7rem;
-  color: #94a3b8;
+  color: var(--app-muted);
   font-size: 0.72rem;
 }
 
@@ -591,7 +590,7 @@ button:disabled {
 .github-repositories-error {
   justify-content: space-between;
   background: rgb(248 113 113 / 8%);
-  color: #fca5a5;
+  color: var(--app-danger-text);
 }
 
 .github-repositories-error-actions {
@@ -605,7 +604,7 @@ button:disabled {
   border: 0;
   padding: 0.25rem;
   background: transparent;
-  color: #fb923c;
+  color: var(--app-accent-hover);
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
@@ -614,13 +613,13 @@ button:disabled {
 }
 
 .text-action-button:hover {
-  color: #fdba74;
+  color: var(--app-accent-soft);
 }
 
 .clone-field {
   display: grid;
   gap: 0.45rem;
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -628,12 +627,12 @@ button:disabled {
 .clone-field input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0.7rem 0.75rem;
   outline: 0;
-  background: #111827;
-  color: #f9fafb;
+  background: var(--app-surface-0);
+  color: var(--app-text-bright);
   font: inherit;
   font-size: 0.8rem;
   font-weight: 400;
@@ -641,11 +640,11 @@ button:disabled {
 }
 
 .clone-field input::placeholder {
-  color: #6b7280;
+  color: var(--app-muted-strong);
 }
 
 .clone-field input:focus {
-  border-color: #f97316;
+  border-color: var(--app-accent);
   box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
 }
 
@@ -679,19 +678,19 @@ button:disabled {
 
 .destination-button,
 .modal-secondary-button {
-  background: #374151;
-  color: #e5e7eb;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
 }
 
 .destination-button:hover:not(:disabled),
 .modal-secondary-button:hover:not(:disabled) {
-  background: #4b5563;
+  background: var(--app-border-strong);
   transform: translateY(-1px);
 }
 
 .clone-hint {
   margin: -0.25rem 0 0;
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.74rem;
   line-height: 1.4;
 }
@@ -699,10 +698,10 @@ button:disabled {
 .clone-progress {
   display: grid;
   gap: 0.7rem;
-  border: 1px solid #31507a;
+  border: 1px solid var(--app-info);
   border-radius: 0.65rem;
   padding: 0.8rem;
-  background: #12213a;
+  background: var(--app-info-surface);
 }
 
 .clone-progress-heading {
@@ -710,7 +709,7 @@ button:disabled {
   align-items: start;
   justify-content: space-between;
   gap: 0.75rem;
-  color: #bfdbfe;
+  color: var(--app-info-text);
   font-size: 0.75rem;
 }
 
@@ -728,13 +727,13 @@ button:disabled {
 }
 
 .clone-progress-copy strong {
-  color: #dbeafe;
+  color: var(--app-info-text);
   font-size: 0.78rem;
 }
 
 .clone-progress-copy small {
   overflow: hidden;
-  color: #93c5fd;
+  color: var(--app-info-text);
   font-size: 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -744,7 +743,7 @@ button:disabled {
   width: 0.85rem;
   height: 0.85rem;
   flex: 0 0 auto;
-  border: 2px solid #3b82f6;
+  border: 2px solid var(--app-info);
   border-right-color: transparent;
   border-radius: 50%;
   animation: clone-spinner-rotation 720ms linear infinite;
@@ -754,24 +753,24 @@ button:disabled {
   height: 0.4rem;
   overflow: hidden;
   border-radius: 999px;
-  background: #1e3a5f;
+  background: var(--app-info-surface);
 }
 
 .clone-progress-track span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  background: linear-gradient(90deg, var(--app-info), var(--app-info));
   transition: width 180ms ease;
 }
 
 .clone-cancel-button {
   justify-self: start;
-  border: 1px solid #48617f;
+  border: 1px solid var(--app-info);
   border-radius: 0.45rem;
   padding: 0.45rem 0.65rem;
   background: transparent;
-  color: #bfdbfe;
+  color: var(--app-info-text);
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
@@ -779,8 +778,8 @@ button:disabled {
 }
 
 .clone-cancel-button:hover:not(:disabled) {
-  border-color: #93c5fd;
-  background: #1e3a5f;
+  border-color: var(--app-info-text);
+  background: var(--app-info-surface);
 }
 
 .repository-modal-actions {
@@ -791,12 +790,12 @@ button:disabled {
 }
 
 .modal-primary-button {
-  background: #f97316;
-  color: #111827;
+  background: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 .modal-primary-button:hover:not(:disabled) {
-  background: #fb923c;
+  background: var(--app-accent-hover);
   transform: translateY(-1px);
 }
 

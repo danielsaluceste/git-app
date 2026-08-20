@@ -16,3 +16,36 @@ pub fn toggle_devtools(app: AppHandle) {
         }
     }
 }
+
+#[tauri::command]
+pub fn set_window_theme_effect(window: tauri::WebviewWindow, _theme: String) {
+    #[cfg(target_os = "windows")]
+    {
+        if _theme == "glassmorphism" {
+            if window_vibrancy::apply_acrylic(&window, Some((15, 17, 20, 45))).is_err() {
+                if window_vibrancy::apply_mica(&window, Some(true)).is_err() {
+                    let _ = window_vibrancy::apply_blur(&window, Some((15, 17, 20, 45)));
+                }
+            }
+        } else {
+            let _ = window_vibrancy::clear_acrylic(&window);
+            let _ = window_vibrancy::clear_mica(&window);
+            let _ = window_vibrancy::clear_tabbed(&window);
+            let _ = window_vibrancy::clear_blur(&window);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if theme == "glassmorphism" {
+            let _ = window_vibrancy::apply_vibrancy(
+                &window,
+                window_vibrancy::NSVisualEffectMaterial::HudWindow,
+                Some(window_vibrancy::NSVisualEffectState::Active),
+                Some(14.0),
+            );
+        } else {
+            let _ = window_vibrancy::clear_vibrancy(&window);
+        }
+    }
+}

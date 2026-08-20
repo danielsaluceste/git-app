@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   min-height: 100vh;
 }
@@ -6,12 +6,36 @@
 .app-shell {
   --main-sidebar-width: 240px;
   --repository-sidebar-width: 0px;
+  position: relative;
+  isolation: isolate;
   display: flex;
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: #111827;
-  color: #e5e7eb;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/* Mantém o backdrop dentro da moldura real do app, sem atingir a área
+ * transparente externa da janela Tauri. */
+.app-shell::before {
+  position: absolute;
+  z-index: 1090;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  background: var(--app-modal-overlay);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  backdrop-filter: blur(var(--app-modal-blur));
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+.app-shell:has(dialog[open])::before {
+  opacity: 1;
+  visibility: visible;
 }
 
 .app-shell.main-sidebar-collapsed {
@@ -26,59 +50,7 @@
   --codex-sidebar-width: 360px;
 }
 
-.codex-resizable-panel {
-  position: relative;
-  display: flex;
-  width: var(--codex-sidebar-width, 360px);
-  min-width: 300px;
-  max-width: 620px;
-  height: 100vh;
-  flex: 0 0 var(--codex-sidebar-width, 360px);
-}
-
-.codex-resizable-panel app-codex-sidebar {
-  width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.codex-resize-handle {
-  position: absolute;
-  z-index: 10;
-  top: 0;
-  bottom: 0;
-  left: -0.25rem;
-  width: 0.5rem;
-  cursor: col-resize;
-}
-
-.codex-resize-handle::after {
-  position: absolute;
-  top: 50%;
-  left: 0.2rem;
-  width: 0.12rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  background: transparent;
-  content: "";
-  transform: translateY(-50%);
-  transition: background 140ms ease, height 140ms ease;
-}
-
-.codex-resize-handle:hover::after,
-.app-shell.codex-resizing .codex-resize-handle::after {
-  height: 3.5rem;
-  background: #f97316;
-}
-
-.app-shell.codex-resizing,
-.app-shell.codex-resizing * {
-  cursor: col-resize !important;
-  user-select: none !important;
-}
-
 .workspace {
-  position: relative;
   display: flex;
   flex: 1;
   height: 100vh;
@@ -95,7 +67,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 1.5rem;
-  scrollbar-color: #374151 transparent;
+  scrollbar-color: var(--app-border) transparent;
   scrollbar-width: thin;
 }
 
@@ -111,28 +83,11 @@
 .content::-webkit-scrollbar-thumb {
   border: 0.2rem solid transparent;
   border-radius: 999px;
-  background: #374151;
+  background: var(--app-border);
   background-clip: content-box;
 }
 
 .content::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: var(--app-muted-strong);
   background-clip: content-box;
-}
-
-@media (max-width: 900px) {
-  .codex-resizable-panel {
-    position: absolute;
-    z-index: 25;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(var(--codex-sidebar-width, 360px), 92vw);
-    max-width: 92vw;
-    height: 100vh;
-  }
-
-  .codex-resize-handle {
-    display: none;
-  }
 }

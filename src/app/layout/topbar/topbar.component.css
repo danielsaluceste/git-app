@@ -1,12 +1,14 @@
-.topbar {
+﻿.topbar {
   display: flex;
+  position: relative;
+  z-index: 100;
   min-height: 3rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0 0 0 1rem;
-  border-bottom: 1px solid #263244;
-  background: #111827;
+  border-bottom: var(--app-panel-border);
+  background: var(--app-surface-0);
   user-select: none;
 }
 
@@ -28,15 +30,15 @@
   border-radius: 0.4rem;
   padding: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font-size: 1.1rem;
   transition: background 140ms ease, color 140ms ease;
 }
 
 .main-sidebar-button:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
 }
 
 .sidebar-toggle-icon {
@@ -52,29 +54,35 @@
 
 .window-title {
   display: flex;
-  align-items: center;
   min-height: 3rem;
   flex: 1;
+  align-items: center;
   gap: 0.65rem;
 }
 
-.brand-mark-luna {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
-.brand-luna-icon {
-  width: 1.45rem;
-  height: 1.45rem;
+.brand-mark {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  background: var(--app-accent);
+  box-shadow: 2px 2px 0 var(--app-shadow-color);
+  color: var(--app-on-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .brand-name {
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.window-drag-region {
+  flex: 1;
+  min-height: 3rem;
 }
 
 .topbar-actions,
@@ -107,30 +115,6 @@
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.terminal-launch-button {
-  app-region: no-drag;
-  display: grid;
-  width: 2.4rem;
-  height: 2.4rem;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: #38bdf8;
-  cursor: pointer;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 0.85rem;
-  font-weight: 700;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.terminal-launch-button:hover,
-.terminal-launch-button.is-active {
-  border-color: #0369a1;
-  background: #0c2d48;
-  color: #bae6fd;
-}
-
 .codex-launch-button:hover,
 .codex-launch-button.is-active {
   border-color: #854d0e;
@@ -146,19 +130,19 @@
   place-items: center;
   border: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease;
 }
 
 .window-control:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
 }
 
 .window-control.close:hover {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--app-danger);
+  color: var(--app-on-surface);
 }
 
 .minimize span {

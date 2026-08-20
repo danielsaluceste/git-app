@@ -78,7 +78,8 @@ pub fn run() {
             commands::watcher::watch_repository,
             commands::watcher::unwatch_repository,
             commands::system::ping,
-            commands::system::toggle_devtools
+            commands::system::toggle_devtools,
+            commands::system::set_window_theme_effect
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

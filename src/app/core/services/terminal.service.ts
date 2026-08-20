@@ -28,21 +28,11 @@ export class TerminalService {
   private unlistenOutput?: UnlistenFn;
   private unlistenExit?: UnlistenFn;
   private isInitialized = false;
+  private isCreatingTab = false;
   private tabCounter = 1;
 
   constructor() {
     void this.init();
-
-    // When active repository changes and drawer is open but no tabs exist, create a tab in new cwd
-    effect(() => {
-      const repo = this.repositoryService.activeRepository();
-      const open = this.isDrawerOpen();
-      untracked(() => {
-        if (open && repo && this.tabs().length === 0) {
-          void this.createTab(repo.path);
-        }
-      });
-    });
   }
 
   async init(): Promise<void> {
@@ -96,7 +86,7 @@ export class TerminalService {
 
   openDrawer(): void {
     this.isDrawerOpen.set(true);
-    if (this.tabs().length === 0) {
+    if (this.tabs().length === 0 && !this.isCreatingTab) {
       const currentPath = this.repositoryService.activeRepository()?.path || "";
       void this.createTab(currentPath);
     }
@@ -121,6 +111,11 @@ export class TerminalService {
   }
 
   async createTab(cwd?: string, shellId?: string, rows?: number, cols?: number): Promise<TerminalTab | undefined> {
+    if (this.isCreatingTab) {
+      return undefined;
+    }
+    this.isCreatingTab = true;
+
     const effectiveCwd = cwd || this.repositoryService.activeRepository()?.path || "";
     const effectiveShell = shellId || this.selectedShellId();
     const tabNum = this.tabCounter++;
@@ -152,6 +147,8 @@ export class TerminalService {
     } catch (error) {
       console.error("Erro ao criar sessão de terminal:", error);
       return undefined;
+    } finally {
+      this.isCreatingTab = false;
     }
   }
 

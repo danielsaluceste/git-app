@@ -38,28 +38,10 @@ export class StashesPageComponent implements OnInit {
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
   private fileDiffRequestId = 0;
-  private lastLoadedRepoKey = "";
-  private lastLoadedRefreshVersion = -1;
-
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
-
-    if (!repository) {
-      this.isLoading.set(false);
-      this.lastLoadedRepoKey = "";
-      return;
-    }
-
-    const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
-    const isNewRepo = repoKey !== this.lastLoadedRepoKey;
-    const isNewVersion = refreshVersion !== this.lastLoadedRefreshVersion;
-
-    if (isNewRepo || isNewVersion || !this.references()) {
-      this.lastLoadedRepoKey = repoKey;
-      this.lastLoadedRefreshVersion = refreshVersion;
-      untracked(() => void this.loadReferences(repository));
-    }
+    this.repositoryService.repositoryRefreshVersion();
+    untracked(() => void this.loadReferences(repository));
   });
 
   private readonly closeMissingSelection = effect(() => {

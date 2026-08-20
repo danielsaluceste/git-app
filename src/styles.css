@@ -1,19 +1,250 @@
-@import "@xterm/xterm/css/xterm.css";
+﻿@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
 
-/* Tipografia local e consistente para o aplicativo desktop. */
+:root,
+:root[data-theme="default"] {
+  color-scheme: dark;
+  --app-bg: #111827;
+  --app-surface-0: #111827;
+  --app-surface-1: #1f2937;
+  --app-surface-2: #172033;
+  --app-surface-3: #131c2d;
+  --app-surface-hover: #263754;
+  --app-border: #374151;
+  --app-border-strong: #4b5563;
+  --app-border-subtle: #263244;
+  --app-text: #d1d5db;
+  --app-text-strong: #e5e7eb;
+  --app-text-bright: #f9fafb;
+  --app-muted: #9ca3af;
+  --app-muted-strong: #6b7280;
+  --app-accent: #f97316;
+  --app-accent-hover: #fb923c;
+  --app-accent-soft: #fdba74;
+  --app-accent-pale: #fed7aa;
+  --app-accent-surface: #4a2d14;
+  --app-accent-border: #7c4a1d;
+  --app-yellow: #fbbf24;
+  --app-ink-on-accent: #111827;
+  --app-positive: #34d399;
+  --app-positive-strong: #6ee7b7;
+  --app-positive-surface: #123b2e;
+  --app-positive-border: #286047;
+  --app-danger: #dc2626;
+  --app-danger-surface: #450a0a;
+  --app-danger-text: #fca5a5;
+  --app-info: #38bdf8;
+  --app-info-surface: #172554;
+  --app-info-text: #93c5fd;
+  --app-purple: #c4b5fd;
+  --app-white: #ffffff;
+  --app-font-body: "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif;
+  --app-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --app-control-radius: 0.45rem;
+  --app-small-radius: 0.4rem;
+  --app-panel-radius: 0.75rem;
+  --app-control-border: 1px solid var(--app-border);
+  --app-panel-border: 1px solid var(--app-border-subtle);
+  --app-shadow-color: rgb(0 0 0 / 35%);
+  --app-small-shadow: 2px 2px 0 var(--app-shadow-color);
+  --app-panel-shadow: 0 1rem 2.5rem var(--app-shadow-color);
+  --app-on-accent: #111827;
+  --app-on-surface: #ffffff;
+  --app-secondary-bg: #374151;
+  --app-secondary-text: #f9fafb;
+  --app-toast-bg: #172033;
+  --app-toast-text: #f9fafb;
+  --app-dialog-bg: #172033;
+  --app-dialog-text: #e5e7eb;
+  --app-dark-button-shadow: #f9fafb;
+  --app-modal-overlay: rgb(3 7 18 / 68%);
+  --app-modal-blur: 14px;
+}
+
+:root[data-theme="neo-brutalist"] {
+  color-scheme: light;
+  --app-bg: #fff0d3;
+  --app-surface-0: #f8e7c8;
+  --app-surface-1: #fff8eb;
+  --app-surface-2: #f9dfb4;
+  --app-surface-3: #f2d09d;
+  --app-surface-hover: #ffd27d;
+  --app-border: #211e1b;
+  --app-border-strong: #211e1b;
+  --app-border-subtle: #c8af8d;
+  --app-text: #51463d;
+  --app-text-strong: #211e1b;
+  --app-text-bright: #211e1b;
+  --app-muted: #6e655d;
+  --app-muted-strong: #897565;
+  --app-accent: #f0523f;
+  --app-accent-hover: #d94030;
+  --app-accent-soft: #c9362b;
+  --app-accent-pale: #98261e;
+  --app-accent-surface: #ffc3b7;
+  --app-accent-border: #211e1b;
+  --app-yellow: #ffc467;
+  --app-ink-on-accent: #211e1b;
+  --app-positive: #278b57;
+  --app-positive-strong: #166534;
+  --app-positive-surface: #d7f0dc;
+  --app-positive-border: #278b57;
+  --app-danger: #c9362b;
+  --app-danger-surface: #ffd8d2;
+  --app-danger-text: #8d211a;
+  --app-info: #317b9b;
+  --app-info-surface: #d9edf4;
+  --app-info-text: #245f7a;
+  --app-purple: #6d4c9b;
+  --app-white: #ffffff;
+  --app-font-body: "Sora", "Segoe UI", Inter, system-ui, sans-serif;
+  --app-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --app-control-radius: 999px;
+  --app-small-radius: 0.55rem;
+  --app-panel-radius: 1rem;
+  --app-control-border: 2px solid var(--app-border);
+  --app-panel-border: 3px solid var(--app-border);
+  --app-shadow-color: #211e1b;
+  --app-small-shadow: 3px 3px 0 var(--app-shadow-color);
+  --app-panel-shadow: 7px 7px 0 var(--app-shadow-color);
+  --app-on-accent: #211e1b;
+  --app-on-surface: #211e1b;
+  --app-secondary-bg: #211e1b;
+  --app-secondary-text: #fffaf1;
+  --app-toast-bg: #fffaf1;
+  --app-toast-text: #211e1b;
+  --app-dialog-bg: #fffaf1;
+  --app-dialog-text: #211e1b;
+  --app-dark-button-shadow: #fff3dc;
+  --app-modal-overlay: rgb(33 30 27 / 72%);
+  --app-modal-blur: 14px;
+  --app-sidebar-bg: #d94332;
+  --app-sidebar-text: #fff8eb;
+  --app-sidebar-muted: #ffe4d6;
+  --app-sidebar-hover: rgb(33 30 27 / 15%);
+  --app-sidebar-active: #ffc467;
+}
+
+:root[data-theme="glassmorphism"] {
+  color-scheme: dark;
+  --app-bg: #0b0c0f;
+  --app-surface-0: rgb(20 22 25 / 42%);
+  --app-surface-1: rgb(30 32 36 / 48%);
+  --app-surface-2: rgb(24 26 29 / 40%);
+  --app-surface-3: rgb(255 255 255 / 5%);
+  --app-surface-hover: rgb(255 255 255 / 10%);
+  --app-border: rgb(255 255 255 / 22.2%);
+  --app-border-strong: rgb(255 255 255 / 45.4%);
+  --app-border-subtle: rgb(255 255 255 / 14%);
+  --app-text: rgb(255 255 255 / 78%);
+  --app-text-strong: rgb(255 255 255 / 90%);
+  --app-text-bright: #ffffff;
+  --app-muted: rgb(238 238 242 / 66%);
+  --app-muted-strong: rgb(224 224 230 / 48%);
+  --app-accent: #d5d6dc;
+  --app-accent-hover: #ffffff;
+  --app-accent-soft: #f2f2f4;
+  --app-accent-pale: #ffffff;
+  --app-accent-surface: rgb(255 255 255 / 13%);
+  --app-accent-border: rgb(255 255 255 / 36%);
+  --app-yellow: #f2f2f4;
+  --app-ink-on-accent: #17181c;
+  --app-positive: #70e6ba;
+  --app-positive-strong: #a4f5d4;
+  --app-positive-surface: rgb(77 221 168 / 17%);
+  --app-positive-border: rgb(122 244 195 / 42%);
+  --app-danger: #ff778b;
+  --app-danger-surface: rgb(255 92 119 / 20%);
+  --app-danger-text: #ffc4ce;
+  --app-info: #73d7ff;
+  --app-info-surface: rgb(64 186 255 / 18%);
+  --app-info-text: #b9ecff;
+  --app-purple: #dedee4;
+  --app-white: #ffffff;
+  --app-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Segoe UI", sans-serif;
+  --app-font-mono: "SF Mono", "IBM Plex Mono", Consolas, monospace;
+  --app-control-radius: 0.55rem;
+  --app-small-radius: 0.45rem;
+  --app-panel-radius: 0.8rem;
+  --app-control-border: 1px solid var(--app-border);
+  --app-panel-border: 1px solid var(--app-border-subtle);
+  --app-shadow-color: rgb(0 0 0 / 32%);
+  --app-small-shadow: 0 0.6rem 1.5rem rgb(0 0 0 / 16%);
+  --app-panel-shadow: 0 1.4rem 3.5rem rgb(0 0 0 / 28%);
+  --app-on-accent: #17181c;
+  --app-on-surface: #ffffff;
+  --app-secondary-bg: rgb(255 255 255 / 12%);
+  --app-secondary-text: #ffffff;
+  --app-toast-bg: rgb(27 28 34 / 82%);
+  --app-toast-text: #ffffff;
+  --app-dialog-bg: rgb(19 20 24 / 86%);
+  --app-dialog-text: #ffffff;
+  --app-dark-button-shadow: rgb(255 255 255 / 12%);
+  --app-modal-overlay: rgb(0 0 0 / 62%);
+  --app-modal-blur: 28px;
+  /* Parâmetro de teste do fundo global: experimente 0px, 16px, 28px, 40px... */
+  --app-global-background-blur: 28px;
+  --app-glass-blur: 36px;
+  --app-glass-saturate: 105%;
+  --app-workspace-surface: rgb(20 22 25 / 42%);
+  --app-sidebar-bg: rgb(255 255 255 / 7.4%);
+  --app-sidebar-text: #ffffff;
+  --app-sidebar-muted: rgb(239 243 255 / 70%);
+  --app-sidebar-hover: rgb(255 255 255 / 12%);
+  --app-sidebar-active: rgb(255 255 255 / 16%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
+  height: 100%;
   min-height: 100%;
   margin: 0;
 }
 
 body {
-  background: #111827;
-  color: #e5e7eb;
-  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  min-width: 320px;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font-body);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background 240ms ease, color 240ms ease;
+}
+
+:root[data-theme="neo-brutalist"] body {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
+    var(--app-bg);
+}
+
+:root[data-theme="glassmorphism"] body {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  transition: color 240ms ease;
+}
+
+:root[data-theme="glassmorphism"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-theme="glassmorphism"] .app-shell {
+  background: transparent;
+}
+
+:root[data-theme="glassmorphism"] .app-shell::after {
+  display: none;
+}
+
+:root[data-theme="neo-brutalist"] .app-shell {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
+    var(--app-bg);
 }
 
 button,
@@ -23,12 +254,201 @@ select {
   font: inherit;
 }
 
-* {
-  box-sizing: border-box;
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  outline: none;
+  line-height: 1.2;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--app-accent-hover);
+  outline-offset: 3px;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--app-yellow);
+  color: var(--app-ink-on-accent);
+}
+
+.app-root {
+  min-height: 100vh;
+}
+
+/* A transparência nativa fica encapsulada no layout. Cada tema define sua
+   própria moldura para não vazar sombra ou margem para o outro tema. */
+:root[data-tauri-window] {
+  background: var(--app-bg);
+}
+
+:root[data-tauri-window] body {
+  padding: 0;
+  overflow: hidden;
+  background: var(--app-bg);
+}
+
+:root[data-tauri-window] app-root {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--app-bg);
+  box-shadow: none;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] {
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] body {
+  padding: 10px 12px 12px 10px;
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] app-root {
+  overflow: hidden;
+  border: 3px solid var(--app-border);
+  border-radius: calc(var(--app-panel-radius) + 0.2rem);
+  background: var(--app-bg);
+  box-shadow: 10px 10px 0 var(--app-shadow-color);
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] {
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] body {
+  padding: 10px 12px 12px 10px;
+  background: transparent;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 1.35rem;
+  background: transparent;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  background: rgb(15 17 20 / 26%);
+  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
+  backdrop-filter: blur(var(--app-global-background-blur));
+  content: "";
+  pointer-events: none;
+}
+
+:root[data-tauri-window][data-theme="glassmorphism"] app-root app-shell {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-tauri-window] app-shell,
+:root[data-tauri-window] app-shell .app-shell,
+:root[data-tauri-window] app-shell .workspace,
+:root[data-tauri-window] app-shell app-sidebar,
+:root[data-tauri-window] app-shell app-repository-sidebar,
+:root[data-tauri-window] app-shell .sidebar,
+:root[data-tauri-window] app-shell .repository-sidebar {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+:root[data-tauri-window] app-shell .app-shell {
+  border-radius: 0;
+  overflow: hidden;
+}
+
+:root[data-tauri-window][data-theme="neo-brutalist"] app-shell .app-shell {
+  border-radius: var(--app-panel-radius);
 }
 
 .page {
-  animation: page-enter 260ms ease-out both;
+  view-transition-name: route-page;
+}
+
+/* No glass, a entrada acontece no elemento real da rota. Isso mantém o shell
+ * e o fundo glass fora de qualquer snapshot de transição, evitando a dupla
+ * composição semitransparente que alterava o preto entre telas. */
+:root[data-theme="glassmorphism"] .page {
+  view-transition-name: none;
+  animation: glass-route-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+::view-transition-old(route-page),
+::view-transition-new(route-page) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center top;
+}
+
+::view-transition-old(route-page) {
+  animation-name: route-page-leave;
+}
+
+::view-transition-new(route-page) {
+  animation-name: route-page-enter;
+}
+
+@keyframes route-page-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.995);
+  }
+}
+
+@keyframes route-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glass-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="glassmorphism"] .page {
+    animation: none;
+  }
 }
 
 .app-tooltip {
@@ -48,7 +468,7 @@ select {
   bottom: calc(100% + 0.3rem);
   left: 50%;
   border: 0.35rem solid transparent;
-  border-top-color: #374151;
+  border-top-color: var(--app-border);
   content: "";
   transform: translate(-50%, 0.35rem);
 }
@@ -59,12 +479,12 @@ select {
   left: 50%;
   width: max-content;
   max-width: 17rem;
-  border: 1px solid #374151;
-  border-radius: 0.45rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-small-radius);
   padding: 0.5rem 0.7rem;
-  background: #1f2937;
-  box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 28%);
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  box-shadow: var(--app-panel-shadow);
+  color: var(--app-text-bright);
   content: attr(data-tooltip);
   font-size: 0.78rem;
   font-weight: 600;
@@ -79,15 +499,6 @@ select {
 .app-tooltip:focus-visible::before,
 .app-tooltip:focus-visible::after {
   opacity: 1;
-}
-
-.app-tooltip:hover::before,
-.app-tooltip:focus-visible::before {
-  transform: translate(-50%, 0);
-}
-
-.app-tooltip:hover::after,
-.app-tooltip:focus-visible::after {
   transform: translate(-50%, 0);
 }
 
@@ -100,6 +511,1032 @@ select {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Camada de acabamento neo brutalista: volumes, bordas expressivas e estados com contraste semântico. */
+:root[data-theme="neo-brutalist"] .sidebar {
+  border-right: 3px solid var(--app-border) !important;
+  background: var(--app-sidebar-bg) !important;
+  box-shadow: 4px 0 0 var(--app-shadow-color) !important;
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar .brand,
+:root[data-theme="neo-brutalist"] .sidebar .collapse-button {
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar .brand-mark {
+  background: var(--app-yellow) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a {
+  color: var(--app-sidebar-muted) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a:hover,
+:root[data-theme="neo-brutalist"] .sidebar .collapse-button:hover {
+  background: var(--app-sidebar-hover) !important;
+  color: var(--app-sidebar-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .sidebar a.active {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-sidebar-active) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-sidebar {
+  border-right: 3px solid var(--app-border) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 4px 0 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .topbar {
+  min-height: 3.35rem;
+  border-bottom: 3px solid var(--app-border) !important;
+  background: var(--app-surface-1) !important;
+}
+
+:root[data-theme="neo-brutalist"] .brand-mark,
+:root[data-theme="neo-brutalist"] .sidebar-brand-mark,
+:root[data-theme="neo-brutalist"] .repository-mark {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-avatar,
+:root[data-theme="neo-brutalist"] .account-avatar {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar.is-scrolled {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: var(--app-panel-shadow) !important;
+  backdrop-filter: none;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar .sync-button,
+:root[data-theme="neo-brutalist"] .overview-action-bar .refresh-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-3) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .overview-action-bar .sync-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .overview-action-bar .refresh-button:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-hover) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row {
+  border-width: 2px !important;
+  border-radius: var(--app-small-radius) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row:hover,
+:root[data-theme="neo-brutalist"] .commit-row.selected {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-3) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-row.selected .graph-node,
+:root[data-theme="neo-brutalist"] .commit-row:hover .graph-node {
+  border-color: var(--app-border) !important;
+  background: var(--app-accent) !important;
+  box-shadow: 0 0 0 3px var(--app-surface-3) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-file-row:hover,
+:root[data-theme="neo-brutalist"] .commit-context-menu button:hover {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-3) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .settings-card,
+:root[data-theme="neo-brutalist"] .integration-card,
+:root[data-theme="neo-brutalist"] .repository-card,
+:root[data-theme="neo-brutalist"] .repository-modal,
+:root[data-theme="neo-brutalist"] .github-clone-panel,
+:root[data-theme="neo-brutalist"] .graph-panel,
+:root[data-theme="neo-brutalist"] .history-panel,
+:root[data-theme="neo-brutalist"] .files-panel,
+:root[data-theme="neo-brutalist"] .staged-panel,
+:root[data-theme="neo-brutalist"] .commit-panel,
+:root[data-theme="neo-brutalist"] .conflict-panel,
+:root[data-theme="neo-brutalist"] .branch-form-panel,
+:root[data-theme="neo-brutalist"] .stash-detail-panel,
+:root[data-theme="neo-brutalist"] .file-list-panel,
+:root[data-theme="neo-brutalist"] .diff-panel,
+:root[data-theme="neo-brutalist"] .commit-details,
+:root[data-theme="neo-brutalist"] .device-flow-panel,
+:root[data-theme="neo-brutalist"] .no-account-state,
+:root[data-theme="neo-brutalist"] .empty-state,
+:root[data-theme="neo-brutalist"] .workspace-menu,
+:root[data-theme="neo-brutalist"] .branch-context-menu,
+:root[data-theme="neo-brutalist"] .file-context-menu,
+:root[data-theme="neo-brutalist"] .commit-context-menu {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-modal {
+  background: var(--app-surface-1) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-modal-header {
+  border-bottom: 2px solid var(--app-border-subtle) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-2) !important;
+  box-shadow: 5px 5px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(3px, 3px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-option-icon,
+:root[data-theme="neo-brutalist"] .modal-close-button,
+:root[data-theme="neo-brutalist"] .refresh-repositories-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-close-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .refresh-repositories-button:hover:not(:disabled) {
+  background: var(--app-yellow) !important;
+  color: var(--app-ink-on-accent) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-back-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.55rem 0.85rem !important;
+  background: var(--app-secondary-bg) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-secondary-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .modal-back-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  color: var(--app-secondary-text) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .clone-cancel-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-info-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .clone-cancel-button:hover:not(:disabled) {
+  border-color: var(--app-border) !important;
+  background: var(--app-info-surface) !important;
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details {
+  background: linear-gradient(155deg, #fff8eb 0%, #f3d49f 100%) !important;
+  box-shadow: 8px 8px 0 var(--app-shadow-color), 0 0 0 1px var(--app-border) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .details-heading {
+  margin: -0.15rem -0.15rem 1rem;
+  padding: 0.15rem 0.15rem 0.85rem;
+  border-bottom: 2px solid var(--app-border-subtle);
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .details-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--app-border);
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
+  line-height: 1;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .hash-value {
+  color: var(--app-accent-pale) !important;
+  font-weight: 700;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .branch-create-button {
+  background: var(--app-accent) !important;
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .branch-create-button span {
+  color: var(--app-ink-on-accent) !important;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details code {
+  border: 2px solid var(--app-border);
+  border-radius: 0.45rem;
+  padding: 0.28rem 0.45rem;
+  background: var(--app-yellow);
+  color: var(--app-ink-on-accent);
+  font-weight: 800;
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .changed-files {
+  border: 2px solid var(--app-border-subtle);
+  border-radius: var(--app-small-radius);
+  padding: 0.85rem;
+  background: var(--app-surface-1);
+  box-shadow: 3px 3px 0 rgb(33 30 27 / 28%);
+}
+
+:root[data-theme="neo-brutalist"] .commit-details .commit-file-row {
+  border-width: 2px;
+  border-radius: var(--app-small-radius);
+}
+
+:root[data-theme="neo-brutalist"] .settings-card-heading,
+:root[data-theme="neo-brutalist"] .integration-card-heading,
+:root[data-theme="neo-brutalist"] .repository-modal-header,
+:root[data-theme="neo-brutalist"] .history-panel-heading {
+  border-bottom: 2px solid var(--app-border-subtle) !important;
+}
+
+/* Autenticação remota: selected é o estado ativo pressionado; o estado comum
+ * fica alto e o hover simula a pressão antes da ativação. */
+:root[data-theme="neo-brutalist"] .auth-option:not(.selected) {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-surface-2) !important;
+  box-shadow: 6px 6px 0 var(--app-shadow-color) !important;
+  transform: none !important;
+}
+
+:root[data-theme="neo-brutalist"] .auth-option:not(.selected):hover {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .auth-option.selected,
+:root[data-theme="neo-brutalist"] .auth-option.selected:hover,
+:root[data-theme="neo-brutalist"] .auth-option.selected:focus-visible {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .empty-state {
+  border-style: dashed !important;
+  background: var(--app-surface-2) !important;
+}
+
+:root[data-theme="neo-brutalist"] .primary-button,
+:root[data-theme="neo-brutalist"] .create-button,
+:root[data-theme="neo-brutalist"] .branch-create-button,
+:root[data-theme="neo-brutalist"] .commit-button,
+:root[data-theme="neo-brutalist"] .connect-button,
+:root[data-theme="neo-brutalist"] .save-button,
+:root[data-theme="neo-brutalist"] .modal-primary-button,
+:root[data-theme="neo-brutalist"] .confirm-button:not(.cancel-button),
+:root[data-theme="neo-brutalist"] .stash-dialog-confirm,
+:root[data-theme="neo-brutalist"] .sidebar-confirm-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-on-accent) !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease !important;
+}
+
+:root[data-theme="neo-brutalist"] .primary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .create-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .branch-create-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .commit-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .connect-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .save-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .modal-primary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .confirm-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .stash-dialog-confirm:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .sidebar-confirm-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-shadow-color) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .secondary-button,
+:root[data-theme="neo-brutalist"] .cancel-button,
+:root[data-theme="neo-brutalist"] .stash-dialog-cancel,
+:root[data-theme="neo-brutalist"] .sidebar-cancel-button,
+:root[data-theme="neo-brutalist"] .modal-secondary-button,
+:root[data-theme="neo-brutalist"] .destination-button {
+  border: 2px solid var(--app-border) !important;
+  border-radius: 999px !important;
+  background: var(--app-secondary-bg) !important;
+  box-shadow: 3px 3px 0 var(--app-dark-button-shadow) !important;
+  color: var(--app-secondary-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .secondary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .cancel-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .stash-dialog-cancel:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .sidebar-cancel-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .modal-secondary-button:hover:not(:disabled),
+:root[data-theme="neo-brutalist"] .destination-button:hover:not(:disabled) {
+  box-shadow: 1px 1px 0 var(--app-dark-button-shadow) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+:root[data-theme="neo-brutalist"] .repository-sidebar a.active {
+  border: 2px solid var(--app-border) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: 3px 3px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="neo-brutalist"] textarea,
+:root[data-theme="neo-brutalist"] select {
+  border: 2px solid var(--app-border) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: var(--app-surface-1) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast,
+:root[data-theme="neo-brutalist"] .dialog,
+:root[data-theme="neo-brutalist"] .stash-dialog,
+:root[data-theme="neo-brutalist"] .diff-dialog,
+:root[data-theme="neo-brutalist"] .conflict-dialog {
+  border: 3px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: var(--app-toast-bg) !important;
+  box-shadow: var(--app-panel-shadow), 0 0 18px rgb(33 30 27 / 18%) !important;
+  color: var(--app-toast-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .dialog,
+:root[data-theme="neo-brutalist"] .stash-dialog,
+:root[data-theme="neo-brutalist"] .diff-dialog,
+:root[data-theme="neo-brutalist"] .conflict-dialog {
+  color: var(--app-dialog-text) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast-copy strong,
+:root[data-theme="neo-brutalist"] .toast-copy p,
+:root[data-theme="neo-brutalist"] .toast-close,
+:root[data-theme="neo-brutalist"] .dialog h2,
+:root[data-theme="neo-brutalist"] .dialog p,
+:root[data-theme="neo-brutalist"] .stash-dialog h2,
+:root[data-theme="neo-brutalist"] .stash-dialog p,
+:root[data-theme="neo-brutalist"] .diff-dialog h2,
+:root[data-theme="neo-brutalist"] .conflict-dialog h2 {
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast {
+  padding: 1rem 1rem 1.1rem;
+}
+
+:root[data-theme="neo-brutalist"] .toast-icon,
+:root[data-theme="neo-brutalist"] .dialog-icon,
+:root[data-theme="neo-brutalist"] .settings-icon,
+:root[data-theme="neo-brutalist"] .ai-icon {
+  border: 2px solid var(--app-border) !important;
+  box-shadow: 2px 2px 0 var(--app-shadow-color) !important;
+}
+
+:root[data-theme="neo-brutalist"] .toast-progress {
+  height: 0.25rem;
+}
+
+/* O blur compartilhado fica no app-shell. O ::backdrop nativo é transparente
+ * para não pintar também a área transparente ao redor da janela. */
+.dialog::backdrop,
+.stash-dialog::backdrop,
+.diff-dialog::backdrop,
+.conflict-dialog::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+}
+
+/* O modal de repositório usa uma camada própria para manter o conteúdo nítido
+ * e aplicar o mesmo overlay dos demais diálogos. */
+.repository-modal-backdrop {
+  background: var(--app-modal-overlay) !important;
+  backdrop-filter: blur(var(--app-modal-blur)) !important;
+}
+
+/* Liquid Glass: superfícies translúcidas, reflexo superior e profundidade
+ * baseada em blur. A camada é global para alcançar os componentes Angular
+ * encapsulados sem duplicar o mesmo acabamento em cada feature. */
+:root[data-theme="glassmorphism"] .sidebar,
+:root[data-theme="glassmorphism"] .repository-sidebar,
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs,
+:root[data-theme="glassmorphism"] .codex-sidebar {
+  border-color: var(--app-border-subtle) !important;
+  background: var(--app-workspace-surface) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 5%), 0 1.2rem 3rem rgb(0 0 0 / 12%);
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 0.7rem 2.2rem rgb(0 0 0 / 10%);
+}
+
+:root[data-theme="glassmorphism"] .workspace,
+:root[data-theme="glassmorphism"] .content {
+  background: transparent !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark,
+:root[data-theme="glassmorphism"] .sidebar-brand-mark,
+:root[data-theme="glassmorphism"] .repository-mark,
+:root[data-theme="glassmorphism"] .codex-mark,
+:root[data-theme="glassmorphism"] .codex-empty-icon,
+:root[data-theme="glassmorphism"] .codex-install-icon,
+:root[data-theme="glassmorphism"] .settings-icon,
+:root[data-theme="glassmorphism"] .ai-icon,
+:root[data-theme="glassmorphism"] .toast-icon,
+:root[data-theme="glassmorphism"] .dialog-icon {
+  border: 1px solid rgb(255 255 255 / 28%) !important;
+  border-radius: 0.55rem !important;
+  background: rgb(255 255 255 / 6%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 0.5rem 1.2rem rgb(0 0 0 / 16%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] svg,
+:root[data-theme="glassmorphism"] .nav-icon,
+:root[data-theme="glassmorphism"] .branch-icon,
+:root[data-theme="glassmorphism"] .branch-action-icon,
+:root[data-theme="glassmorphism"] .file-action-icon,
+:root[data-theme="glassmorphism"] .diff-icon,
+:root[data-theme="glassmorphism"] .codex-launch-button,
+:root[data-theme="glassmorphism"] .icon-button,
+:root[data-theme="glassmorphism"] .close-button,
+:root[data-theme="glassmorphism"] .details-close-button {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .codex-launch-button:hover,
+:root[data-theme="glassmorphism"] .codex-launch-button.is-active {
+  border-color: rgb(255 255 255 / 34%) !important;
+  background: rgb(255 255 255 / 13%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark {
+  border-radius: 0.55rem !important;
+  background: rgb(255 255 255 / 7%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 8px rgb(255 255 255 / 38%);
+}
+
+:root[data-theme="glassmorphism"] .sidebar .brand,
+:root[data-theme="glassmorphism"] .sidebar .collapse-button,
+:root[data-theme="glassmorphism"] .sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row,
+:root[data-theme="glassmorphism"] .nav-icon,
+:root[data-theme="glassmorphism"] .window-title,
+:root[data-theme="glassmorphism"] .window-title svg,
+:root[data-theme="glassmorphism"] .codex-title-copy strong,
+:root[data-theme="glassmorphism"] .codex-close-button {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar a,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row,
+:root[data-theme="glassmorphism"] .collapse-button,
+:root[data-theme="glassmorphism"] .main-sidebar-button,
+:root[data-theme="glassmorphism"] .window-control,
+:root[data-theme="glassmorphism"] .codex-close-button,
+:root[data-theme="glassmorphism"] .repository-tab-close {
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a:hover,
+:root[data-theme="glassmorphism"] .sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar a:hover,
+:root[data-theme="glassmorphism"] .repository-sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar .reference-row:hover,
+:root[data-theme="glassmorphism"] .collapse-button:hover,
+:root[data-theme="glassmorphism"] .main-sidebar-button:hover,
+:root[data-theme="glassmorphism"] .window-control:hover,
+:root[data-theme="glassmorphism"] .codex-close-button:hover {
+  border-color: rgb(255 255 255 / 22%) !important;
+  background: rgb(255 255 255 / 13%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 0.4rem 1rem rgb(0 0 0 / 12%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .sidebar a.active,
+:root[data-theme="glassmorphism"] .repository-sidebar a.active {
+  background: rgb(255 255 255 / 10%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 0.45rem 1.3rem rgb(0 0 0 / 20%);
+}
+
+:root[data-theme="glassmorphism"] .repository-tab {
+  border-color: transparent !important;
+  border-radius: 0.55rem 0.55rem 0 0;
+}
+
+:root[data-theme="glassmorphism"] .repository-tab:hover,
+:root[data-theme="glassmorphism"] .repository-tab.active {
+  border-color: var(--app-border-subtle) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%);
+}
+
+:root[data-theme="glassmorphism"] .repository-tab.active .repository-tab-dot {
+  background: var(--app-accent-hover) !important;
+  box-shadow: 0 0 0 0.22rem rgb(255 255 255 / 18%), 0 0 0.7rem rgb(255 255 255 / 32%);
+}
+
+:root[data-theme="glassmorphism"] .branch-summary,
+:root[data-theme="glassmorphism"] .reference-panel,
+:root[data-theme="glassmorphism"] .state-panel,
+:root[data-theme="glassmorphism"] .fixed-layout-panel,
+:root[data-theme="glassmorphism"] .ours-card,
+:root[data-theme="glassmorphism"] .theirs-card,
+:root[data-theme="glassmorphism"] .version-card,
+:root[data-theme="glassmorphism"] .result-card,
+:root[data-theme="glassmorphism"] .local-panel,
+:root[data-theme="glassmorphism"] .codex-status-card,
+:root[data-theme="glassmorphism"] .message-content,
+:root[data-theme="glassmorphism"] .codex-composer {
+  border: 1px solid var(--app-border-subtle) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: rgb(255 255 255 / 7%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
+  backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-small-shadow);
+}
+
+:root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .panel,
+:root[data-theme="glassmorphism"] .reference-panel,
+:root[data-theme="glassmorphism"] .integration-card,
+:root[data-theme="glassmorphism"] .repository-card,
+:root[data-theme="glassmorphism"] .repository-modal,
+:root[data-theme="glassmorphism"] .github-clone-panel,
+:root[data-theme="glassmorphism"] .graph-panel,
+:root[data-theme="glassmorphism"] .history-panel,
+:root[data-theme="glassmorphism"] .files-panel,
+:root[data-theme="glassmorphism"] .staged-panel,
+:root[data-theme="glassmorphism"] .commit-panel,
+:root[data-theme="glassmorphism"] .conflict-panel,
+:root[data-theme="glassmorphism"] .branch-form-panel,
+:root[data-theme="glassmorphism"] .stash-detail-panel,
+:root[data-theme="glassmorphism"] .file-list-panel,
+:root[data-theme="glassmorphism"] .diff-panel,
+:root[data-theme="glassmorphism"] .commit-details,
+:root[data-theme="glassmorphism"] .device-flow-panel,
+:root[data-theme="glassmorphism"] .no-account-state,
+:root[data-theme="glassmorphism"] .empty-state,
+:root[data-theme="glassmorphism"] .workspace-menu,
+:root[data-theme="glassmorphism"] .branch-context-menu,
+:root[data-theme="glassmorphism"] .file-context-menu,
+:root[data-theme="glassmorphism"] .commit-context-menu,
+:root[data-theme="glassmorphism"] .toast,
+:root[data-theme="glassmorphism"] .dialog,
+:root[data-theme="glassmorphism"] .stash-dialog,
+:root[data-theme="glassmorphism"] .diff-dialog,
+:root[data-theme="glassmorphism"] .conflict-dialog {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: rgb(30 32 36 / 48%) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .settings-card-heading,
+:root[data-theme="glassmorphism"] .integration-card-heading,
+:root[data-theme="glassmorphism"] .repository-modal-header,
+:root[data-theme="glassmorphism"] .history-panel-heading,
+:root[data-theme="glassmorphism"] .codex-header,
+:root[data-theme="glassmorphism"] .codex-cli-status {
+  border-color: var(--app-border-subtle) !important;
+}
+
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .modal-primary-button,
+:root[data-theme="glassmorphism"] .confirm-button:not(.cancel-button),
+:root[data-theme="glassmorphism"] .stash-dialog-confirm,
+:root[data-theme="glassmorphism"] .sidebar-confirm-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-send-button,
+:root[data-theme="glassmorphism"] .codex-stop-button,
+:root[data-theme="glassmorphism"] .operation-continue-button,
+:root[data-theme="glassmorphism"] .operation-resolve-button {
+  border: 1px solid rgb(255 255 255 / 42%) !important;
+  border-radius: var(--app-control-radius) !important;
+  background: rgb(255 255 255 / 12%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 0.55rem 1.25rem rgb(0 0 0 / 28%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 36%);
+}
+
+:root[data-theme="glassmorphism"] .primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .create-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .branch-create-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .commit-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .connect-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .save-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .modal-primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .confirm-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .stash-dialog-confirm:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .sidebar-confirm-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-primary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-send-button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 17%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 0.7rem 1.5rem rgb(0 0 0 / 34%) !important;
+  transform: translateY(-1px);
+}
+
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .stash-dialog-cancel,
+:root[data-theme="glassmorphism"] .sidebar-cancel-button,
+:root[data-theme="glassmorphism"] .modal-secondary-button,
+:root[data-theme="glassmorphism"] .destination-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button,
+:root[data-theme="glassmorphism"] .back-button {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-control-radius) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), 0 0.4rem 1rem rgb(0 0 0 / 14%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .cancel-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .stash-dialog-cancel:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .sidebar-cancel-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .modal-secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .destination-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .codex-secondary-button:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .back-button:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 38%) !important;
+  background: rgb(255 255 255 / 17%) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+:root[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="glassmorphism"] textarea,
+:root[data-theme="glassmorphism"] select,
+:root[data-theme="glassmorphism"] .model-picker-toggle,
+:root[data-theme="glassmorphism"] .language-picker-toggle {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-control-radius) !important;
+  background: rgb(255 255 255 / 5.5%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 0.35rem 1rem rgb(0 0 0 / 10%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]):focus,
+:root[data-theme="glassmorphism"] textarea:focus,
+:root[data-theme="glassmorphism"] select:focus,
+:root[data-theme="glassmorphism"] .model-picker-toggle:focus-visible,
+:root[data-theme="glassmorphism"] .language-picker-toggle:focus-visible {
+  border-color: rgb(255 255 255 / 62%) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 13%), inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+:root[data-theme="glassmorphism"] .language-options {
+  border-color: var(--app-border) !important;
+  background: rgb(30 32 36 / 72%) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), var(--app-panel-shadow) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--app-text) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button:hover,
+:root[data-theme="glassmorphism"] .language-options button.selected {
+  border-color: var(--app-border-strong) !important;
+  background: var(--app-accent-surface) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .language-options button.selected span:last-child {
+  color: var(--app-accent-hover) !important;
+}
+
+/* Controles flutuantes precisam de uma superfície mais densa que os painéis
+ * amplos para preservar a leitura sobre o conteúdo atrás deles. */
+:root[data-theme="glassmorphism"] .codex-session-selector {
+  border-color: var(--app-border) !important;
+  background: rgb(30 32 36 / 72%) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 0.35rem 1rem rgb(0 0 0 / 18%) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:root[data-theme="glassmorphism"] .codex-session-selector:hover,
+:root[data-theme="glassmorphism"] .codex-session-selector.is-open {
+  border-color: var(--app-border-strong) !important;
+  background: rgb(42 44 48 / 78%) !important;
+}
+
+:root[data-theme="glassmorphism"] .codex-session-menu {
+  border-color: var(--app-border) !important;
+  background: rgb(24 26 29 / 86%) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-panel-shadow) !important;
+}
+
+:root[data-theme="glassmorphism"] .codex-session-option.is-active {
+  background: rgb(255 255 255 / 14%) !important;
+}
+
+:root[data-theme="glassmorphism"] .commit-row:hover,
+:root[data-theme="glassmorphism"] .commit-row.selected,
+:root[data-theme="glassmorphism"] .repository-option:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .auth-option.selected,
+:root[data-theme="glassmorphism"] .auth-option.selected:hover,
+:root[data-theme="glassmorphism"] .file-action-button:hover,
+:root[data-theme="glassmorphism"] .reference-item.current,
+:root[data-theme="glassmorphism"] .reference-item:hover:not(.pressed) {
+  border-color: rgb(255 255 255 / 32%) !important;
+  border-radius: var(--app-small-radius) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 0.45rem 1.1rem rgb(0 0 0 / 18%);
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .repository-option,
+:root[data-theme="glassmorphism"] .auth-option:not(.selected),
+:root[data-theme="glassmorphism"] .model-option,
+:root[data-theme="glassmorphism"] .theme-settings-option {
+  border: 1px solid var(--app-border-subtle) !important;
+  border-radius: var(--app-panel-radius) !important;
+  background: rgb(255 255 255 / 7%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 0.45rem 1.1rem rgb(0 0 0 / 10%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .repository-option:hover:not(:disabled),
+:root[data-theme="glassmorphism"] .auth-option:not(.selected):hover,
+:root[data-theme="glassmorphism"] .theme-settings-option:hover,
+:root[data-theme="glassmorphism"] .theme-settings-option.selected {
+  border-color: rgb(255 255 255 / 38%) !important;
+  background: rgb(255 255 255 / 14%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 0.65rem 1.4rem rgb(0 0 0 / 20%) !important;
+  transform: translateY(-2px);
+}
+
+:root[data-theme="glassmorphism"] .model-option.selected {
+  border-color: var(--app-border-strong) !important;
+  background: var(--app-accent-surface) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 0.45rem 1.1rem rgb(0 0 0 / 18%) !important;
+}
+
+:root[data-theme="glassmorphism"] .theme-settings-preview {
+  border: 1px solid rgb(255 255 255 / 38%) !important;
+  border-radius: 0.7rem !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 0.4rem 0.8rem rgb(0 0 0 / 15%) !important;
+}
+
+:root[data-theme="glassmorphism"] .toast-copy strong,
+:root[data-theme="glassmorphism"] .toast-copy p,
+:root[data-theme="glassmorphism"] .toast-close,
+:root[data-theme="glassmorphism"] .dialog h2,
+:root[data-theme="glassmorphism"] .dialog p,
+:root[data-theme="glassmorphism"] .stash-dialog h2,
+:root[data-theme="glassmorphism"] .stash-dialog p,
+:root[data-theme="glassmorphism"] .diff-dialog h2,
+:root[data-theme="glassmorphism"] .conflict-dialog h2,
+:root[data-theme="glassmorphism"] .codex-empty-state h3,
+:root[data-theme="glassmorphism"] .codex-install-state h3 {
+  color: #ffffff !important;
+}
+
+:root[data-theme="glassmorphism"] .window-control.close:hover {
+  background: rgb(150 55 70 / 72%) !important;
+  color: #ffffff !important;
+}
+
+/* O vidro não usa brilho especular: apenas translucidez, blur e sombra preta
+ * muito discreta para separar as camadas. */
+:root[data-theme="glassmorphism"] .sidebar,
+:root[data-theme="glassmorphism"] .repository-sidebar,
+:root[data-theme="glassmorphism"] .topbar,
+:root[data-theme="glassmorphism"] .repository-tabs,
+:root[data-theme="glassmorphism"] .codex-sidebar,
+:root[data-theme="glassmorphism"] .settings-card,
+:root[data-theme="glassmorphism"] .panel,
+:root[data-theme="glassmorphism"] .integration-card,
+:root[data-theme="glassmorphism"] .repository-card,
+:root[data-theme="glassmorphism"] .graph-panel,
+:root[data-theme="glassmorphism"] .history-panel,
+:root[data-theme="glassmorphism"] .files-panel,
+:root[data-theme="glassmorphism"] .commit-panel,
+:root[data-theme="glassmorphism"] .workspace-menu,
+:root[data-theme="glassmorphism"] .dialog,
+:root[data-theme="glassmorphism"] .stash-dialog,
+:root[data-theme="glassmorphism"] .diff-dialog,
+:root[data-theme="glassmorphism"] .conflict-dialog {
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 18%) !important;
+}
+
+:root[data-theme="glassmorphism"] .brand-mark,
+:root[data-theme="glassmorphism"] .sidebar-brand-mark,
+:root[data-theme="glassmorphism"] .repository-mark,
+:root[data-theme="glassmorphism"] .codex-mark,
+:root[data-theme="glassmorphism"] .settings-icon,
+:root[data-theme="glassmorphism"] .ai-icon,
+:root[data-theme="glassmorphism"] .toast-icon,
+:root[data-theme="glassmorphism"] .dialog-icon,
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button {
+  box-shadow: 0 0.35rem 0.9rem rgb(0 0 0 / 16%) !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme="glassmorphism"] .app-root,
+:root[data-theme="glassmorphism"] app-root,
+:root[data-tauri-window][data-theme="glassmorphism"] app-root {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  background: transparent !important;
+}
+
+:root[data-theme="glassmorphism"] .app-shell,
+:root[data-theme="glassmorphism"] .workspace {
+  background: transparent !important;
+}
+
+:root[data-theme="glassmorphism"] .app-shell {
+  /* A base do vidro pertence ao shell persistente, não à rota. Assim a
+   * troca entre Visão geral, Alterações e as demais telas não muda a cor
+   * do fundo nem repinta uma superfície diferente. */
+  background: var(--app-workspace-surface) !important;
+  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+}
+
+:root[data-theme="glassmorphism"] .content {
+  /* O shell persistente já fornece a superfície global. */
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-theme="glassmorphism"] app-root::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  background: rgb(15 17 20 / 26%);
+  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
+  backdrop-filter: blur(var(--app-global-background-blur));
+  content: "";
+  pointer-events: none;
+}
+
+:root[data-theme="glassmorphism"] app-root app-shell {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme="glassmorphism"] * {
+  text-shadow: none !important;
+}
+
+:root[data-theme="glassmorphism"] .stash-header-button,
+:root[data-theme="glassmorphism"] .refresh-button,
+:root[data-theme="glassmorphism"] .sync-button,
+:root[data-theme="glassmorphism"] .primary-button,
+:root[data-theme="glassmorphism"] .secondary-button,
+:root[data-theme="glassmorphism"] .create-button,
+:root[data-theme="glassmorphism"] .commit-button,
+:root[data-theme="glassmorphism"] .connect-button,
+:root[data-theme="glassmorphism"] .save-button,
+:root[data-theme="glassmorphism"] .branch-create-button,
+:root[data-theme="glassmorphism"] .modal-primary-button,
+:root[data-theme="glassmorphism"] .modal-secondary-button,
+:root[data-theme="glassmorphism"] .confirm-button,
+:root[data-theme="glassmorphism"] .cancel-button,
+:root[data-theme="glassmorphism"] .destination-button,
+:root[data-theme="glassmorphism"] .back-button,
+:root[data-theme="glassmorphism"] .codex-primary-button,
+:root[data-theme="glassmorphism"] .codex-secondary-button,
+:root[data-theme="glassmorphism"] .codex-send-button,
+:root[data-theme="glassmorphism"] .codex-stop-button,
+:root[data-theme="glassmorphism"] .operation-resolve-button,
+:root[data-theme="glassmorphism"] .operation-continue-button,
+:root[data-theme="glassmorphism"] .operation-abort-button,
+:root[data-theme="glassmorphism"] .file-action-button,
+:root[data-theme="glassmorphism"] .text-button {
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+:root[data-theme="glassmorphism"] .app-tooltip::after,
+:root[data-theme="glassmorphism"] .sidebar a[data-tooltip]::after {
+  border-color: var(--app-border) !important;
+  background: rgb(28 29 34 / 86%) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--app-panel-shadow) !important;
+  color: #ffffff !important;
+}
+
+/* O wrapper só organiza o painel fixo; o vidro deve ficar no .commit-panel,
+ * evitando uma segunda moldura vazia atrás dele. */
+:root[data-theme="glassmorphism"] .fixed-layout-panel {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-theme="glassmorphism"] ::selection {
+  background: rgb(255 255 255 / 28%);
+  color: #ffffff;
+}
+
+/* O toast fica sempre destacado da moldura da janela, inclusive no Tauri. */
+:root[data-tauri-window] .toast-container {
+  position: fixed !important;
+  inset: auto 24px 24px auto !important;
+  width: min(25rem, calc(100vw - 48px)) !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 700px) {
+  :root[data-tauri-window] .toast-container {
+    inset: auto 24px 24px !important;
+    width: auto !important;
   }
 }
 

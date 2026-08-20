@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   flex: 1 1 auto;
   min-height: 0;
@@ -20,10 +20,19 @@
   overflow: hidden;
 }
 
+:host-context(:root[data-theme="neo-brutalist"]) .fixed-layout-content {
+  overflow: visible;
+}
+
 .fixed-layout-panel {
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .fixed-layout-panel {
+  padding: 0.5rem 0.5rem 0.7rem;
+  overflow: visible;
 }
 
 .fixed-layout-panel-bleed {

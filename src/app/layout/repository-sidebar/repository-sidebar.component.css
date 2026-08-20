@@ -1,4 +1,4 @@
-:host {
+﻿:host {
   display: block;
   height: 100vh;
   min-height: 0;
@@ -12,11 +12,11 @@
   flex-direction: column;
   gap: 1rem;
   overflow-y: auto;
-  border-right: 1px solid #263244;
+  border-right: 1px solid var(--app-border-subtle);
   padding: 1.25rem 0.85rem;
-  background: #111827;
-  color: #e5e7eb;
-  scrollbar-color: #374151 transparent;
+  background: var(--app-surface-0);
+  color: var(--app-text-strong);
+  scrollbar-color: var(--app-border) transparent;
   scrollbar-width: thin;
 }
 
@@ -35,8 +35,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 0.55rem;
-  background: #1f2937;
-  color: #f97316;
+  background: var(--app-surface-1);
+  color: var(--app-accent);
 }
 
 .repository-heading-copy {
@@ -47,14 +47,14 @@
 }
 
 .repository-heading-copy span {
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.68rem;
   text-transform: uppercase;
 }
 
 .repository-heading-copy strong {
   overflow: hidden;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.85rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -70,7 +70,7 @@
   border-radius: 0.35rem;
   padding: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   line-height: 0;
@@ -88,23 +88,23 @@
 }
 
 .close-repository:hover {
-  background: #374151;
-  color: #f9fafb;
+  background: var(--app-border);
+  color: var(--app-secondary-text);
 }
 
 .branch-summary {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  border: 1px solid #263244;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 0.5rem;
   padding: 0.65rem 0.75rem;
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.8rem;
 }
 
 .branch-icon {
-  color: #34d399;
+  color: var(--app-positive);
 }
 
 nav,
@@ -122,7 +122,7 @@ a,
   border-radius: 0.45rem;
   padding: 0.65rem 0.75rem;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
@@ -134,8 +134,8 @@ a,
 a:hover,
 a.active,
 .reference-row:hover {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
 }
 
 .changes-badge {
@@ -145,11 +145,11 @@ a.active,
   box-sizing: border-box;
   margin-left: auto;
   place-items: center;
-  border: 1px solid #9a5b18;
+  border: 1px solid var(--app-accent-border);
   border-radius: 999px;
   padding: 0 0.3rem;
-  background: #4a2d14;
-  color: #fed7aa;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
@@ -160,22 +160,22 @@ a.active,
   align-items: center;
   gap: 0.25rem;
   margin-left: auto;
-  border: 1px solid #286047;
+  border: 1px solid var(--app-positive-border);
   border-radius: 999px;
   padding: 0.25rem 0.4rem;
-  background: #123b2e;
-  color: #a7f3d0;
+  background: var(--app-positive-surface);
+  color: var(--app-positive-strong);
   font-size: 0.65rem;
   font-weight: 800;
   line-height: 1;
 }
 
 .sync-badge span:first-child {
-  color: #6ee7b7;
+  color: var(--app-positive-strong);
 }
 
 .sync-badge span + span {
-  color: #93c5fd;
+  color: var(--app-info-text);
 }
 
 .reference-chevron {
@@ -195,7 +195,7 @@ a.active,
 
 .reference-count {
   margin-left: auto;
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 0.72rem;
 }
 
@@ -204,7 +204,7 @@ a.active,
   gap: 0.15rem;
   margin: -0.1rem 0 0.2rem 1.15rem;
   padding-left: 0.65rem;
-  border-left: 1px solid #263244;
+  border-left: 1px solid var(--app-border-subtle);
 }
 
 .reference-item {
@@ -217,7 +217,7 @@ a.active,
   padding: 0.45rem 0.55rem;
   overflow: hidden;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
@@ -228,8 +228,8 @@ a.active,
 
 .reference-item:hover,
 .reference-item.current {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
 }
 
 .reference-item.branch-dragging {
@@ -238,10 +238,10 @@ a.active,
 }
 
 .reference-item.branch-drop-target {
-  border: 1px solid #f97316;
-  background: #3a2518;
+  border: 1px solid var(--app-accent);
+  background: var(--app-accent-surface);
   box-shadow: 0 0 0 2px rgb(249 115 22 / 12%);
-  color: #ffedd5;
+  color: var(--app-accent-pale);
 }
 
 .reference-item > span:last-child {
@@ -259,35 +259,35 @@ a.active,
 }
 
 .branch-dot {
-  background: #34d399;
+  background: var(--app-positive);
 }
 
 .remote-dot {
-  background: #38bdf8;
+  background: var(--app-info);
 }
 
 .tag-dot,
 .stash-dot {
   width: 0.55rem;
   flex: 0 0 0.55rem;
-  color: #fbbf24;
+  color: var(--app-yellow);
   font-size: 0.5rem;
 }
 
 .stash-dot {
-  color: #c4b5fd;
+  color: var(--app-purple);
 }
 
 .reference-status,
 .reference-error,
 .reference-empty {
   padding: 0.45rem 0.75rem;
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 0.72rem;
 }
 
 .reference-error {
-  color: #fca5a5;
+  color: var(--app-danger-text);
 }
 
 .reference-section {
@@ -304,7 +304,7 @@ a.active,
 
 .section-heading {
   padding: 0.5rem 0.75rem;
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -319,7 +319,7 @@ a.active,
   border: 1px solid transparent;
   border-radius: 0.35rem;
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
   cursor: pointer;
   font: inherit;
   font-size: 1rem;
@@ -328,9 +328,9 @@ a.active,
 }
 
 .reference-sync-button:hover:not(:disabled) {
-  border-color: #374151;
-  background: #1f2937;
-  color: #f9fafb;
+  border-color: var(--app-border);
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
   transform: rotate(45deg);
 }
 
@@ -347,32 +347,32 @@ a.active,
   display: grid;
   gap: 0.45rem;
   margin: 0 0.25rem 0.45rem;
-  border: 1px solid #7c4a1d;
+  border: 1px solid var(--app-accent-border);
   border-radius: 0.5rem;
   padding: 0.65rem;
-  background: #1d2738;
+  background: var(--app-surface-2);
 }
 
 .sidebar-branch-form label {
-  color: #d1d5db;
+  color: var(--app-text);
   font-size: 0.7rem;
   font-weight: 700;
 }
 
 .sidebar-branch-form input {
   width: 100%;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.35rem;
   padding: 0.48rem 0.55rem;
   outline: 0;
-  background: #111827;
-  color: #f9fafb;
+  background: var(--app-surface-0);
+  color: var(--app-text-bright);
   font: inherit;
   font-size: 0.72rem;
 }
 
 .sidebar-branch-form input:focus {
-  border-color: #fb923c;
+  border-color: var(--app-accent-hover);
   box-shadow: 0 0 0 2px rgb(249 115 22 / 14%);
 }
 
@@ -384,7 +384,7 @@ a.active,
 
 .sidebar-cancel-button,
 .sidebar-confirm-button {
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.35rem;
   padding: 0.4rem 0.55rem;
   cursor: pointer;
@@ -395,23 +395,23 @@ a.active,
 
 .sidebar-cancel-button {
   background: transparent;
-  color: #9ca3af;
+  color: var(--app-muted);
 }
 
 .sidebar-confirm-button {
-  border-color: #9a5b18;
-  background: #4a2d14;
-  color: #fed7aa;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
 }
 
 .sidebar-cancel-button:hover:not(:disabled) {
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
 }
 
 .sidebar-confirm-button:hover:not(:disabled) {
-  border-color: #fb923c;
-  background: #6b3b14;
+  border-color: var(--app-accent-hover);
+  background: var(--app-accent-surface);
 }
 
 .reference-item.remote-reference {
@@ -419,8 +419,8 @@ a.active,
 }
 
 .reference-item.remote-reference:hover {
-  background: #172554;
-  color: #dbeafe;
+  background: var(--app-info-surface);
+  color: var(--app-info-text);
 }
 
 .remote-branch-name {
@@ -437,13 +437,13 @@ a.active,
 }
 
 .sidebar-branch-form-heading strong {
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.74rem;
 }
 
 .sidebar-branch-form-heading span {
   overflow: hidden;
-  color: #93c5fd;
+  color: var(--app-info-text);
   font-size: 0.65rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -456,10 +456,10 @@ a.active,
   width: 248px;
   gap: 0.3rem;
   box-sizing: border-box;
-  border: 1px solid #374151;
+  border: 1px solid var(--app-border);
   border-radius: 0.65rem;
   padding: 0.4rem;
-  background: #172033;
+  background: var(--app-surface-2);
   box-shadow: 0 18px 45px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 3%);
   animation: branch-context-menu-in 140ms ease-out;
 }
@@ -469,9 +469,9 @@ a.active,
 }
 
 .rebase-context-icon {
-  border-color: #a78bfa;
-  background: #2e1065;
-  color: #ddd6fe;
+  border-color: var(--app-purple);
+  background: var(--app-accent-surface);
+  color: var(--app-purple);
 }
 
 .branch-context-heading {
@@ -480,11 +480,11 @@ a.active,
   gap: 0.15rem;
   margin: 0.15rem 0.35rem 0.3rem;
   padding-bottom: 0.45rem;
-  border-bottom: 1px solid #2d3a4f;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .branch-context-kicker {
-  color: #6b7280;
+  color: var(--app-muted-strong);
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -492,7 +492,7 @@ a.active,
 
 .branch-context-heading strong {
   overflow: hidden;
-  color: #f9fafb;
+  color: var(--app-text-bright);
   font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -507,7 +507,7 @@ a.active,
   border-radius: 0.45rem;
   padding: 0.55rem 0.5rem;
   background: transparent;
-  color: #d1d5db;
+  color: var(--app-text);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -515,8 +515,8 @@ a.active,
 }
 
 .branch-context-menu button:hover {
-  background: #263754;
-  color: #f9fafb;
+  background: var(--app-surface-hover);
+  color: var(--app-text-bright);
 }
 
 .context-menu-icon {
@@ -525,24 +525,24 @@ a.active,
   height: 1.55rem;
   flex: 0 0 1.55rem;
   place-items: center;
-  border: 1px solid #3b82f6;
+  border: 1px solid var(--app-info);
   border-radius: 0.4rem;
-  background: #172554;
-  color: #93c5fd;
+  background: var(--app-info-surface);
+  color: var(--app-info-text);
   font-size: 0.95rem;
   line-height: 1;
 }
 
 .branch-context-menu button:last-child .context-menu-icon {
-  border-color: #9a5b18;
-  background: #4a2d14;
-  color: #fdba74;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
 }
 
 .branch-context-menu .delete-context-icon {
-  border-color: #991b1b;
-  background: #450a0a;
-  color: #fca5a5;
+  border-color: var(--app-danger);
+  background: var(--app-danger-surface);
+  color: var(--app-danger-text);
 }
 
 .branch-context-menu button > span:last-child {
@@ -557,7 +557,7 @@ a.active,
 }
 
 .branch-context-menu button small {
-  color: #9ca3af;
+  color: var(--app-muted);
   font-size: 0.61rem;
 }
 
