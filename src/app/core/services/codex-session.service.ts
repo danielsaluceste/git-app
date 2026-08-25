@@ -4,8 +4,11 @@ import { Repository } from "../models/repository.model";
 
 const STORAGE_KEY = "git-app.codex-sessions";
 const MAX_SESSIONS_PER_REPOSITORY = 20;
-const MAX_MESSAGES_PER_SESSION = 80;
-const MAX_MESSAGE_LENGTH = 40_000;
+const MAX_MESSAGES_PER_SESSION = 32;
+const MAX_MESSAGE_LENGTH = 16_000;
+const MAX_PERSISTED_SESSIONS = 8;
+const MAX_PERSISTED_MESSAGES_PER_SESSION = 20;
+const MAX_PERSISTED_MESSAGE_LENGTH = 8_000;
 
 interface StoredCodexState {
   sessions: CodexSession[];
@@ -15,6 +18,13 @@ interface StoredCodexState {
 @Injectable({ providedIn: "root" })
 export class CodexSessionService {
   private state: StoredCodexState = this.load();
+  private persistTimer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => this.persistNow(), { once: true });
+    }
+  }
 
   sessionsFor(repository: Repository): CodexSession[] {
     const key = this.repositoryKey(repository);
@@ -50,7 +60,14 @@ export class CodexSessionService {
       allowEdits: false,
     };
 
-    this.state.sessions = [session, ...this.sessionsFor(repository)].slice(0, MAX_SESSIONS_PER_REPOSITORY);
+    const otherRepositorySessions = this.state.sessions.filter(
+      (item) => item.repositoryKey !== session.repositoryKey,
+    );
+    const repositorySessions = [session, ...this.sessionsFor(repository)].slice(
+      0,
+      MAX_SESSIONS_PER_REPOSITORY,
+    );
+    this.state.sessions = [...otherRepositorySessions, ...repositorySessions];
     this.state.activeByRepository[session.repositoryKey] = session.id;
     this.persist();
     return session;
@@ -72,10 +89,13 @@ export class CodexSessionService {
       return;
     }
 
-    session.messages = messages.slice(-MAX_MESSAGES_PER_SESSION).map((message) => ({
-      ...message,
-      content: message.content.slice(0, MAX_MESSAGE_LENGTH),
-    }));
+    session.messages = messages
+      .filter((message): message is CodexMessage => this.isMessage(message))
+      .slice(-MAX_MESSAGES_PER_SESSION)
+      .map((message) => ({
+        ...message,
+        content: message.content.slice(0, MAX_MESSAGE_LENGTH),
+      }));
     session.updatedAt = new Date().toISOString();
 
     const firstUserMessage = session.messages.find((message) => message.role === "user");
@@ -93,6 +113,28 @@ export class CodexSessionService {
     }
 
     session.allowEdits = allowEdits;
+    this.persist();
+  }
+
+  saveModel(sessionId: string, model: string | undefined): void {
+    const session = this.find(sessionId);
+    if (!session) {
+      return;
+    }
+
+    session.model = model?.trim() || undefined;
+    session.updatedAt = new Date().toISOString();
+    this.persist();
+  }
+
+  saveReasoningEffort(sessionId: string, reasoningEffort: string | undefined): void {
+    const session = this.find(sessionId);
+    if (!session) {
+      return;
+    }
+
+    session.reasoningEffort = reasoningEffort?.trim() || undefined;
+    session.updatedAt = new Date().toISOString();
     this.persist();
   }
 
@@ -192,14 +234,96 @@ export class CodexSessionService {
       typeof session.repositoryPath === "string" &&
       typeof session.title === "string" &&
       Array.isArray(session.messages) &&
+      session.messages.every((message) => this.isMessage(message)) &&
       typeof session.createdAt === "string" &&
       typeof session.updatedAt === "string"
     );
   }
 
-  private persist(): void {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+  private isMessage(value: unknown): value is CodexMessage {
+    if (!value || typeof value !== "object") {
+      return false;
     }
+
+    const message = value as Partial<CodexMessage>;
+    return (
+      typeof message.id === "number" &&
+      (message.role === "user" || message.role === "assistant" || message.role === "error") &&
+      typeof message.content === "string"
+    );
+  }
+
+  private persist(): void {
+    if (this.persistTimer !== undefined) {
+      return;
+    }
+
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = undefined;
+      this.persistNow();
+    }, 100);
+  }
+
+  private persistNow(): void {
+    if (typeof localStorage === "undefined") {
+      return;
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.persistenceState()));
+      return;
+    } catch {
+      // Respostas com diffs podem ocupar bastante espaço. Reduza o histórico
+      // local antes de deixar uma exceção interromper a conversa.
+    }
+
+    const compactedSessions = [...this.state.sessions]
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, 8)
+      .map((session) => ({
+        ...session,
+        messages: session.messages.slice(-24).map((message) => ({
+          ...message,
+          content: message.content.slice(-12_000),
+        })),
+      }));
+
+    this.state.sessions = compactedSessions;
+    this.state.activeByRepository = Object.fromEntries(
+      Object.entries(this.state.activeByRepository).filter(([, sessionId]) =>
+        compactedSessions.some((session) => session.id === sessionId),
+      ),
+    );
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch {
+      // O chat continua funcionando mesmo se o armazenamento do navegador
+      // estiver indisponível ou tiver atingido o limite do WebView.
+    }
+  }
+
+  private persistenceState(): StoredCodexState {
+    const sessions = [...this.state.sessions]
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, MAX_PERSISTED_SESSIONS)
+      .map((session) => ({
+        ...session,
+        messages: session.messages
+          .slice(-MAX_PERSISTED_MESSAGES_PER_SESSION)
+          .map((message) => ({
+            ...message,
+            content: message.content.slice(-MAX_PERSISTED_MESSAGE_LENGTH),
+          })),
+      }));
+
+    return {
+      sessions,
+      activeByRepository: Object.fromEntries(
+        Object.entries(this.state.activeByRepository).filter(([, sessionId]) =>
+          sessions.some((session) => session.id === sessionId),
+        ),
+      ),
+    };
   }
 }

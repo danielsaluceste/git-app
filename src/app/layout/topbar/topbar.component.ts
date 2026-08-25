@@ -13,8 +13,11 @@ export class TopbarComponent {
   @Input() showMainSidebarButton = false;
   @Input() showCodexButton = false;
   @Input() codexOpen = false;
+  @Input() showTerminalButton = false;
+  @Input() terminalOpen = false;
   @Output() mainSidebarRequested = new EventEmitter<void>();
   @Output() codexRequested = new EventEmitter<void>();
+  @Output() terminalRequested = new EventEmitter<void>();
 
   minimize(): Promise<void> {
     return this.runWindowAction((appWindow) => appWindow.minimize());

@@ -16,9 +16,14 @@ export class ThemeService {
   readonly themes = THEME_OPTIONS;
 
   constructor() {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      document.documentElement.dataset["tauriWindow"] = "true";
+    }
+
     const themeId = this.themeState();
     this.applyTheme(themeId);
     void this.applyNativeWindowEffect(themeId);
+    void this.initWindowMaximizedListener();
   }
 
   setTheme(themeId: ThemeId): void {
@@ -76,6 +81,39 @@ export class ThemeService {
       // Linux/Wayland reaches this branch because native window effects are
       // compositor-specific. The in-WebView glass remains available there.
       console.debug("Native window glass is unavailable", error);
+    }
+  }
+
+  private async initWindowMaximizedListener(): Promise<void> {
+    if (
+      typeof window === "undefined" ||
+      !("__TAURI_INTERNALS__" in window)
+    ) {
+      return;
+    }
+
+    try {
+      const currentWindow = getCurrentWindow();
+      const updateMaximized = async () => {
+        try {
+          const isMax = await currentWindow.isMaximized();
+          if (typeof document !== "undefined") {
+            document.documentElement.dataset["maximized"] = String(isMax);
+            if (isMax) {
+              document.documentElement.classList.add("is-maximized");
+            } else {
+              document.documentElement.classList.remove("is-maximized");
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+
+      await updateMaximized();
+      await currentWindow.onResized(updateMaximized);
+    } catch (error) {
+      console.debug("Could not attach window resize listener", error);
     }
   }
 

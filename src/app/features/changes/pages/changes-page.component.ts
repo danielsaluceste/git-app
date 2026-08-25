@@ -71,13 +71,32 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   private statusLoadVersion = 0;
   private statusRefreshTimer: ReturnType<typeof setInterval> | undefined;
   private statusRefreshInFlight = false;
+  private lastLoadedRepoKey = "";
+  private lastLoadedRefreshVersion = -1;
+
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    this.repositoryService.repositoryRefreshVersion();
-    this.repositoryService.repositoryStatus();
+    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+
+    if (!repository) {
+      this.isLoading.set(false);
+      this.status.set(undefined);
+      this.operation.set(undefined);
+      this.lastLoadedRepoKey = "";
+      return;
+    }
+
+    const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
+    const isNewRepo = repoKey !== this.lastLoadedRepoKey;
+    const isNewVersion = refreshVersion !== this.lastLoadedRefreshVersion;
+
     untracked(() => {
       this.restoreCommitDraft(repository);
-      void this.loadStatus(repository, true);
+      if (isNewRepo || isNewVersion || !this.status()) {
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        void this.loadStatus(repository);
+      }
     });
   });
 
@@ -171,6 +190,19 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       }
       this.status.set(repositoryStatus);
       this.operation.set(operation ?? undefined);
+
+      const currentSelected = this.selectedFile();
+      if (currentSelected) {
+        const stillExists = repositoryStatus.files.find((f) => f.path === currentSelected.path);
+        if (stillExists) {
+          this.selectedFile.set(stillExists);
+          void this.refreshSelectedFileDiffQuietly(repository, stillExists);
+        } else {
+          this.selectedFile.set(undefined);
+          this.fileDiff.set("");
+        }
+      }
+
       return true;
     } catch {
       if (!this.isCurrentStatusLoad(repository, loadVersion)) {
@@ -376,6 +408,17 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       this.fileDiffError.set(this.getGitErrorMessage(error));
     } finally {
       this.fileDiffLoading.set(false);
+    }
+  }
+
+  private async refreshSelectedFileDiffQuietly(repository: Repository, file: GitFile): Promise<void> {
+    try {
+      const diff = await this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged);
+      if (this.selectedFile()?.path === file.path) {
+        this.fileDiff.set(diff);
+      }
+    } catch {
+      // Ignorar falhas silenciosas durante auto-refresh
     }
   }
 

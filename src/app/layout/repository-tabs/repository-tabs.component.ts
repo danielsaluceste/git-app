@@ -127,21 +127,7 @@ export class RepositoryTabsComponent {
       this.isSameRepository(this.activeRepository(), repository);
   }
 
-  startPointerDrag(repository: Repository, event: PointerEvent): void {
-    if (event.button !== 0 || this.isCloseButtonTarget(event.target)) {
-      return;
-    }
-
-    this.pressedRepository = repository;
-    this.dragStartX = event.clientX;
-    this.dragStartY = event.clientY;
-    this.draggingRepository.set(undefined);
-    this.dragOverRepository.set(undefined);
-    this.dragOverAfter.set(false);
-  }
-
-  @HostListener("document:pointermove", ["$event"])
-  onPointerMove(event: PointerEvent): void {
+  private readonly onTabDragMove = (event: PointerEvent): void => {
     const pressedRepository = this.pressedRepository;
     if (!pressedRepository) {
       return;
@@ -169,10 +155,9 @@ export class RepositoryTabsComponent {
       this.dragOverRepository.set(undefined);
       this.dragOverAfter.set(false);
     }
-  }
+  };
 
-  @HostListener("document:pointerup", ["$event"])
-  onPointerUp(_event: PointerEvent): void {
+  private readonly onTabDragEnd = (_event: PointerEvent): void => {
     const draggingRepository = this.draggingRepository();
     const wasDragging = !!draggingRepository;
 
@@ -180,14 +165,30 @@ export class RepositoryTabsComponent {
       this.suppressClickUntil = Date.now() + 300;
     }
     this.finishDragging();
-  }
+  };
 
-  @HostListener("document:pointercancel")
-  onPointerCancel(): void {
-    this.finishDragging();
+  startPointerDrag(repository: Repository, event: PointerEvent): void {
+    if (event.button !== 0 || this.isCloseButtonTarget(event.target)) {
+      return;
+    }
+
+    this.pressedRepository = repository;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+    this.draggingRepository.set(undefined);
+    this.dragOverRepository.set(undefined);
+    this.dragOverAfter.set(false);
+
+    document.addEventListener("pointermove", this.onTabDragMove, { passive: true });
+    document.addEventListener("pointerup", this.onTabDragEnd, { once: true });
+    document.addEventListener("pointercancel", this.onTabDragEnd, { once: true });
   }
 
   finishDragging(): void {
+    document.removeEventListener("pointermove", this.onTabDragMove);
+    document.removeEventListener("pointerup", this.onTabDragEnd);
+    document.removeEventListener("pointercancel", this.onTabDragEnd);
+
     this.pressedRepository = undefined;
     this.draggingRepository.set(undefined);
     this.dragOverRepository.set(undefined);

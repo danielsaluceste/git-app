@@ -1,4 +1,5 @@
 ﻿@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
+@import "@xterm/xterm/css/xterm.css";
 
 :root,
 :root[data-theme="default"] {
@@ -380,6 +381,21 @@ a {
 
 :root[data-tauri-window][data-theme="neo-brutalist"] app-shell .app-shell {
   border-radius: var(--app-panel-radius);
+}
+
+/* A moldura desaparece quando a janela desktop está maximizada. */
+:root[data-maximized="true"] body,
+:root.is-maximized body {
+  padding: 0 !important;
+}
+
+:root[data-maximized="true"] app-root,
+:root.is-maximized app-root,
+:root[data-maximized="true"] app-shell .app-shell,
+:root.is-maximized app-shell .app-shell {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .page {

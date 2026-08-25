@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use tauri::State;
 
 const GITHUB_API_VERSION: &str = "2022-11-28";
-const TOKEN_SERVICE: &str = "org.orangit.desktop.github";
+const TOKEN_SERVICE: &str = "org.gitluna.desktop.github";
 
 #[derive(Default)]
 pub struct GithubCredentialState {

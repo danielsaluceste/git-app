@@ -3,9 +3,10 @@ import {
   provideBrowserGlobalErrorListeners,
   provideZoneChangeDetection,
 } from "@angular/core";
-import { provideRouter, withViewTransitions } from "@angular/router";
+import { provideRouter, RouteReuseStrategy, withViewTransitions } from "@angular/router";
 
 import { routes } from "./app.routes";
+import { AppRouteReuseStrategy } from "./core/strategies/app-route-reuse-strategy";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -28,5 +29,6 @@ export const appConfig: ApplicationConfig = {
         },
       }),
     ),
+    { provide: RouteReuseStrategy, useClass: AppRouteReuseStrategy },
   ],
 };

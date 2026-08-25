@@ -6,8 +6,8 @@ import {
   AiModelId,
   getAiModelOption,
 } from "../../../core/models/ai-model.model";
-import { SettingsService } from "../../../core/services/settings.service";
 import { ThemeId } from "../../../core/models/theme.model";
+import { SettingsService } from "../../../core/services/settings.service";
 import { ThemeService } from "../../../core/services/theme.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
@@ -22,6 +22,9 @@ export class SettingsPageComponent {
   private readonly settingsService = inject(SettingsService);
   private readonly themeService = inject(ThemeService);
   private readonly translationService = inject(TranslationService);
+
+  readonly activeTheme = this.themeService.theme;
+  readonly themes = this.themeService.themes;
   readonly aiModels = AI_MODEL_OPTIONS;
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiModel = this.settingsService.aiModel;
@@ -29,14 +32,16 @@ export class SettingsPageComponent {
   modelPickerOpen = false;
   readonly gitCommandNotifications = this.settingsService.gitCommandNotifications;
   readonly notificationSounds = this.settingsService.notificationSounds;
-  readonly themes = this.themeService.themes;
-  readonly activeTheme = this.themeService.theme;
   readonly language = this.settingsService.language;
   readonly languages: Array<{ id: AppLanguage; labelKey: string }> = [
     { id: "pt-BR", labelKey: "language.ptBR" },
     { id: "en", labelKey: "language.en" },
   ];
   languagePickerOpen = false;
+
+  selectTheme(themeId: ThemeId): void {
+    this.themeService.setTheme(themeId);
+  }
 
   toggleAi(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -79,10 +84,6 @@ export class SettingsPageComponent {
   toggleNotificationSounds(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.settingsService.setNotificationSounds(input.checked);
-  }
-
-  selectTheme(themeId: ThemeId): void {
-    this.themeService.setTheme(themeId);
   }
 
   toggleLanguagePicker(): void {

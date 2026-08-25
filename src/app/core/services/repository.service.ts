@@ -1,5 +1,8 @@
-import { Injectable, signal } from "@angular/core";
+import { inject, Injectable, signal } from "@angular/core";
+import { RouteReuseStrategy } from "@angular/router";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { AppRouteReuseStrategy } from "../strategies/app-route-reuse-strategy";
 import {
   LocalRepositoryInfo,
   Repository,
@@ -14,6 +17,7 @@ import {
 } from "../models/repository.model";
 import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
+import { CreateTagRequest, GitTag } from "../models/tag.model";
 
 const STORAGE_KEY = "git-app.repositories";
 const OPEN_REPOSITORIES_KEY = "git-app.open-repositories";
@@ -38,6 +42,7 @@ interface RepositoryCache {
 
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
+  private readonly routeReuseStrategy = inject(RouteReuseStrategy, { optional: true });
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
   private readonly openRepositoriesState = signal<Repository[]>(this.loadOpenRepositories());
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
@@ -49,6 +54,11 @@ export class RepositoryService {
   private readonly pendingReferences = new Map<string, Promise<RepositoryReferences>>();
   private readonly pendingStatuses = new Map<string, Promise<RepositoryStatus>>();
   private readonly pendingOperations = new Map<string, Promise<RepositoryOperation | null>>();
+  private watcherUnlisten?: UnlistenFn;
+
+  constructor() {
+    void this.initWatcherListener();
+  }
 
   readonly repositories = this.repositoriesState.asReadonly();
   readonly openRepositories = this.openRepositoriesState.asReadonly();
@@ -333,25 +343,27 @@ export class RepositoryService {
 
     this.backgroundRefreshes.add(cacheKey);
     try {
-      if (syncRemote) {
-        try {
-          const syncCredentials = this.getSyncCredentials(repository);
-          await this.fetch(
-            repository.path,
-            syncCredentials.workspaceId,
-            syncCredentials.githubUserId,
-          );
-        } catch {
-          // Os dados locais continuam sendo atualizados mesmo sem conexão remota.
-        }
-      }
-
+      // 1. Atualização instantânea dos dados locais
       await Promise.allSettled([
         this.getReferences(repository.path),
         this.getStatus(repository.path),
         this.getOperation(repository.path),
       ]);
       this.repositoryRefreshVersionState.update((version) => version + 1);
+
+      // 2. Fetch remoto assíncrono em segundo plano (sem travar a interface)
+      const syncCredentials = this.getSyncCredentials(repository);
+      void this.fetch(
+        repository.path,
+        syncCredentials.workspaceId,
+        syncCredentials.githubUserId,
+      ).then(async () => {
+        await Promise.allSettled([
+          this.getReferences(repository.path),
+          this.getStatus(repository.path),
+        ]);
+        this.repositoryRefreshVersionState.update((version) => version + 1);
+      }).catch(() => undefined);
     } finally {
       this.backgroundRefreshes.delete(cacheKey);
     }
@@ -387,6 +399,32 @@ export class RepositoryService {
 
   async deleteRemoteBranch(path: string, remoteBranch: string): Promise<void> {
     await invoke("delete_remote_branch", { path, remoteBranch });
+  }
+
+  async getTags(path: string): Promise<GitTag[]> {
+    return invoke<GitTag[]>("get_repository_tags", { path });
+  }
+
+  async createTag(path: string, request: CreateTagRequest): Promise<void> {
+    await invoke("create_repository_tag", {
+      path,
+      name: request.name,
+      commitHash: request.commitHash ?? null,
+      message: request.message ?? null,
+      push: request.push,
+    });
+  }
+
+  async deleteTag(path: string, name: string, deleteRemote = false): Promise<void> {
+    await invoke("delete_repository_tag", { path, name, deleteRemote });
+  }
+
+  async pushTags(path: string): Promise<void> {
+    await invoke("push_repository_tags", { path });
+  }
+
+  async pushTag(path: string, name: string): Promise<void> {
+    await invoke("push_repository_tag", { path, name });
   }
 
   updateAuthentication(
@@ -463,10 +501,78 @@ export class RepositoryService {
   }
 
   setActive(repository: Repository | undefined): void {
+    const prev = this.activeRepositoryState();
+    const isDifferent =
+      !prev ||
+      !repository ||
+      prev.path !== repository.path ||
+      prev.workspaceId !== repository.workspaceId;
+
+    if (isDifferent && this.routeReuseStrategy instanceof AppRouteReuseStrategy) {
+      this.routeReuseStrategy.clearHandles();
+    }
+
     this.activeRepositoryState.set(repository);
     this.repositoryStatusState.set(repository ? this.getCachedStatus(repository.path) : undefined);
     this.repositoryReferencesState.set(repository ? this.getCachedReferences(repository.path) : undefined);
     this.persistActiveRepository(repository);
+
+    if (repository) {
+      void this.watchRepository(repository.path);
+    } else {
+      void this.unwatchRepository();
+    }
+  }
+
+  async watchRepository(path: string): Promise<void> {
+    try {
+      await invoke("watch_repository", { path });
+    } catch (error) {
+      console.warn("Falha ao iniciar file watcher:", error);
+    }
+  }
+
+  async unwatchRepository(): Promise<void> {
+    try {
+      await invoke("unwatch_repository");
+    } catch (error) {
+      console.warn("Falha ao parar file watcher:", error);
+    }
+  }
+
+  private async initWatcherListener(): Promise<void> {
+    try {
+      this.watcherUnlisten = await listen<{ path: string }>(
+        "repository-changed",
+        (event) => {
+          const active = this.activeRepositoryState();
+          if (!active) {
+            return;
+          }
+
+          const eventPath = this.normalizeRepositoryPath(event.payload.path);
+          const activePath = this.normalizeRepositoryPath(active.path);
+          if (eventPath === activePath) {
+            void this.handleRepositoryFileChange(active);
+          }
+        },
+      );
+    } catch (error) {
+      console.warn("Falha ao inicializar listener de mudanças de arquivo:", error);
+    }
+  }
+
+  private async handleRepositoryFileChange(repository: Repository): Promise<void> {
+    try {
+      await Promise.allSettled([
+        this.getReferences(repository.path),
+        this.getStatus(repository.path),
+        this.getOperation(repository.path),
+      ]);
+      this.repositoryRefreshVersionState.update((version) => version + 1);
+    } catch (error) {
+      console.warn("Erro ao atualizar dados após evento do file watcher:", error);
+    }
   }
 
   openRepository(repository: Repository): void {

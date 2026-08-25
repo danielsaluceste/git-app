@@ -1,5 +1,10 @@
 import { Injectable, inject, signal } from "@angular/core";
-import { CodexCliStatus, CodexRunResult } from "../models/codex.model";
+import {
+  CodexCliStatus,
+  CodexModelOption,
+  CodexRunResult,
+  CodexUsage,
+} from "../models/codex.model";
 import { TauriCommandsService } from "../tauri/tauri-commands.service";
 
 @Injectable({ providedIn: "root" })
@@ -9,6 +14,10 @@ export class CodexService {
   readonly status = signal<CodexCliStatus | undefined>(undefined);
   readonly isChecking = signal(false);
   readonly isRunning = signal(false);
+  readonly models = signal<CodexModelOption[]>([]);
+  readonly usage = signal<CodexUsage | undefined>(undefined);
+  readonly isLoadingModels = signal(false);
+  readonly isLoadingUsage = signal(false);
 
   async check(): Promise<CodexCliStatus> {
     if (!("__TAURI_INTERNALS__" in window)) {
@@ -39,6 +48,9 @@ export class CodexService {
     prompt: string,
     context: string,
     allowEdits: boolean,
+    sessionId: string,
+    model?: string,
+    reasoningEffort?: string,
   ): Promise<CodexRunResult> {
     this.isRunning.set(true);
     try {
@@ -47,9 +59,51 @@ export class CodexService {
         prompt,
         context: context || null,
         allowEdits,
+        codexCommand: this.status()?.command ?? null,
+        sessionId,
+        model: model ?? null,
+        reasoningEffort: reasoningEffort ?? null,
       });
     } finally {
       this.isRunning.set(false);
+    }
+  }
+
+  async loadModels(): Promise<void> {
+    if (!this.status()?.installed || this.isLoadingModels()) {
+      return;
+    }
+
+    this.isLoadingModels.set(true);
+    try {
+      const result = await this.tauriCommands.execute<{ models: CodexModelOption[] }>(
+        "get_codex_models",
+        { codexCommand: this.status()?.command ?? null },
+      );
+      this.models.set(result.models.filter((model) => !model.hidden));
+    } catch {
+      this.models.set([]);
+    } finally {
+      this.isLoadingModels.set(false);
+    }
+  }
+
+  async loadUsage(): Promise<void> {
+    if (!this.status()?.installed || this.isLoadingUsage()) {
+      return;
+    }
+
+    this.isLoadingUsage.set(true);
+    try {
+      const usage = await this.tauriCommands.execute<CodexUsage>(
+        "get_codex_usage",
+        { codexCommand: this.status()?.command ?? null },
+      );
+      this.usage.set(usage);
+    } catch {
+      this.usage.set(undefined);
+    } finally {
+      this.isLoadingUsage.set(false);
     }
   }
 

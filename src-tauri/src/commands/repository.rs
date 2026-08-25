@@ -1,15 +1,15 @@
 use crate::commands::github;
 use crate::models::repository::{
     CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
-    RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
+    RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus, RepositoryTag,
 };
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
-use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Stdio};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+use std::path::{Component, Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -310,6 +310,67 @@ pub fn cancel_clone(
     Ok(())
 }
 
+fn read_head_branch(repo_path: &Path) -> Option<String> {
+    let head_file = repo_path.join(".git").join("HEAD");
+    if let Ok(content) = std::fs::read_to_string(head_file) {
+        let content = content.trim();
+        if let Some(branch) = content.strip_prefix("ref: refs/heads/") {
+            return Some(branch.to_string());
+        }
+    }
+    None
+}
+
+fn parse_branch_header(line: &str) -> (Option<String>, usize, usize) {
+    let header = line.strip_prefix("## ").unwrap_or(line).trim();
+    if header.starts_with("HEAD (no branch)") || header.starts_with("No commits yet on ") {
+        let branch = header
+            .strip_prefix("No commits yet on ")
+            .map(ToString::to_string);
+        return (branch, 0, 0);
+    }
+    if header.starts_with("Initial commit on ") {
+        let branch = header
+            .strip_prefix("Initial commit on ")
+            .map(ToString::to_string);
+        return (branch, 0, 0);
+    }
+
+    let mut branch_name = None;
+    let mut ahead = 0;
+    let mut behind = 0;
+
+    let (branch_part, tracking_part) = match header.find("...") {
+        Some(pos) => (&header[..pos], Some(&header[pos + 3..])),
+        None => match header.find(' ') {
+            Some(pos) => (&header[..pos], Some(&header[pos + 1..])),
+            None => (header, None),
+        },
+    };
+
+    if !branch_part.is_empty() && branch_part != "HEAD" {
+        branch_name = Some(branch_part.to_string());
+    }
+
+    if let Some(tracking) = tracking_part {
+        if let Some(start) = tracking.find('[') {
+            if let Some(end) = tracking.find(']') {
+                let inside = &tracking[start + 1..end];
+                for part in inside.split(',') {
+                    let part = part.trim();
+                    if let Some(count_str) = part.strip_prefix("ahead ") {
+                        ahead = count_str.trim().parse::<usize>().unwrap_or(0);
+                    } else if let Some(count_str) = part.strip_prefix("behind ") {
+                        behind = count_str.trim().parse::<usize>().unwrap_or(0);
+                    }
+                }
+            }
+        }
+    }
+
+    (branch_name, behind, ahead)
+}
+
 #[tauri::command]
 pub fn get_repository_references(path: String) -> Result<RepositoryReferences, String> {
     let repository_path = PathBuf::from(&path);
@@ -318,36 +379,44 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
         return Err("O repositório selecionado não está disponível.".to_string());
     }
 
-    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok();
-    let mut local_branches = run_git_lines(
+    let current_branch = read_head_branch(&repository_path)
+        .or_else(|| run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok());
+
+    let all_refs = run_git_lines(
         &path,
-        &["for-each-ref", "--format=%(refname)", "refs/heads"],
-    )?
-    .into_iter()
-    .filter_map(|reference| reference.strip_prefix("refs/heads/").map(ToOwned::to_owned))
-    .collect::<Vec<_>>();
+        &[
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/heads",
+            "refs/remotes",
+            "refs/tags",
+        ],
+    )
+    .unwrap_or_default();
+
+    let mut local_branches = Vec::new();
+    let mut remote_branches = Vec::new();
+    let mut tags = Vec::new();
+
+    for reference in all_refs {
+        if let Some(branch) = reference.strip_prefix("refs/heads/") {
+            local_branches.push(branch.to_string());
+        } else if let Some(remote) = reference.strip_prefix("refs/remotes/") {
+            if !remote.ends_with("/HEAD") {
+                remote_branches.push(remote.to_string());
+            }
+        } else if let Some(tag) = reference.strip_prefix("refs/tags/") {
+            tags.push(tag.to_string());
+        }
+    }
+
     if let Some(branch) = current_branch.as_ref() {
         if !local_branches.iter().any(|item| item == branch) {
             local_branches.insert(0, branch.clone());
         }
     }
-    let remote_branches = run_git_lines(
-        &path,
-        &["for-each-ref", "--format=%(refname)", "refs/remotes"],
-    )?
-    .into_iter()
-    .filter_map(|reference| {
-        reference
-            .strip_prefix("refs/remotes/")
-            .map(ToOwned::to_owned)
-    })
-    .filter(|branch| !branch.ends_with("/HEAD"))
-    .collect();
-    let tags = run_git_lines(
-        &path,
-        &["for-each-ref", "--format=%(refname:short)", "refs/tags"],
-    )?;
-    let stashes = run_git_lines(&path, &["stash", "list", "--format=%gd|%s"])?;
+
+    let stashes = run_git_lines(&path, &["stash", "list", "--format=%gd|%s"]).unwrap_or_default();
 
     Ok(RepositoryReferences {
         current_branch,
@@ -448,9 +517,11 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
         return Err("O repositório selecionado não está disponível.".to_string());
     }
 
-    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok();
-    let (behind_count, ahead_count) = get_ahead_behind(&path);
-    let status_output = run_git(&path, &["status", "--porcelain=v1", "--untracked-files=no"])?;
+    let status_output = run_git(&path, &["status", "--porcelain=v1", "-b", "-u"])?;
+
+    let mut current_branch = None;
+    let mut ahead_count = 0;
+    let mut behind_count = 0;
     let mut files = Vec::new();
     let mut staged_count = 0;
     let mut unstaged_count = 0;
@@ -458,6 +529,14 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
     let mut conflicted_count = 0;
 
     for line in status_output.lines().filter(|line| !line.trim().is_empty()) {
+        if line.starts_with("##") {
+            let (branch, behind, ahead) = parse_branch_header(line);
+            current_branch = branch;
+            ahead_count = ahead;
+            behind_count = behind;
+            continue;
+        }
+
         let bytes = line.as_bytes();
         if bytes.len() < 3 {
             continue;
@@ -497,33 +576,24 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
             "modified"
         };
 
+        let file_path =
+            if (index_status == 'R' || worktree_status == 'R') && line[3..].contains(" -> ") {
+                let parts: Vec<&str> = line[3..].split(" -> ").collect();
+                parts.last().unwrap_or(&&line[3..]).trim().to_string()
+            } else {
+                line[3..].trim().to_string()
+            };
+
         files.push(RepositoryFile {
-            path: line[3..].trim().to_string(),
+            path: file_path,
             status: status.to_string(),
             is_staged,
             is_conflicted,
         });
     }
 
-    let untracked_output = run_git_with_timeout(
-        &path,
-        &["ls-files", "--others", "--exclude-standard"],
-        Duration::from_secs(2),
-    )
-    .unwrap_or_default();
-
-    for path in untracked_output
-        .lines()
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-    {
-        untracked_count += 1;
-        files.push(RepositoryFile {
-            path: path.to_string(),
-            status: "untracked".to_string(),
-            is_staged: false,
-            is_conflicted: false,
-        });
+    if current_branch.is_none() {
+        current_branch = read_head_branch(&repository_path);
     }
 
     Ok(RepositoryStatus {
@@ -1203,6 +1273,7 @@ pub fn get_repository_commits(
     arguments.extend([
         format!("--skip={skip}"),
         format!("--max-count={safe_limit}"),
+        "--topo-order".to_string(),
         "--date=iso-strict".to_string(),
         "--decorate=short".to_string(),
         "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%P%x1f%D%x1e".to_string(),
@@ -1629,6 +1700,155 @@ pub fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), S
     .map(|_| ())
 }
 
+#[tauri::command]
+pub fn get_repository_tags(path: String) -> Result<Vec<RepositoryTag>, String> {
+    ensure_repository(&path)?;
+
+    let output = run_git_with_timeout(
+        &path,
+        &[
+            "for-each-ref",
+            "--sort=-creatordate",
+            "--format=%(refname:short)%x1f%(*objectname)%(objectname)%x1f%(contents:subject)%x1f%(taggername)%(authorname)%x1f%(taggeremail)%(authoremail)%x1f%(creatordate:iso-strict)%x1f%(objecttype)%x1e",
+            "refs/tags",
+        ],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+
+    let tags = output
+        .split('\x1e')
+        .filter_map(|record| {
+            let fields: Vec<&str> = record.trim().split('\x1f').collect();
+            if fields.len() < 7 || fields[0].is_empty() {
+                return None;
+            }
+
+            let name = fields[0].to_string();
+            let commit_hash = fields[1].to_string();
+            let short_hash = if commit_hash.len() >= 7 {
+                commit_hash[..7].to_string()
+            } else {
+                commit_hash.clone()
+            };
+            let message = fields[2].to_string();
+            let tagger_name = fields[3].to_string();
+            let tagger_email = fields[4].to_string();
+            let date = fields[5].to_string();
+            let obj_type = fields[6];
+            let is_annotated = obj_type == "tag" || !message.is_empty();
+
+            Some(RepositoryTag {
+                name,
+                commit_hash,
+                short_hash,
+                message,
+                tagger_name,
+                tagger_email,
+                date,
+                is_annotated,
+            })
+        })
+        .collect();
+
+    Ok(tags)
+}
+
+#[tauri::command]
+pub fn create_repository_tag(
+    path: String,
+    name: String,
+    commit_hash: Option<String>,
+    message: Option<String>,
+    push: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let tag_name = name.trim();
+    if tag_name.is_empty()
+        || tag_name.contains(' ')
+        || tag_name.contains('~')
+        || tag_name.contains('^')
+        || tag_name.contains(':')
+    {
+        return Err("O nome da tag é inválido.".to_string());
+    }
+
+    let mut args = vec!["tag".to_string()];
+    let has_message = message
+        .as_ref()
+        .map(|m| !m.trim().is_empty())
+        .unwrap_or(false);
+
+    if has_message {
+        args.push("-a".to_string());
+        args.push(tag_name.to_string());
+        args.push("-m".to_string());
+        args.push(message.unwrap_or_default());
+    } else {
+        args.push(tag_name.to_string());
+    }
+
+    if let Some(hash) = commit_hash.as_ref().filter(|h| !h.trim().is_empty()) {
+        validate_commit_hash(hash)?;
+        args.push(hash.clone());
+    }
+
+    let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_git_with_timeout(&path, &arg_refs, GIT_COMMAND_TIMEOUT)?;
+
+    if push {
+        let remote = preferred_push_remote(&path)?;
+        run_git_with_timeout(&path, &["push", &remote, tag_name], GIT_NETWORK_TIMEOUT)?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_repository_tag(
+    path: String,
+    name: String,
+    delete_remote: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    let tag_name = name.trim();
+    if tag_name.is_empty() {
+        return Err("Nome da tag não informado.".to_string());
+    }
+
+    run_git_with_timeout(&path, &["tag", "-d", tag_name], GIT_COMMAND_TIMEOUT)?;
+
+    if delete_remote {
+        let remote = preferred_push_remote(&path)?;
+        run_git_with_timeout(
+            &path,
+            &["push", &remote, "--delete", tag_name],
+            GIT_NETWORK_TIMEOUT,
+        )?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn push_repository_tags(path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let remote = preferred_push_remote(&path)?;
+    run_git_with_timeout(&path, &["push", &remote, "--tags"], GIT_NETWORK_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub fn push_repository_tag(path: String, name: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let tag_name = name.trim();
+    if tag_name.is_empty() {
+        return Err("Nome da tag não informado.".to_string());
+    }
+    let remote = preferred_push_remote(&path)?;
+    run_git_with_timeout(&path, &["push", &remote, tag_name], GIT_NETWORK_TIMEOUT).map(|_| ())
+}
+
 fn ensure_repository(path: &str) -> Result<(), String> {
     let repository_path = PathBuf::from(path);
 
@@ -1865,20 +2085,6 @@ fn validate_branch_name(path: &str, branch: &str) -> Result<(), String> {
     .map_err(|error| format!("Nome de branch inválido: {error}"))
 }
 
-fn get_ahead_behind(path: &str) -> (usize, usize) {
-    let output = run_git_with_timeout(
-        path,
-        &["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
-        GIT_COMMAND_TIMEOUT,
-    )
-    .unwrap_or_default();
-    let mut counts = output
-        .split_whitespace()
-        .filter_map(|value| value.parse::<usize>().ok());
-
-    (counts.next().unwrap_or(0), counts.next().unwrap_or(0))
-}
-
 fn preferred_configured_remote(path: &str) -> Option<String> {
     let remotes = run_git_lines(path, &["remote"]).ok()?;
 
@@ -2075,7 +2281,7 @@ impl AskpassGuard {
             .map(|duration| duration.as_nanos())
             .unwrap_or_default();
         let path = std::env::temp_dir().join(format!(
-            "orangit-git-askpass-{}-{unique_id}.{extension}",
+            "gitluna-git-askpass-{}-{unique_id}.{extension}",
             std::process::id()
         ));
         let contents = if cfg!(target_os = "windows") {

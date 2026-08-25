@@ -11,8 +11,12 @@ pub fn run() {
         .manage(commands::codex::CodexProcessState::default())
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
+        .manage(commands::watcher::WatcherState::default())
+        .manage(commands::terminal::TerminalState::default())
         .invoke_handler(tauri::generate_handler![
             commands::codex::check_codex_cli,
+            commands::codex::get_codex_models,
+            commands::codex::get_codex_usage,
             commands::codex::run_codex,
             commands::codex::cancel_codex,
             commands::repository::inspect_repository,
@@ -57,11 +61,25 @@ pub fn run() {
             commands::repository::rename_branch,
             commands::repository::delete_branch,
             commands::repository::delete_remote_branch,
+            commands::repository::get_repository_tags,
+            commands::repository::create_repository_tag,
+            commands::repository::delete_repository_tag,
+            commands::repository::push_repository_tags,
+            commands::repository::push_repository_tag,
+            commands::terminal::get_available_shells,
+            commands::terminal::create_terminal_session,
+            commands::terminal::write_terminal,
+            commands::terminal::resize_terminal,
+            commands::terminal::close_terminal,
             commands::github::start_device_flow,
             commands::github::poll_device_flow,
             commands::github::list_repositories,
             commands::github::disconnect_account,
-            commands::system::ping
+            commands::watcher::watch_repository,
+            commands::watcher::unwatch_repository,
+            commands::system::ping,
+            commands::system::toggle_devtools,
+            commands::system::set_window_theme_effect
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
