@@ -8,6 +8,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(commands::codex::CodexProcessState::default())
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
@@ -38,6 +40,7 @@ pub fn run() {
             commands::repository::commit_repository,
             commands::repository::get_last_commit_message,
             commands::repository::revert_commit,
+            commands::repository::cherry_pick_commit,
             commands::repository::get_repository_staged_diff,
             commands::repository::get_repository_file_diff,
             commands::repository::stash_repository,
@@ -78,8 +81,7 @@ pub fn run() {
             commands::watcher::watch_repository,
             commands::watcher::unwatch_repository,
             commands::system::ping,
-            commands::system::toggle_devtools,
-            commands::system::set_window_theme_effect
+            commands::system::toggle_devtools
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

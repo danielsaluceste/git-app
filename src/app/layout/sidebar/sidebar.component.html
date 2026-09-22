@@ -1,14 +1,10 @@
 <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">
-      <svg class="brand-luna-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor" />
-        <circle cx="15" cy="8" r="2" fill="var(--app-bg, #111827)" />
-        <circle cx="9" cy="14" r="1.6" fill="currentColor" />
-        <path d="M15 10v1.8a2.2 2.2 0 0 1-2.2 2.2H10.6" stroke="var(--app-bg, #111827)" stroke-width="1.2" stroke-linecap="round" fill="none" />
-      </svg>
+      <img class="brand-luna-icon" src="assets/gitluna-logo-small.png" alt="" />
     </span>
-    <span class="brand-name">{{ "brand.name" | translate }}</span>
+    <img class="brand-wordmark brand-wordmark-dark" src="assets/gitluna-logo-dark.png" alt="GitLuna" />
+    <img class="brand-wordmark brand-wordmark-light" src="assets/gitluna-logo.png" alt="" aria-hidden="true" />
     @if (!collapsed) {
       <button
         type="button"

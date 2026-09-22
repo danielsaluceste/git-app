@@ -12,14 +12,6 @@
   user-select: none;
 }
 
-[data-tauri-drag-region] {
-  app-region: drag;
-}
-
-.window-control {
-  app-region: no-drag;
-}
-
 .main-sidebar-button {
   display: grid;
   width: 2rem;
@@ -60,28 +52,24 @@
   gap: 0.65rem;
 }
 
-.brand-mark {
-  display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
-  place-items: center;
-  border: 2px solid var(--app-border);
-  border-radius: var(--app-small-radius);
-  background: var(--app-accent);
-  box-shadow: 2px 2px 0 var(--app-shadow-color);
-  color: var(--app-on-accent);
-}
-
-.brand-luna-icon {
-  width: 1.15rem;
-  height: 1.15rem;
+.brand-wordmark {
   display: block;
+  width: auto;
+  height: 2rem;
+  max-width: 9rem;
+  object-fit: contain;
 }
 
-.brand-name {
-  color: var(--app-text-bright);
-  font-size: 0.9rem;
-  font-weight: 700;
+.brand-wordmark-light {
+  display: none;
+}
+
+:root[data-theme="neo-brutalist"] .brand-wordmark-dark {
+  display: none;
+}
+
+:root[data-theme="neo-brutalist"] .brand-wordmark-light {
+  display: block;
 }
 
 .window-drag-region {
@@ -117,6 +105,43 @@
   cursor: pointer;
   margin-right: 0.35rem;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.update-launch-button {
+  position: relative;
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-right: 0.25rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--app-small-radius);
+  background: transparent;
+  color: var(--app-positive-strong);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.update-launch-button:hover {
+  border-color: var(--app-positive);
+  background: var(--app-positive-surface);
+  color: var(--app-text-bright);
+}
+
+.update-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.update-dot {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 0.38rem;
+  height: 0.38rem;
+  border: 2px solid var(--app-surface-0);
+  border-radius: 50%;
+  background: var(--app-positive);
 }
 
 .terminal-launch-button:hover,

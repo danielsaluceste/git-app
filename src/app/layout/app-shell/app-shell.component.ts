@@ -9,6 +9,9 @@ import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
 import { SettingsService } from "../../core/services/settings.service";
 import { TerminalService } from "../../core/services/terminal.service";
+import { ToastService } from "../../core/services/toast.service";
+import { TranslationService } from "../../core/services/translation.service";
+import { UpdateService } from "../../core/services/update.service";
 import { RepositorySidebarComponent } from "../repository-sidebar/repository-sidebar.component";
 import { RepositoryTabsComponent } from "../repository-tabs/repository-tabs.component";
 import { SidebarComponent } from "../sidebar/sidebar.component";
@@ -16,6 +19,7 @@ import { TopbarComponent } from "../topbar/topbar.component";
 import { ToastContainerComponent } from "../../shared/components/toast-container/toast-container.component";
 import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component";
 import { TerminalDrawerComponent } from "../../features/terminal/components/terminal-drawer/terminal-drawer.component";
+import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
 @Component({
   selector: "app-shell",
@@ -28,6 +32,7 @@ import { TerminalDrawerComponent } from "../../features/terminal/components/term
     ToastContainerComponent,
     CodexSidebarComponent,
     TerminalDrawerComponent,
+    TranslatePipe,
   ],
   templateUrl: "./app-shell.component.html",
   styleUrl: "./app-shell.component.css",
@@ -43,11 +48,19 @@ export class AppShellComponent implements OnDestroy {
   private readonly sessionService = inject(SessionService);
   private readonly settingsService = inject(SettingsService);
   private readonly terminalService = inject(TerminalService);
+  private readonly toastService = inject(ToastService);
+  private readonly translationService = inject(TranslationService);
+  private readonly updateService = inject(UpdateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storedLastRoute = this.sessionService.lastRoute();
   private readonly repositoryRefreshTimer: ReturnType<typeof setInterval>;
+  private readonly initialUpdateCheckTimer: ReturnType<typeof setTimeout>;
+  private readonly updateCheckTimer: ReturnType<typeof setInterval>;
+  private readonly updateCheckInterval = 24 * 60 * 60 * 1000;
+  private readonly minimumRefreshGap = 2_000;
   private repositoryRefreshInFlight = false;
+  private lastRepositoryRefreshAt = 0;
   private sessionRestored = false;
 
   readonly activeRepository = this.repositoryService.activeRepository;
@@ -58,6 +71,12 @@ export class AppShellComponent implements OnDestroy {
   readonly codexSidebarWidth = signal(this.loadCodexSidebarWidth());
   readonly codexResizeActive = signal(false);
   readonly terminalDrawerOpen = this.terminalService.isDrawerOpen;
+  readonly updateAvailable = this.updateService.updateAvailable;
+  readonly updateState = this.updateService.state;
+  readonly updateVersion = this.updateService.availableVersion;
+  readonly updateNotes = this.updateService.notes;
+  readonly updateProgress = this.updateService.progress;
+  readonly updateDialogOpen = signal(false);
 
   private codexResizeStartX = 0;
   private codexResizeStartWidth = 360;
@@ -74,6 +93,11 @@ export class AppShellComponent implements OnDestroy {
     this.repositoryRefreshTimer = setInterval(
       () => this.refreshActiveRepository(),
       this.repositoryRefreshInterval,
+    );
+    this.initialUpdateCheckTimer = setTimeout(() => void this.updateService.check(), 4_000);
+    this.updateCheckTimer = setInterval(
+      () => void this.updateService.check(),
+      this.updateCheckInterval,
     );
 
     this.router.events
@@ -98,17 +122,21 @@ export class AppShellComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.repositoryRefreshTimer);
+    clearTimeout(this.initialUpdateCheckTimer);
+    clearInterval(this.updateCheckTimer);
   }
 
   @HostListener("window:focus")
   onWindowFocus(): void {
     this.refreshActiveRepository();
+    void this.updateService.check();
   }
 
   @HostListener("document:visibilitychange")
   onVisibilityChange(): void {
     if (document.visibilityState === "visible") {
       this.refreshActiveRepository();
+      void this.updateService.check();
     }
   }
 
@@ -138,6 +166,46 @@ export class AppShellComponent implements OnDestroy {
 
   closeTerminalDrawer(): void {
     this.terminalService.closeDrawer();
+  }
+
+  openUpdateDialog(): void {
+    if (this.updateAvailable()) {
+      this.updateDialogOpen.set(true);
+    }
+  }
+
+  closeUpdateDialog(): void {
+    if (this.updateState() !== "downloading") {
+      this.updateDialogOpen.set(false);
+    }
+  }
+
+  async installUpdate(): Promise<void> {
+    if (this.updateState() === "downloading") {
+      return;
+    }
+
+    try {
+      await this.updateService.install();
+    } catch (error) {
+      console.error("Não foi possível instalar a atualização do GitLuna.", error);
+      this.toastService.error(
+        this.translationService.translate("updates.installError"),
+        this.translationService.translate("updates.title"),
+      );
+    }
+  }
+
+  async relaunchAfterUpdate(): Promise<void> {
+    try {
+      await this.updateService.relaunch();
+    } catch (error) {
+      console.error("Não foi possível reiniciar o GitLuna.", error);
+      this.toastService.error(
+        this.translationService.translate("updates.restartError"),
+        this.translationService.translate("updates.title"),
+      );
+    }
   }
 
   @HostListener("window:keydown", ["$event"])
@@ -209,11 +277,17 @@ export class AppShellComponent implements OnDestroy {
       return;
     }
 
+    const now = Date.now();
+    if (now - this.lastRepositoryRefreshAt < this.minimumRefreshGap) {
+      return;
+    }
+
     const repository = this.activeRepository();
     if (!repository) {
       return;
     }
 
+    this.lastRepositoryRefreshAt = now;
     this.repositoryRefreshInFlight = true;
     void this.repositoryService
       .refreshAfterRepositoryOpened(repository)

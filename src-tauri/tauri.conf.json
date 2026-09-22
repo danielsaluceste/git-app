@@ -19,8 +19,8 @@
         "minHeight": 600,
         "center": true,
         "decorations": false,
-        "transparent": true,
-        "shadow": false,
+        "transparent": false,
+        "shadow": true,
         "resizable": true
       }
     ],
@@ -30,16 +30,25 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/gitluna.ico"
     ],
     "macOS": {
       "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI0RTM5RjU2NzYyNjk2NkIKUldScmxpWjJWcC9qdE5JUHJWTU01czNUOUJWWGFxS25QNU1wUlhsa0I0NURtRlB2aFFxRm8rYjkK",
+      "endpoints": [
+        "https://files.danielsaluceste.com.br/public/gitluna/latest.json"
+      ]
     }
   }
 }

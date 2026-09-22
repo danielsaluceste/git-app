@@ -1,6 +1,9 @@
-import { Component, computed, effect, HostListener, inject, OnDestroy, OnInit, signal, untracked } from "@angular/core";
+import { Component, computed, effect, HostListener, inject, signal, untracked } from "@angular/core";
+import { DestroyRef } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { NavigationEnd, Router } from "@angular/router";
+import { filter } from "rxjs";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
 import { AiModelId } from "../../../core/models/ai-model.model";
 import { Repository, RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
@@ -28,13 +31,14 @@ interface FileContextMenu {
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
-export class ChangesPageComponent implements OnInit, OnDestroy {
+export class ChangesPageComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly settingsService = inject(SettingsService);
   private readonly commitAiService = inject(CommitAiService);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
@@ -69,8 +73,6 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   readonly pendingDiscardFile = signal<GitFile | undefined>(undefined);
   private pendingAiDiff = "";
   private statusLoadVersion = 0;
-  private statusRefreshTimer: ReturnType<typeof setInterval> | undefined;
-  private statusRefreshInFlight = false;
   private lastLoadedRepoKey = "";
   private lastLoadedRefreshVersion = -1;
 
@@ -83,6 +85,10 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
       this.status.set(undefined);
       this.operation.set(undefined);
       this.lastLoadedRepoKey = "";
+      return;
+    }
+
+    if (!this.isCurrentRoute()) {
       return;
     }
 
@@ -100,26 +106,35 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     });
   });
 
-  ngOnInit(): void {
-    this.statusRefreshTimer = setInterval(() => this.refreshStatusIfVisible(), 30_000);
-  }
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((event) => {
+        if (!this.isCurrentRoute(event.urlAfterRedirects)) {
+          return;
+        }
 
-  ngOnDestroy(): void {
-    if (this.statusRefreshTimer !== undefined) {
-      clearInterval(this.statusRefreshTimer);
-    }
-  }
+        const repository = this.activeRepository();
+        if (!repository) {
+          return;
+        }
 
-  @HostListener("window:focus")
-  onWindowFocus(): void {
-    this.refreshStatusIfVisible();
-  }
+        const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
+        const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+        if (repoKey === this.lastLoadedRepoKey &&
+            refreshVersion === this.lastLoadedRefreshVersion &&
+            !!this.status()) {
+          return;
+        }
 
-  @HostListener("document:visibilitychange")
-  onVisibilityChange(): void {
-    if (document.visibilityState === "visible") {
-      this.refreshStatusIfVisible();
-    }
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        this.restoreCommitDraft(repository);
+        void this.loadStatus(repository);
+      });
   }
 
   @HostListener("window:keydown", ["$event"])
@@ -252,24 +267,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
         repository.path.replaceAll("\\", "/").toLowerCase();
   }
 
-  private refreshStatusIfVisible(): void {
-    if (document.visibilityState === "hidden" || this.statusRefreshInFlight) {
-      return;
-    }
-
-    const repository = this.activeRepository();
-    if (!repository) {
-      return;
-    }
-
-    this.statusRefreshInFlight = true;
-    void this.loadStatus(repository).finally(() => {
-      this.statusRefreshInFlight = false;
-    });
-  }
-
   stagedFiles(files: GitFile[]): GitFile[] {
     return files.filter((file) => file.isStaged);
+  }
+
+  private isCurrentRoute(url = this.router.url): boolean {
+    return url.split(/[?#]/, 1)[0].endsWith("/changes") || url.split(/[?#]/, 1)[0] === "/changes";
   }
 
   unstagedFiles(files: GitFile[]): GitFile[] {
@@ -299,9 +302,12 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   }
 
   operationTitle(): string {
-    return this.operation()?.kind === "rebase"
+    const kind = this.operation()?.kind;
+    return kind === "rebase"
       ? this.translationService.translate("changes.rebaseInProgress")
-      : this.translationService.translate("changes.mergeInProgress");
+      : kind === "cherry-pick"
+        ? this.translationService.translate("changes.cherryPickInProgress")
+        : this.translationService.translate("changes.mergeInProgress");
   }
 
   operationDescription(): string {
@@ -344,9 +350,19 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     this.isOperationActionRunning.set(true);
     try {
       await this.repositoryService.continueOperation(repository.path, operation.kind);
+      const completedKey = operation.kind === "merge"
+        ? "changes.mergeCompleted"
+        : operation.kind === "rebase"
+          ? "changes.rebaseCompleted"
+          : "changes.cherryPickCompleted";
+      const completedTitleKey = operation.kind === "merge"
+        ? "changes.mergeCompletedTitle"
+        : operation.kind === "rebase"
+          ? "changes.rebaseCompletedTitle"
+          : "changes.cherryPickCompletedTitle";
       this.toastService.success(
-        this.translationService.translate(operation.kind === "merge" ? "changes.mergeCompleted" : "changes.rebaseCompleted"),
-        this.translationService.translate(operation.kind === "merge" ? "changes.mergeCompletedTitle" : "changes.rebaseCompletedTitle"),
+        this.translationService.translate(completedKey),
+        this.translationService.translate(completedTitleKey),
       );
     } catch (error: unknown) {
       this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("changes.continueErrorTitle"));
@@ -378,9 +394,19 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     this.isOperationActionRunning.set(true);
     try {
       await this.repositoryService.abortOperation(repository.path, operation.kind);
+      const abortedKey = operation.kind === "merge"
+        ? "changes.mergeAborted"
+        : operation.kind === "rebase"
+          ? "changes.rebaseAborted"
+          : "changes.cherryPickAborted";
+      const abortedTitleKey = operation.kind === "merge"
+        ? "changes.mergeAbortedTitle"
+        : operation.kind === "rebase"
+          ? "changes.rebaseAbortedTitle"
+          : "changes.cherryPickAbortedTitle";
       this.toastService.success(
-        this.translationService.translate(operation.kind === "merge" ? "changes.mergeAborted" : "changes.rebaseAborted"),
-        this.translationService.translate(operation.kind === "merge" ? "changes.mergeAbortedTitle" : "changes.rebaseAbortedTitle"),
+        this.translationService.translate(abortedKey),
+        this.translationService.translate(abortedTitleKey),
       );
     } catch (error: unknown) {
       this.toastService.error(this.getGitErrorMessage(error), this.translationService.translate("changes.abortErrorTitle"));
@@ -431,7 +457,7 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
     event.stopPropagation();
 
     const menuWidth = 220;
-    const menuHeight = this.isConflictFile(file) ? 170 : 220;
+    const menuHeight = 220;
     const margin = 8;
     const page = (event.currentTarget as HTMLElement).closest(".changes-page");
     const pageBounds = page?.getBoundingClientRect();
@@ -478,7 +504,9 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
 
     await this.runGitAction(
       (activeRepository) => this.repositoryService.discardFile(activeRepository.path, file.path),
-      file.status === "untracked"
+      this.isConflictFile(file)
+        ? this.translationService.translate("changes.discardedConflict")
+        : file.status === "untracked"
         ? this.translationService.translate("changes.deletedUntracked")
         : this.translationService.translate("changes.discardedFile"),
     );
@@ -489,11 +517,19 @@ export class ChangesPageComponent implements OnInit, OnDestroy {
   }
 
   discardFileTitle(file: GitFile): string {
-    return this.translationService.translate(file.status === "untracked" ? "changes.deleteFile" : "changes.discardChanges");
+    return this.translationService.translate(
+      this.isConflictFile(file)
+        ? "changes.discardConflict"
+        : file.status === "untracked"
+          ? "changes.deleteFile"
+          : "changes.discardChanges",
+    );
   }
 
   discardFileMessage(file: GitFile): string {
-    return file.status === "untracked"
+    return this.isConflictFile(file)
+      ? this.translationService.translate("changes.discardConflictMessage", { file: file.path })
+      : file.status === "untracked"
       ? this.translationService.translate("changes.deleteFileMessage", { file: file.path })
       : this.translationService.translate("changes.discardChangesMessage", { file: file.path });
   }

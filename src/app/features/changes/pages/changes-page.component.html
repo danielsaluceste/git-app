@@ -60,7 +60,7 @@
               [disabled]="isSaving() || isOperationActionRunning() || conflictFiles(repositoryStatus.files).length > 0"
               (click)="continueOperation()"
             >
-              {{ isOperationActionRunning() ? ("changes.continuing" | translate) : (activeOperation.kind === "merge" ? "changes.continueMerge" : "changes.continueRebase") | translate }}
+              {{ isOperationActionRunning() ? ("changes.continuing" | translate) : (activeOperation.kind === "merge" ? "changes.continueMerge" : activeOperation.kind === "rebase" ? "changes.continueRebase" : "changes.continueCherryPick") | translate }}
             </button>
             <button
               type="button"
@@ -314,6 +314,14 @@
             <small>{{ "changes.openResolver" | translate }}</small>
           </span>
         </button>
+        <div class="file-context-divider"></div>
+        <button type="button" class="danger-context-action" (click)="requestDiscardFile(context.file)">
+          <span class="context-menu-symbol" aria-hidden="true">⌫</span>
+          <span>
+            <strong>{{ discardFileTitle(context.file) }}</strong>
+            <small>{{ "changes.discardConflictDescription" | translate }}</small>
+          </span>
+        </button>
       } @else if (context.file.isStaged) {
         <button type="button" (click)="closeFileContextMenu(); unstageFile(context.file)">
           <span class="context-menu-symbol" aria-hidden="true">−</span>
@@ -389,7 +397,7 @@
   @if (pendingAbortOperation()) {
     <app-confirm-dialog
       [title]="'changes.abortTitle' | translate"
-      [message]="(operation()?.kind === 'merge' ? 'changes.abortMergeMessage' : 'changes.abortRebaseMessage') | translate"
+      [message]="(operation()?.kind === 'merge' ? 'changes.abortMergeMessage' : operation()?.kind === 'rebase' ? 'changes.abortRebaseMessage' : 'changes.abortCherryPickMessage') | translate"
       [confirmLabel]="'changes.abortOperation' | translate"
       [cancelLabel]="'changes.continueResolving' | translate"
       [destructive]="true"

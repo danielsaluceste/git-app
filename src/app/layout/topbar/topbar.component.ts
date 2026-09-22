@@ -15,9 +15,11 @@ export class TopbarComponent {
   @Input() codexOpen = false;
   @Input() showTerminalButton = false;
   @Input() terminalOpen = false;
+  @Input() updateAvailable = false;
   @Output() mainSidebarRequested = new EventEmitter<void>();
   @Output() codexRequested = new EventEmitter<void>();
   @Output() terminalRequested = new EventEmitter<void>();
+  @Output() updateRequested = new EventEmitter<void>();
 
   minimize(): Promise<void> {
     return this.runWindowAction((appWindow) => appWindow.minimize());
@@ -35,8 +37,8 @@ export class TopbarComponent {
     const target = event.target;
 
     if (
-      event.buttons !== 1 ||
-      (target instanceof HTMLElement && target.closest("button"))
+      event.button !== 0 ||
+      (target instanceof Element && target.closest("button, input, textarea, select, a"))
     ) {
       return Promise.resolve();
     }

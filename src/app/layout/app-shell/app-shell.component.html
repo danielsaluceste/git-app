@@ -22,9 +22,11 @@
       [codexOpen]="codexSidebarOpen()"
       [showTerminalButton]="!!activeRepository()"
       [terminalOpen]="terminalDrawerOpen()"
+      [updateAvailable]="updateAvailable()"
       (mainSidebarRequested)="openMainSidebar()"
       (codexRequested)="toggleCodexSidebar()"
       (terminalRequested)="toggleTerminalDrawer()"
+      (updateRequested)="openUpdateDialog()"
     />
 
     <app-repository-tabs />
@@ -54,6 +56,91 @@
         />
       </div>
     }
+  }
+
+  @if (updateDialogOpen()) {
+    <div class="update-dialog-backdrop" (click)="closeUpdateDialog()">
+      <section
+        class="update-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="update-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="update-dialog-header">
+          <div class="update-dialog-heading">
+            <span class="update-dialog-icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none">
+                <path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                <path d="M16.5 3.7v4.2h-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <p class="update-dialog-eyebrow">GitLuna</p>
+              <h2 id="update-dialog-title">
+                {{ updateState() === "ready" ? ("updates.readyTitle" | translate) : ("updates.availableTitle" | translate) }}
+              </h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="update-dialog-close"
+            [disabled]="updateState() === 'downloading'"
+            [attr.aria-label]="'common.close' | translate"
+            (click)="closeUpdateDialog()"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+
+        @if (updateState() === "available") {
+          <div class="update-dialog-body">
+            <p class="update-dialog-description">{{ "updates.availableDescription" | translate }}</p>
+            <div class="update-version-pill">
+              <span>{{ "updates.version" | translate: { version: updateVersion() ?? "" } }}</span>
+            </div>
+
+            @if (updateNotes(); as notes) {
+              <div class="update-notes">
+                <span>{{ "updates.notes" | translate }}</span>
+                <p>{{ notes }}</p>
+              </div>
+            }
+          </div>
+          <footer class="update-dialog-actions">
+            <button type="button" class="update-secondary-button" (click)="closeUpdateDialog()">
+              {{ "updates.later" | translate }}
+            </button>
+            <button type="button" class="update-primary-button" (click)="installUpdate()">
+              <span aria-hidden="true">↓</span>
+              {{ "updates.install" | translate }}
+            </button>
+          </footer>
+        } @else if (updateState() === "downloading") {
+          <div class="update-dialog-body update-progress-body">
+            <div class="update-spinner" aria-hidden="true"></div>
+            <p class="update-dialog-description">{{ "updates.downloading" | translate }}</p>
+            <div class="update-progress-track" role="progressbar" [attr.aria-valuenow]="updateProgress()" aria-valuemin="0" aria-valuemax="100">
+              <span [style.width.%]="updateProgress()"></span>
+            </div>
+            <strong class="update-progress-value">{{ updateProgress() }}%</strong>
+          </div>
+        } @else if (updateState() === "ready") {
+          <div class="update-dialog-body">
+            <div class="update-ready-icon" aria-hidden="true">✓</div>
+            <p class="update-dialog-description">{{ "updates.readyDescription" | translate }}</p>
+          </div>
+          <footer class="update-dialog-actions">
+            <button type="button" class="update-secondary-button" (click)="closeUpdateDialog()">
+              {{ "updates.later" | translate }}
+            </button>
+            <button type="button" class="update-primary-button" (click)="relaunchAfterUpdate()">
+              {{ "updates.restart" | translate }}
+            </button>
+          </footer>
+        }
+      </section>
+    </div>
   }
 
   <app-toast-container />

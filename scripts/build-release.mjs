@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 const targets = {
   windows: {
@@ -52,15 +54,33 @@ if (process.platform !== target.platform) {
 console.log(`Gerando instaladores para ${requestedTarget}: ${target.bundles}`);
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const releaseVersion = process.env.TAURI_RELEASE_VERSION?.trim().replace(/^v/, "");
+const tauriArguments = ["run", "tauri", "--", "build", "--bundles", target.bundles];
+let releaseConfigPath;
+
+if (releaseVersion) {
+  releaseConfigPath = path.resolve("src-tauri", ".tauri-release-config.json");
+  writeFileSync(releaseConfigPath, `${JSON.stringify({ version: releaseVersion })}\n`, "utf8");
+  tauriArguments.push("--config", releaseConfigPath);
+}
+
 const result = spawnSync(
   npmCommand,
-  ["run", "tauri", "--", "build", "--bundles", target.bundles],
+  tauriArguments,
   {
     stdio: "inherit",
     // Arquivos .cmd precisam ser executados pelo shell no Windows.
     shell: process.platform === "win32",
   },
 );
+
+if (releaseConfigPath) {
+  try {
+    unlinkSync(releaseConfigPath);
+  } catch {
+    // O arquivo temporário não impede o resultado do build.
+  }
+}
 
 if (result.error) {
   console.error(`Não foi possível iniciar o build: ${result.error.message}`);

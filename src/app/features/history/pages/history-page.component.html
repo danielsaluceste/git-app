@@ -421,21 +421,28 @@
         <code>{{ menu.commit.shortHash }}</code>
       </div>
       <button type="button" (click)="checkoutFromContextMenu()">
-        <span class="context-menu-icon" aria-hidden="true">↓</span>
+        <span class="context-menu-icon" aria-hidden="true"><span class="context-menu-symbol">↓</span></span>
         <span>
           <strong>{{ "history.checkout" | translate }}</strong>
           <small>{{ "history.checkoutDescription" | translate }}</small>
         </span>
       </button>
+      <button type="button" (click)="cherryPickFromContextMenu()">
+        <span class="context-menu-icon" aria-hidden="true"><span class="context-menu-symbol">⤴</span></span>
+        <span>
+          <strong>{{ "history.cherryPick" | translate }}</strong>
+          <small>{{ "history.cherryPickDescription" | translate }}</small>
+        </span>
+      </button>
       <button type="button" (click)="createTagFromContextMenu()">
-        <span class="context-menu-icon" aria-hidden="true">🏷</span>
+        <span class="context-menu-icon" aria-hidden="true"><span class="context-menu-symbol">🏷</span></span>
         <span>
           <strong>{{ "history.createTag" | translate }}</strong>
           <small>{{ "history.createTagDescription" | translate }}</small>
         </span>
       </button>
       <button type="button" class="context-menu-danger" (click)="revertFromContextMenu()">
-        <span class="context-menu-icon" aria-hidden="true">↶</span>
+        <span class="context-menu-icon" aria-hidden="true"><span class="context-menu-symbol">↶</span></span>
         <span>
           <strong>{{ "history.revert" | translate }}</strong>
           <small>{{ "history.revertDescription" | translate }}</small>
@@ -463,6 +470,18 @@
       [cancelLabel]="'workspace.cancel' | translate"
       (confirmed)="confirmCheckoutCommit()"
       (cancelled)="cancelCheckoutCommit()"
+    />
+  }
+
+  @if (pendingCherryPickCommit(); as commit) {
+    <app-confirm-dialog
+      [title]="'history.cherryPickConfirmTitle' | translate"
+      [message]="(pendingCherryPickNeedsStash() ? 'history.cherryPickConfirmWithStashMessage' : 'history.cherryPickConfirmMessage') | translate: { hash: commit.shortHash }"
+      [messageHighlight]="commit.shortHash"
+      [confirmLabel]="(pendingCherryPickNeedsStash() ? 'history.cherryPickConfirmWithStash' : 'history.cherryPickConfirm') | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
+      (confirmed)="confirmCherryPick()"
+      (cancelled)="cancelCherryPick()"
     />
   }
 

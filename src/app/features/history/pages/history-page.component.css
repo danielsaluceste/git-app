@@ -28,14 +28,13 @@
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .overview-action-bar.is-scrolled {
   border-color: var(--app-border-subtle);
   background: var(--app-surface-1);
   box-shadow: var(--app-panel-shadow);
-  backdrop-filter: blur(10px);
 }
 
 .overview-action-bar.is-scrolled > div:first-child {
@@ -831,17 +830,7 @@ h3 {
 }
 
 .graph-head-ring {
-  animation: graph-pulse 2.4s infinite ease-in-out;
-  will-change: opacity;
-}
-
-@keyframes graph-pulse {
-  0%, 100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.95;
-  }
+  opacity: 0.85;
 }
 
 .commit-avatar {
@@ -1322,15 +1311,31 @@ dd {
 }
 
 .context-menu-icon {
-  display: grid;
+  display: inline-flex;
+  flex: 0 0 1.5rem;
   width: 1.5rem;
   height: 1.5rem;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  aspect-ratio: 1;
   border-radius: 0.35rem;
   background: var(--app-positive-surface);
   color: var(--app-positive-strong);
   font-size: 1rem;
   font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.context-menu-symbol {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.08em);
+}
+
+.commit-context-menu button:nth-of-type(3) .context-menu-symbol {
+  transform: translateY(-0.2em);
 }
 
 .context-menu-danger .context-menu-icon {

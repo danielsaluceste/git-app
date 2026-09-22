@@ -1,0 +1,220 @@
+name: Publish GitLuna update
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão sem o prefixo v, por exemplo 0.1.1"
+        required: true
+        type: string
+      notes:
+        description: "Notas da atualização"
+        required: false
+        default: "Melhorias e correções no GitLuna."
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  UPDATE_BASE_URL: https://files.danielsaluceste.com.br/public/gitluna
+
+jobs:
+  build-windows:
+    name: Build Windows update
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build signed installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: npm run build:windows
+
+      - name: Prepare update artifacts
+        run: node scripts/prepare-update-artifacts.mjs windows update-artifacts
+
+      - name: Upload prepared artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-windows
+          path: update-artifacts/**
+
+  build-linux:
+    name: Build Linux update
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget file libssl-dev libxdo-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build signed installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: npm run build:linux
+
+      - name: Prepare update artifacts
+        run: node scripts/prepare-update-artifacts.mjs linux update-artifacts
+
+      - name: Upload prepared artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-linux
+          path: update-artifacts/**
+
+  build-macos:
+    name: Build macOS update
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build signed installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: npm run build:mac
+
+      - name: Prepare update artifacts
+        run: node scripts/prepare-update-artifacts.mjs macos update-artifacts
+
+      - name: Upload prepared artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-macos
+          path: update-artifacts/**
+
+  publish:
+    name: Generate manifest and publish to SFTPGo
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: update-windows
+          path: update-artifacts
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: update-linux
+          path: update-artifacts
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: update-macos
+          path: update-artifacts
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            version="$INPUT_VERSION"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate latest.json
+        env:
+          RELEASE_NOTES: ${{ inputs.notes || 'Melhorias e correções no GitLuna.' }}
+        run: node scripts/create-update-manifest.mjs --version "${{ steps.release.outputs.version }}" --base-url "$UPDATE_BASE_URL" --artifacts-dir update-artifacts
+
+      - name: Configure SFTP credentials
+        env:
+          SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
+          SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SFTP_PRIVATE_KEY" > "$HOME/.ssh/gitluna_deploy"
+          chmod 600 "$HOME/.ssh/gitluna_deploy"
+          printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+
+      - name: Upload files to SFTPGo
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+        shell: bash
+        run: |
+          remote_path="${SFTP_REMOTE_PATH:-/public/gitluna}"
+          port="${SFTP_PORT:-22}"
+          batch_file="$RUNNER_TEMP/gitluna-upload.txt"
+          : > "$batch_file"
+
+          for file in update-artifacts/*; do
+            name="$(basename "$file")"
+            if [ "$name" = "latest.json" ]; then
+              continue
+            fi
+            printf 'put "%s" "%s/.%s.tmp"\n' "$file" "$remote_path" "$name" >> "$batch_file"
+            printf 'rename "%s/.%s.tmp" "%s/%s"\n' "$remote_path" "$name" "$remote_path" "$name" >> "$batch_file"
+          done
+
+          printf 'put "update-artifacts/latest.json" "%s/.latest.json.tmp"\n' "$remote_path" >> "$batch_file"
+          printf 'rename "%s/.latest.json.tmp" "%s/latest.json"\n' "$remote_path" "$remote_path" >> "$batch_file"
+
+          sftp -P "$port" -i "$HOME/.ssh/gitluna_deploy" -o BatchMode=yes -b "$batch_file" "$SFTP_USER@$SFTP_HOST"

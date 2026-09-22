@@ -4,7 +4,7 @@ import {
   THEME_OPTIONS,
   ThemeId,
 } from "../models/theme.model";
-import { Effect, EffectState, getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const THEME_STORAGE_KEY = "git-app.theme";
 
@@ -21,7 +21,6 @@ export class ThemeService {
     }
     const themeId = this.themeState();
     this.applyTheme(themeId);
-    void this.applyNativeWindowEffect(themeId);
     void this.initWindowMaximizedListener();
   }
 
@@ -32,7 +31,6 @@ export class ThemeService {
 
     this.themeState.set(themeId);
     this.applyTheme(themeId);
-    void this.applyNativeWindowEffect(themeId);
 
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(THEME_STORAGE_KEY, themeId);
@@ -42,26 +40,6 @@ export class ThemeService {
   private applyTheme(themeId: ThemeId): void {
     if (typeof document !== "undefined") {
       document.documentElement.dataset["theme"] = themeId;
-    }
-  }
-
-  /**
-   * Aplica materiais nativos de janela (Acrylic no Windows, Vibrancy no macOS)
-   * no tema glassmorphism quando executado via Tauri Desktop.
-   */
-  private async applyNativeWindowEffect(themeId: ThemeId): Promise<void> {
-    if (
-      typeof window === "undefined" ||
-      !("__TAURI_INTERNALS__" in window)
-    ) {
-      return;
-    }
-
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_window_theme_effect", { theme: themeId });
-    } catch (error) {
-      console.debug("Native window effect command error:", error);
     }
   }
 
@@ -92,7 +70,13 @@ export class ThemeService {
       };
 
       await updateMaximized();
-      await currentWindow.onResized(updateMaximized);
+      let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+      await currentWindow.onResized(() => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          void updateMaximized();
+        }, 150);
+      });
     } catch (error) {
       console.debug("Could not attach window resize listener", error);
     }

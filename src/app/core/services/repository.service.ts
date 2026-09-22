@@ -178,6 +178,10 @@ export class RepositoryService {
     await invoke("revert_commit", { path, commitHash });
   }
 
+  async cherryPickCommit(path: string, commitHash: string): Promise<void> {
+    await invoke("cherry_pick_commit", { path, commitHash });
+  }
+
   async getStagedDiff(path: string): Promise<string> {
     return invoke<string>("get_repository_staged_diff", { path });
   }
@@ -312,19 +316,21 @@ export class RepositoryService {
       ]);
       this.repositoryRefreshVersionState.update((version) => version + 1);
 
-      // 2. Fetch remoto assíncrono em segundo plano (sem travar a interface)
+      // 2. O fetch continua assíncrono para a interface, mas permanece dentro
+      // do bloqueio da atualização. Assim, uma segunda atualização não inicia
+      // outro processo Git enquanto este ainda está executando.
       const syncCredentials = this.getSyncCredentials(repository);
-      void this.fetch(
+      await this.fetch(
         repository.path,
         syncCredentials.workspaceId,
         syncCredentials.githubUserId,
-      ).then(async () => {
-        await Promise.allSettled([
-          this.getReferences(repository.path),
-          this.getStatus(repository.path),
-        ]);
-        this.repositoryRefreshVersionState.update((version) => version + 1);
-      }).catch(() => undefined);
+      );
+
+      await Promise.allSettled([
+        this.getReferences(repository.path),
+        this.getStatus(repository.path),
+      ]);
+      this.repositoryRefreshVersionState.update((version) => version + 1);
     } finally {
       this.backgroundRefreshes.delete(cacheKey);
     }

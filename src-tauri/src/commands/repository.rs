@@ -10,7 +10,7 @@ use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, State};
@@ -19,6 +19,11 @@ const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_BRANCH_OPERATION_TIMEOUT: Duration = Duration::from_secs(45);
 const GIT_NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+
+// Operações Git que alteram referências, o índice ou o working tree não podem
+// executar em paralelo no mesmo repositório. Isso é especialmente importante
+// porque o app faz fetch automático enquanto o usuário pode iniciar Pull/Push.
+static REPOSITORY_OPERATION_LOCKS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::new();
 
 #[derive(Default)]
 pub struct CloneProcessState {
@@ -472,6 +477,7 @@ pub fn continue_repository_operation(path: String, operation: String) -> Result<
     let args: &[&str] = match operation.as_str() {
         "merge" => &["-c", "core.editor=true", "commit", "--no-edit"],
         "rebase" => &["-c", "core.editor=true", "rebase", "--continue"],
+        "cherry-pick" => &["-c", "core.editor=true", "cherry-pick", "--continue"],
         _ => return Err("A operação Git informada não é válida.".to_string()),
     };
 
@@ -486,6 +492,7 @@ pub fn abort_repository_operation(path: String, operation: String) -> Result<(),
     let args: &[&str] = match operation.as_str() {
         "merge" => &["merge", "--abort"],
         "rebase" => &["rebase", "--abort"],
+        "cherry-pick" => &["cherry-pick", "--abort"],
         _ => return Err("A operação Git informada não é válida.".to_string()),
     };
 
@@ -747,6 +754,18 @@ pub fn discard_repository_file(path: String, file_path: String) -> Result<(), St
     ensure_repository(&path)?;
     let relative_path = validate_repository_file_path(&file_path)?;
 
+    let status_output = run_git(&path, &["status", "--porcelain=v1", "--", file_path.as_str()])?;
+    let is_conflicted = status_output.lines().any(|line| {
+        let bytes = line.as_bytes();
+        bytes.len() >= 3 && is_unmerged_status(bytes[0] as char, bytes[1] as char)
+    });
+
+    if is_conflicted {
+        // Em uma operação Git, descartar o conflito significa manter a
+        // versão da branch atual (ours) e marcar o arquivo como resolvido.
+        return resolve_repository_conflict_side(path, file_path, "ours".to_string());
+    }
+
     let is_tracked = run_git_with_timeout(
         &path,
         ["ls-files", "--error-unmatch", "--", file_path.as_str()],
@@ -845,6 +864,40 @@ pub fn revert_commit(path: String, commit_hash: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn cherry_pick_commit(path: String, commit_hash: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    if is_running_development_repository(&path) {
+        return Err(
+            "Não é possível fazer Cherry-pick no próprio repositório do GitLuna enquanto o app está rodando em modo de desenvolvimento. Use outro clone ou uma versão compilada do app.".to_string(),
+        );
+    }
+
+    validate_commit_hash(&commit_hash)?;
+
+    let status = run_git(&path, &["status", "--porcelain"])?;
+    if !status.trim().is_empty() {
+        return Err(
+            "Finalize ou guarde as alterações locais antes de fazer Cherry-pick.".to_string(),
+        );
+    }
+
+    let commit_info = run_git(&path, &["rev-list", "--parents", "-n", "1", &commit_hash])?;
+    let parent_count = commit_info.split_whitespace().count().saturating_sub(1);
+    if parent_count == 0 {
+        return Err("Este commit não pode ser aplicado porque não possui parent.".to_string());
+    }
+
+    let mut args = vec!["cherry-pick".to_string(), "--no-edit".to_string()];
+    if parent_count > 1 {
+        args.extend(["-m".to_string(), "1".to_string()]);
+    }
+    args.push(commit_hash);
+
+    run_git_with_timeout(&path, &args, GIT_BRANCH_OPERATION_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
 pub async fn get_repository_staged_diff(path: String) -> Result<String, String> {
     ensure_repository(&path)?;
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -914,6 +967,9 @@ pub fn get_repository_file_diff(
         return Err("O arquivo selecionado não é válido.".to_string());
     }
 
+    let file_path = file_path.trim().to_string();
+    let relative_path = validate_repository_file_path(&file_path)?;
+
     let mut args = vec!["diff".to_string()];
     if staged {
         args.push("--cached".to_string());
@@ -923,10 +979,28 @@ pub fn get_repository_file_diff(
         "--no-textconv".to_string(),
         "--unified=3".to_string(),
         "--".to_string(),
-        file_path,
+        file_path.clone(),
     ]);
 
-    let diff = run_git_with_timeout(&path, &args, GIT_DIFF_TIMEOUT)?;
+    let mut diff = run_git_with_timeout(&path, &args, GIT_DIFF_TIMEOUT)?;
+
+    // O Git não retorna nada para um arquivo ainda não rastreado, pois ele
+    // ainda não possui uma versão de comparação no índice. Nesse caso,
+    // monte um diff a partir do conteúdo atual para que o usuário consiga
+    // visualizar o arquivo antes de fazer o stage.
+    if diff.trim().is_empty() {
+        let working_path = PathBuf::from(&path).join(relative_path);
+        let (content, exists, is_binary) = read_working_file(&working_path);
+
+        if exists {
+            diff = if is_binary {
+                format!("Arquivo binário não pode ser exibido como texto: {file_path}")
+            } else {
+                build_new_file_diff(&file_path, &content)
+            };
+        }
+    }
+
     let max_chars = 30_000;
 
     if diff.chars().count() <= max_chars {
@@ -936,6 +1010,32 @@ pub fn get_repository_file_diff(
     let mut truncated: String = diff.chars().take(max_chars).collect();
     truncated.push_str("\n\n[Diff truncado para visualização]");
     Ok(truncated)
+}
+
+fn build_new_file_diff(file_path: &str, content: &str) -> String {
+    let display_path = file_path.replace('\\', "/");
+    let lines: Vec<&str> = content.lines().collect();
+    let line_count = lines.len();
+    let mut diff = format!(
+        "diff --git a/{display_path} b/{display_path}\nnew file mode 100644\n--- /dev/null\n+++ b/{display_path}\n"
+    );
+
+    if line_count > 0 {
+        diff.push_str(&format!("@@ -0,0 +1,{line_count} @@\n"));
+        for line in lines {
+            diff.push('+');
+            diff.push_str(line);
+            diff.push('\n');
+        }
+
+        if !content.ends_with('\n') {
+            diff.push_str("\\ No newline at end of file\n");
+        }
+    } else {
+        diff.push_str("@@ -0,0 +0,0 @@\n");
+    }
+
+    diff
 }
 
 #[tauri::command]
@@ -1407,7 +1507,12 @@ pub async fn fetch_repository(
 ) -> Result<(), String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let operation_lock = repository_operation_lock(&path);
     let result = tauri::async_runtime::spawn_blocking(move || {
+        let _operation_guard = operation_lock
+            .lock()
+            .map_err(|_| "Não foi possível sincronizar: o bloqueio do repositório foi interrompido.".to_string())?;
+
         run_git_with_access_token(
             &path,
             &["fetch", "--all", "--prune"],
@@ -1431,14 +1536,26 @@ pub async fn pull_repository(
 ) -> Result<PullResult, String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let operation_lock = repository_operation_lock(&path);
     let result = tauri::async_runtime::spawn_blocking(move || {
+        let _operation_guard = operation_lock
+            .lock()
+            .map_err(|_| "Não foi possível sincronizar: o bloqueio do repositório foi interrompido.".to_string())?;
         let auto_stashed = !run_git(&path, &["status", "--porcelain", "--untracked-files=all"])?
             .trim()
             .is_empty();
+        let (remote, branch) = configured_pull_target(&path)?;
+        let pull_args = [
+            "pull",
+            "--rebase",
+            "--autostash",
+            remote.as_str(),
+            branch.as_str(),
+        ];
 
         run_git_with_access_token(
             &path,
-            &["pull", "--rebase", "--autostash"],
+            &pull_args,
             GIT_NETWORK_TIMEOUT,
             access_token.as_deref(),
         )
@@ -1459,42 +1576,40 @@ pub async fn push_repository(
 ) -> Result<(), String> {
     ensure_repository(&path)?;
     let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let operation_lock = repository_operation_lock(&path);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let _operation_guard = operation_lock
+            .lock()
+            .map_err(|_| "Não foi possível sincronizar: o bloqueio do repositório foi interrompido.".to_string())?;
+        let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).map_err(|_| {
+            "Não é possível fazer push enquanto o repositório estiver em detached HEAD.".to_string()
+        })?;
 
-    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).map_err(|_| {
-        "Não é possível fazer push enquanto o repositório estiver em detached HEAD.".to_string()
-    })?;
-
-    if run_git(
-        &path,
-        &[
-            "rev-parse",
-            "--abbrev-ref",
-            "--symbolic-full-name",
-            "@{upstream}",
-        ],
-    )
-    .is_ok()
-    {
-        let result = tauri::async_runtime::spawn_blocking(move || {
-            run_git_with_access_token(
+        if run_git(
+            &path,
+            &[
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ],
+        )
+        .is_ok()
+        {
+            return run_git_with_access_token(
                 &path,
                 &["push"],
                 GIT_NETWORK_TIMEOUT,
                 access_token.as_deref(),
             )
-            .map(|_| ())
-        })
-        .await
-        .map_err(|error| format!("Falha ao executar o Push em segundo plano: {error}"))?;
+            .map(|_| ());
+        }
 
-        return result;
-    }
-
-    let remote = preferred_push_remote(&path)?;
-    let result = tauri::async_runtime::spawn_blocking(move || {
+        let remote = preferred_push_remote(&path)?;
+        let push_args = ["push", "--set-upstream", remote.as_str(), current_branch.trim()];
         run_git_with_access_token(
             &path,
-            &["push", "--set-upstream", &remote, &current_branch],
+            &push_args,
             GIT_NETWORK_TIMEOUT,
             access_token.as_deref(),
         )
@@ -1504,6 +1619,62 @@ pub async fn push_repository(
     .map_err(|error| format!("Falha ao executar o Push em segundo plano: {error}"))?;
 
     result
+}
+
+fn repository_operation_lock(path: &str) -> Arc<Mutex<()>> {
+    let key = std::fs::canonicalize(path)
+        .unwrap_or_else(|_| PathBuf::from(path))
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_lowercase();
+    let locks = REPOSITORY_OPERATION_LOCKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut locks = locks.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    locks
+        .entry(key)
+        .or_insert_with(|| Arc::new(Mutex::new(())))
+        .clone()
+}
+
+fn configured_pull_target(path: &str) -> Result<(String, String), String> {
+    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"])
+        .map_err(|_| "Não é possível fazer Pull enquanto o repositório estiver em detached HEAD.".to_string())?;
+    let current_branch = current_branch.trim();
+    let remote_key = format!("branch.{current_branch}.remote");
+    let merge_key = format!("branch.{current_branch}.merge");
+    // `git config --get-all` retorna código 1 quando a chave não existe. Isso
+    // é normal em uma branch sem upstream, então deixamos o fallback abaixo
+    // produzir a mensagem apropriada para o usuário.
+    let configured_remotes = run_git_lines(path, &["config", "--get-all", &remote_key])
+        .unwrap_or_default();
+    let configured_merges = run_git_lines(path, &["config", "--get-all", &merge_key])
+        .unwrap_or_default();
+
+    if let (Some(remote), Some(merge)) = (configured_remotes.first(), configured_merges.first()) {
+        let branch = merge
+            .strip_prefix("refs/heads/")
+            .unwrap_or(merge)
+            .to_string();
+        if !remote.trim().is_empty() && !branch.trim().is_empty() {
+            return Ok((remote.clone(), branch));
+        }
+    }
+
+    let upstream = run_git(
+        path,
+        &[
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{upstream}",
+        ],
+    )?;
+    let (remote, branch) = upstream
+        .trim()
+        .split_once('/')
+        .ok_or_else(|| "A branch atual não possui uma branch remota configurada para Pull.".to_string())?;
+
+    Ok((remote.to_string(), branch.to_string()))
 }
 
 fn sync_access_token(
@@ -2091,6 +2262,10 @@ fn preferred_configured_remote(path: &str) -> Option<String> {
 }
 
 fn detect_repository_operation(path: &str) -> Option<&'static str> {
+    if git_path_exists(path, "CHERRY_PICK_HEAD") {
+        return Some("cherry-pick");
+    }
+
     if git_path_exists(path, "MERGE_HEAD") {
         return Some("merge");
     }
@@ -2104,7 +2279,7 @@ fn detect_repository_operation(path: &str) -> Option<&'static str> {
 
 fn validate_repository_operation(path: &str, operation: &str) -> Result<(), String> {
     let current_operation = detect_repository_operation(path)
-        .ok_or_else(|| "Não existe uma operação Merge ou Rebase em andamento.".to_string())?;
+        .ok_or_else(|| "Não existe uma operação Merge, Rebase ou Cherry-pick em andamento.".to_string())?;
 
     if current_operation != operation {
         return Err(format!(

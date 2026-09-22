@@ -32,7 +32,7 @@ export interface RepositoryRemote {
   url?: string;
 }
 
-export type RepositoryOperationKind = "merge" | "rebase";
+export type RepositoryOperationKind = "merge" | "rebase" | "cherry-pick";
 
 export interface RepositoryOperation {
   kind: RepositoryOperationKind;

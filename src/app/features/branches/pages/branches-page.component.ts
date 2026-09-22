@@ -1,6 +1,8 @@
-import { Component, computed, effect, inject, OnInit, signal, untracked } from "@angular/core";
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal, untracked } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, NavigationEnd, Router } from "@angular/router";
+import { filter } from "rxjs";
 import { RepositoryReferences, RepositoryStatus } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
@@ -19,6 +21,8 @@ type BranchFormMode = "create" | "rename";
 export class BranchesPageComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
 
@@ -37,13 +41,50 @@ export class BranchesPageComponent implements OnInit {
   readonly pendingCreateBranch = signal<{ name: string; startPoint?: string } | undefined>(undefined);
   readonly pendingCheckoutBranch = signal<string | undefined>(undefined);
   readonly pendingDeleteBranch = signal<string | undefined>(undefined);
+  private lastLoadedRepoKey = "";
+  private lastLoadedRefreshVersion = -1;
   readonly filteredLocalBranches = computed(() => this.filterBranches(this.references()?.localBranches ?? []));
   readonly filteredRemoteBranches = computed(() => this.filterBranches(this.references()?.remoteBranches ?? []));
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    this.repositoryService.repositoryRefreshVersion();
+    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+    if (!this.isCurrentRoute()) {
+      return;
+    }
+    this.lastLoadedRepoKey = repository
+      ? `${repository.workspaceId}:${repository.path.toLowerCase()}`
+      : "";
+    this.lastLoadedRefreshVersion = refreshVersion;
     untracked(() => void this.loadReferences(repository));
   });
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((event) => {
+        if (!this.isCurrentRoute(event.urlAfterRedirects)) {
+          return;
+        }
+
+        const repository = this.activeRepository();
+        const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+        const repoKey = repository
+          ? `${repository.workspaceId}:${repository.path.toLowerCase()}`
+          : "";
+        if (repoKey === this.lastLoadedRepoKey &&
+            refreshVersion === this.lastLoadedRefreshVersion &&
+            !!this.references()) {
+          return;
+        }
+
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        void this.loadReferences(repository);
+      });
+  }
 
   ngOnInit(): void {
     const commitHash = this.route.snapshot.queryParamMap.get("from") || undefined;
@@ -55,6 +96,11 @@ export class BranchesPageComponent implements OnInit {
 
   clearBranchSearch(): void {
     this.branchSearch.set("");
+  }
+
+  private isCurrentRoute(url = this.router.url): boolean {
+    const path = url.split(/[?#]/, 1)[0];
+    return path.endsWith("/branches") || path === "/branches";
   }
 
   private filterBranches(branches: string[]): string[] {

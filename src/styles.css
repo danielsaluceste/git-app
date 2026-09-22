@@ -285,44 +285,33 @@ a {
   min-height: 100vh;
 }
 
-/* Molduras arredondadas limpas para cada tema */
+/* Molduras de janela 100% integradas e aceleradas por hardware */
 app-root,
-:root[data-theme="default"] app-root {
+:root[data-theme="default"] app-root,
+:root[data-theme="neo-brutalist"] app-root,
+:root[data-theme="glassmorphism"] app-root,
+:root[data-tauri-window] app-root {
   display: block;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--app-border-subtle);
-  border-radius: 0.85rem;
+  border: none !important;
+  border-radius: 0 !important;
   background: var(--app-bg);
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 :root[data-theme="neo-brutalist"] app-root {
-  display: block;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  border: 3px solid var(--app-border);
-  border-radius: calc(var(--app-panel-radius) + 0.2rem);
   background:
     radial-gradient(circle at 1px 1px, rgb(33 30 27 / 13%) 1.1px, transparent 0) 0 0 / 22px 22px,
     var(--app-bg);
-  box-shadow: 8px 8px 0 var(--app-shadow-color);
 }
 
 :root[data-theme="glassmorphism"] app-root,
 :root[data-tauri-window][data-theme="glassmorphism"] app-root {
-  display: block;
-  height: 100%;
-  min-height: 0;
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border: none !important;
-  border-radius: 0 !important;
-  background: rgba(15, 17, 20, 0.18);
-  box-shadow: none !important;
+  background: #0f1218;
 }
 
 :root[data-theme="glassmorphism"] app-root::before {
@@ -333,9 +322,8 @@ app-root,
   border-radius: inherit;
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.08), transparent),
-    rgba(12, 14, 18, 0.12);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
+    radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.04), transparent 40%),
+    #0f1218;
   content: "";
   pointer-events: none;
 }
@@ -1059,8 +1047,6 @@ app-shell .app-shell {
 :root[data-theme="glassmorphism"] .codex-sidebar {
   border-color: var(--app-border-subtle) !important;
   background: var(--app-workspace-surface) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   box-shadow: inset -1px 0 0 rgb(255 255 255 / 5%), 0 1.2rem 3rem rgb(0 0 0 / 12%);
   color: var(--app-text-bright) !important;
 }
@@ -1197,8 +1183,6 @@ app-shell .app-shell {
   border: 1px solid var(--app-border-subtle) !important;
   border-radius: var(--app-panel-radius) !important;
   background: rgb(255 255 255 / 7%) !important;
-  -webkit-backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
-  backdrop-filter: blur(calc(var(--app-glass-blur) * 0.75)) saturate(140%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-small-shadow);
 }
 
@@ -1235,8 +1219,6 @@ app-shell .app-shell {
   border: 1px solid var(--app-border) !important;
   border-radius: var(--app-panel-radius) !important;
   background: rgb(30 32 36 / 48%) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 15%), var(--app-panel-shadow) !important;
   color: var(--app-text-bright) !important;
 }
@@ -1343,9 +1325,7 @@ app-shell .app-shell {
 
 :root[data-theme="glassmorphism"] .language-options {
   border-color: var(--app-border) !important;
-  background: rgb(30 32 36 / 72%) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  background: rgb(30 32 36 / 94%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), var(--app-panel-shadow) !important;
   color: var(--app-text-bright) !important;
 }
@@ -1371,9 +1351,7 @@ app-shell .app-shell {
  * amplos para preservar a leitura sobre o conteúdo atrás deles. */
 :root[data-theme="glassmorphism"] .codex-session-selector {
   border-color: var(--app-border) !important;
-  background: rgb(30 32 36 / 72%) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  background: rgb(30 32 36 / 90%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 0.35rem 1rem rgb(0 0 0 / 18%) !important;
   color: var(--app-text-bright) !important;
 }
@@ -1381,14 +1359,12 @@ app-shell .app-shell {
 :root[data-theme="glassmorphism"] .codex-session-selector:hover,
 :root[data-theme="glassmorphism"] .codex-session-selector.is-open {
   border-color: var(--app-border-strong) !important;
-  background: rgb(42 44 48 / 78%) !important;
+  background: rgb(42 44 48 / 95%) !important;
 }
 
 :root[data-theme="glassmorphism"] .codex-session-menu {
   border-color: var(--app-border) !important;
-  background: rgb(24 26 29 / 86%) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
+  background: rgb(24 26 29 / 96%) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), var(--app-panel-shadow) !important;
 }
 
@@ -1543,8 +1519,6 @@ app-shell .app-shell {
 
 :root[data-theme="glassmorphism"] .terminal-drawer {
   background: var(--app-workspace-surface) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) !important;
-  backdrop-filter: blur(var(--app-glass-blur)) !important;
   border-top: 1px solid var(--app-border-subtle) !important;
 }
 
@@ -1558,12 +1532,7 @@ app-shell .app-shell {
 }
 
 :root[data-theme="glassmorphism"] .app-shell {
-  /* A base do vidro pertence ao shell persistente, não à rota. Assim a
-   * troca entre Visão geral, Alterações e as demais telas não muda a cor
-   * do fundo nem repinta uma superfície diferente. */
   background: var(--app-workspace-surface) !important;
-  -webkit-backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
-  backdrop-filter: blur(var(--app-glass-blur)) saturate(var(--app-glass-saturate));
 }
 
 :root[data-theme="glassmorphism"] .content {
@@ -1579,8 +1548,6 @@ app-shell .app-shell {
   inset: 0;
   display: block;
   background: rgb(15 17 20 / 26%);
-  -webkit-backdrop-filter: blur(var(--app-global-background-blur));
-  backdrop-filter: blur(var(--app-global-background-blur));
   content: "";
   pointer-events: none;
 }
@@ -1628,9 +1595,7 @@ app-shell .app-shell {
 :root[data-theme="glassmorphism"] .app-tooltip::after,
 :root[data-theme="glassmorphism"] .sidebar a[data-tooltip]::after {
   border-color: var(--app-border) !important;
-  background: rgb(28 29 34 / 86%) !important;
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+  background: rgb(28 29 34 / 94%) !important;
   box-shadow: var(--app-panel-shadow) !important;
   color: #ffffff !important;
 }

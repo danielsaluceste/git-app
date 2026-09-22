@@ -111,7 +111,14 @@ export class TerminalViewComponent implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
+  private lastCols = 0;
+  private lastRows = 0;
+  private resizeDebounceTimer?: ReturnType<typeof setTimeout>;
+
   ngOnDestroy(): void {
+    if (this.resizeDebounceTimer) {
+      clearTimeout(this.resizeDebounceTimer);
+    }
     this.outputSubscription?.unsubscribe();
     this.resizeObserver?.disconnect();
     this.terminal?.dispose();
@@ -122,7 +129,16 @@ export class TerminalViewComponent implements AfterViewInit, OnChanges, OnDestro
       if (this.fitAddon && this.terminal && this.terminalContainer?.nativeElement.clientWidth > 0) {
         this.fitAddon.fit();
         const { cols, rows } = this.terminal;
-        void this.terminalService.resize(this.tab.sessionId, rows, cols);
+        if (cols > 0 && rows > 0 && (cols !== this.lastCols || rows !== this.lastRows)) {
+          this.lastCols = cols;
+          this.lastRows = rows;
+          if (this.resizeDebounceTimer) {
+            clearTimeout(this.resizeDebounceTimer);
+          }
+          this.resizeDebounceTimer = setTimeout(() => {
+            void this.terminalService.resize(this.tab.sessionId, rows, cols);
+          }, 100);
+        }
       }
     } catch {
       // ignore

@@ -1,6 +1,8 @@
-import { Component, computed, effect, HostListener, inject, OnInit, signal, untracked } from "@angular/core";
+import { Component, computed, DestroyRef, effect, HostListener, inject, OnInit, signal, untracked } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute, Router } from "@angular/router";
+import { ActivatedRoute, NavigationEnd, Router } from "@angular/router";
+import { filter } from "rxjs";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
@@ -18,6 +20,7 @@ export class StashesPageComponent implements OnInit {
   private readonly repositoryService = inject(RepositoryService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
 
@@ -38,11 +41,48 @@ export class StashesPageComponent implements OnInit {
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
   private fileDiffRequestId = 0;
+  private lastLoadedRepoKey = "";
+  private lastLoadedRefreshVersion = -1;
   private readonly activeRepositoryEffect = effect(() => {
     const repository = this.activeRepository();
-    this.repositoryService.repositoryRefreshVersion();
+    const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+    if (!this.isCurrentRoute()) {
+      return;
+    }
+    this.lastLoadedRepoKey = repository
+      ? `${repository.workspaceId}:${repository.path.toLowerCase()}`
+      : "";
+    this.lastLoadedRefreshVersion = refreshVersion;
     untracked(() => void this.loadReferences(repository));
   });
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((event) => {
+        if (!this.isCurrentRoute(event.urlAfterRedirects)) {
+          return;
+        }
+
+        const repository = this.activeRepository();
+        const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+        const repoKey = repository
+          ? `${repository.workspaceId}:${repository.path.toLowerCase()}`
+          : "";
+        if (repoKey === this.lastLoadedRepoKey &&
+            refreshVersion === this.lastLoadedRefreshVersion &&
+            !!this.references()) {
+          return;
+        }
+
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        void this.loadReferences(repository);
+      });
+  }
 
   private readonly closeMissingSelection = effect(() => {
     const references = this.references();
@@ -65,6 +105,11 @@ export class StashesPageComponent implements OnInit {
         void this.loadStashDetails(stashRef);
       }
     });
+  }
+
+  private isCurrentRoute(url = this.router.url): boolean {
+    const path = url.split(/[?#]/, 1)[0];
+    return path.endsWith("/stashes") || path === "/stashes";
   }
 
   async loadReferences(repository = this.activeRepository()): Promise<void> {

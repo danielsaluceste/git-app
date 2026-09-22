@@ -78,30 +78,10 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
   editingSessionId: string | undefined;
   editingSessionTitle = "";
   private initialScrollPending = true;
-  private messagesObserver?: MutationObserver;
-  private messagesResizeObserver?: ResizeObserver;
   private scrollTimer?: number;
 
   ngAfterViewInit(): void {
     this.initialScrollPending = true;
-    const element = this.messagesContainer?.nativeElement;
-    if (element && typeof MutationObserver !== "undefined") {
-      this.messagesObserver = new MutationObserver(() => {
-        this.scrollMessagesToBottom("auto");
-      });
-      this.messagesObserver.observe(element, {
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    if (element && typeof ResizeObserver !== "undefined") {
-      this.messagesResizeObserver = new ResizeObserver(() => {
-        this.scrollMessagesToBottom("auto");
-      });
-      this.messagesResizeObserver.observe(element);
-    }
-
     this.scrollMessagesToBottom("auto");
   }
 
@@ -115,8 +95,6 @@ export class CodexSidebarComponent implements OnChanges, AfterViewInit, AfterVie
   }
 
   ngOnDestroy(): void {
-    this.messagesObserver?.disconnect();
-    this.messagesResizeObserver?.disconnect();
     if (this.scrollTimer !== undefined) {
       window.clearTimeout(this.scrollTimer);
     }

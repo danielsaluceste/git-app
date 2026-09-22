@@ -12,8 +12,8 @@ import {
   ViewChild,
 } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { fromEvent } from "rxjs";
-import { Router } from "@angular/router";
+import { fromEvent, filter } from "rxjs";
+import { NavigationEnd, Router } from "@angular/router";
 import { Commit } from "../../../core/models/commit.model";
 import { CommitFile } from "../../../core/models/commit-file.model";
 import { GitFile } from "../../../core/models/git-file.model";
@@ -79,6 +79,9 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly commitFileDiffError = signal("");
   readonly isCheckingOut = signal(false);
   readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
+  readonly isCherryPicking = signal(false);
+  readonly pendingCherryPickCommit = signal<Commit | undefined>(undefined);
+  readonly pendingCherryPickNeedsStash = signal(false);
   readonly pendingRevertCommit = signal<Commit | undefined>(undefined);
   readonly isRevertingCommit = signal(false);
   readonly pendingTagCommit = signal<Commit | undefined>(undefined);
@@ -112,6 +115,10 @@ export class HistoryPageComponent implements AfterViewInit {
       this.hasMoreCommits.set(false);
       this.commits.set([]);
       this.lastLoadedRepoKey = "";
+      return;
+    }
+
+    if (!this.isCurrentRoute()) {
       return;
     }
 
@@ -170,6 +177,36 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly commitGraph = computed<CommitGraphResult>(() => {
     return computeCommitGraph(this.filteredCommits(), this.currentBranch());
   });
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((event) => {
+        if (!this.isCurrentRoute(event.urlAfterRedirects)) {
+          return;
+        }
+
+        const repository = this.activeRepository();
+        if (!repository) {
+          return;
+        }
+
+        const repoKey = `${repository.workspaceId}:${repository.path.toLowerCase()}`;
+        const refreshVersion = this.repositoryService.repositoryRefreshVersion();
+        if (repoKey === this.lastLoadedRepoKey &&
+            refreshVersion === this.lastLoadedRefreshVersion &&
+            this.commits().length > 0) {
+          return;
+        }
+
+        this.lastLoadedRepoKey = repoKey;
+        this.lastLoadedRefreshVersion = refreshVersion;
+        void this.loadOverview(repository);
+      });
+  }
   readonly graphRows = computed<CommitGraphRow[]>(() => {
     return this.commitGraph().rows;
   });
@@ -188,6 +225,11 @@ export class HistoryPageComponent implements AfterViewInit {
     fromEvent(scrollContainer, "scroll", { passive: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.actionBarScrolled.set(scrollContainer.scrollTop > 8));
+  }
+
+  private isCurrentRoute(url = this.router.url): boolean {
+    const path = url.split(/[?#]/, 1)[0];
+    return path.endsWith("/overview") || path === "/overview";
   }
 
   async loadOverview(repository = this.activeRepository(), forceFresh = false): Promise<void> {
@@ -362,6 +404,91 @@ export class HistoryPageComponent implements AfterViewInit {
     this.closeCommitContextMenu();
     if (commit) {
       void this.requestCheckoutCommit(commit);
+    }
+  }
+
+  cherryPickFromContextMenu(): void {
+    const commit = this.commitContextMenu()?.commit;
+    this.closeCommitContextMenu();
+    if (commit) {
+      void this.requestCherryPick(commit);
+    }
+  }
+
+  private async requestCherryPick(commit: Commit): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository || this.isCherryPicking() || this.isCheckingOut() || this.syncAction()) {
+      return;
+    }
+
+    try {
+      const status = await this.repositoryService.getStatus(repository.path);
+      this.pendingCherryPickNeedsStash.set(status.isDirty);
+      this.pendingCherryPickCommit.set(commit);
+    } catch (error: unknown) {
+      this.toastService.error(
+        this.getCommitCherryPickErrorMessage(error),
+        this.translationService.translate("history.cherryPickTitle"),
+      );
+    }
+  }
+
+  cancelCherryPick(): void {
+    this.pendingCherryPickCommit.set(undefined);
+    this.pendingCherryPickNeedsStash.set(false);
+  }
+
+  async confirmCherryPick(): Promise<void> {
+    const commit = this.pendingCherryPickCommit();
+    const saveChanges = this.pendingCherryPickNeedsStash();
+    this.cancelCherryPick();
+
+    if (commit) {
+      await this.executeCherryPick(commit, saveChanges);
+    }
+  }
+
+  private async executeCherryPick(commit: Commit, saveChanges: boolean): Promise<void> {
+    const repository = this.activeRepository();
+    if (!repository || this.isCherryPicking()) {
+      return;
+    }
+
+    this.isCherryPicking.set(true);
+    try {
+      if (saveChanges) {
+        await this.repositoryService.stash(repository.path, `Antes do cherry-pick ${commit.shortHash}`);
+      }
+
+      await this.repositoryService.cherryPickCommit(repository.path, commit.hash);
+      this.toastService.success(
+        saveChanges
+          ? this.translationService.translate("history.cherryPickWithStash", { hash: commit.shortHash })
+          : this.translationService.translate("history.cherryPickSuccess", { hash: commit.shortHash }),
+        this.translationService.translate("history.cherryPickSuccessTitle"),
+      );
+      await this.loadOverview();
+    } catch (error: unknown) {
+      const operation = await this.repositoryService.getOperation(repository.path).catch(() => null);
+      if (operation?.kind === "cherry-pick") {
+        this.toastService.warning(
+          this.translationService.translate(
+            saveChanges
+              ? "history.cherryPickConflictWithStashMessage"
+              : "history.cherryPickConflictMessage",
+          ),
+          this.translationService.translate("history.cherryPickConflictTitle"),
+        );
+        await this.router.navigate(["/changes"]);
+        return;
+      }
+
+      this.toastService.error(
+        this.getCommitCherryPickErrorMessage(error),
+        this.translationService.translate("history.cherryPickTitle"),
+      );
+    } finally {
+      this.isCherryPicking.set(false);
     }
   }
 
@@ -839,7 +966,7 @@ export class HistoryPageComponent implements AfterViewInit {
         }
       }
 
-      this.toastService.error(this.getSyncErrorMessage(error), this.translationService.translate("history.syncTitle"));
+      this.toastService.error(this.getSyncErrorMessage(error, action), this.translationService.translate("history.syncTitle"));
     } finally {
       this.syncAction.set("");
     }
@@ -977,16 +1104,38 @@ export class HistoryPageComponent implements AfterViewInit {
         : this.translationService.translate("history.push");
   }
 
-  private getSyncErrorMessage(error: unknown): string {
-    if (typeof error === "string" && error.trim()) {
-      return this.translationService.translate("history.syncError", { message: error.trim() });
+  private getSyncErrorMessage(error: unknown, action: SyncAction = ""): string {
+    const message = typeof error === "string"
+      ? error.trim()
+      : error instanceof Error
+        ? error.message.trim()
+        : "";
+
+    if (this.isDivergedSyncError(message)) {
+      if (action === "push") {
+        return this.translationService.translate("history.pushDivergedError");
+      }
+
+      if (action === "pull") {
+        return this.translationService.translate("history.pullDivergedError");
+      }
+
+      return this.translationService.translate("history.syncDivergedError");
     }
 
-    if (error instanceof Error && error.message) {
-      return this.translationService.translate("history.syncError", { message: error.message });
-    }
+    return message
+      ? this.translationService.translate("history.syncError", { message })
+      : this.translationService.translate("history.syncGenericError");
+  }
 
-    return this.translationService.translate("history.syncGenericError");
+  private isDivergedSyncError(message: string): boolean {
+    const normalized = message.toLocaleLowerCase();
+    return normalized.includes("non-fast-forward")
+      || normalized.includes("non fast-forward")
+      || normalized.includes("tip of your current branch is behind")
+      || normalized.includes("failed to push some refs")
+      || normalized.includes("fetch first")
+      || normalized.includes("diverging branches can't be fast-forwarded");
   }
 
   private async enrichCommitAvatars(commits: Commit[]): Promise<Commit[]> {
@@ -1069,6 +1218,18 @@ export class HistoryPageComponent implements AfterViewInit {
     }
 
     return this.translationService.translate("history.revertGenericError");
+  }
+
+  private getCommitCherryPickErrorMessage(error: unknown): string {
+    if (typeof error === "string" && error.trim()) {
+      return this.translationService.translate("history.cherryPickError", { message: error.trim() });
+    }
+
+    if (error instanceof Error && error.message) {
+      return this.translationService.translate("history.cherryPickError", { message: error.message });
+    }
+
+    return this.translationService.translate("history.cherryPickGenericError");
   }
 
   private getCommitFilesErrorMessage(error: unknown): string {
