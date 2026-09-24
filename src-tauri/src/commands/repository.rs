@@ -1093,28 +1093,30 @@ pub fn apply_stash_files(
 
     let selected_paths = validate_stash_file_selection(&path, &stash_ref, file_paths)?;
     for file_path in selected_paths {
-        let source = if stash_contains_path(&path, &stash_ref, &file_path) {
-            stash_ref.clone()
+        let untracked_commit = format!("{stash_ref}^3");
+        if stash_contains_path(&path, &untracked_commit, &file_path) {
+            let args = vec![
+                "restore".to_string(),
+                "--source".to_string(),
+                untracked_commit,
+                "--worktree".to_string(),
+                "--".to_string(),
+                file_path,
+            ];
+            run_git_strings(&path, &args)?;
         } else {
-            let untracked_parent = format!("{stash_ref}^3");
-            if stash_contains_path(&path, &untracked_parent, &file_path) {
-                untracked_parent
-            } else {
-                stash_ref.clone()
-            }
-        };
-
-        let args = vec![
-            "restore".to_string(),
-            "--source".to_string(),
-            source,
-            "--staged".to_string(),
-            "--worktree".to_string(),
-            "--no-overlay".to_string(),
-            "--".to_string(),
-            file_path,
-        ];
-        run_git_strings(&path, &args)?;
+            let args = vec![
+                "restore".to_string(),
+                "--source".to_string(),
+                stash_ref.clone(),
+                "--staged".to_string(),
+                "--worktree".to_string(),
+                "--no-overlay".to_string(),
+                "--".to_string(),
+                file_path,
+            ];
+            run_git_strings(&path, &args)?;
+        }
     }
 
     Ok(())
@@ -1172,6 +1174,9 @@ pub fn get_stash_files(path: String, stash_ref: String) -> Result<Vec<CommitFile
     ensure_repository(&path)?;
     validate_stash_reference(&path, &stash_ref)?;
 
+    let mut files = Vec::new();
+    let mut seen_paths = HashSet::new();
+
     let base_commit = format!("{stash_ref}^1");
     let tracked_output = run_git(
         &path,
@@ -1183,42 +1188,62 @@ pub fn get_stash_files(path: String, stash_ref: String) -> Result<Vec<CommitFile
             &stash_ref,
         ],
     )?;
-    let untracked_parent = format!("{stash_ref}^3");
+
+    for line in tracked_output.lines() {
+        let Some((status_code, raw_path)) = line.split_once('\t') else {
+            continue;
+        };
+        let file_path = raw_path.split('\t').last().unwrap_or(raw_path).trim();
+        if file_path.is_empty() {
+            continue;
+        }
+
+        let status = match status_code.trim().chars().next().unwrap_or('M') {
+            'A' => "added",
+            'D' => "deleted",
+            'R' => "renamed",
+            '?' => "untracked",
+            _ => "modified",
+        };
+
+        if seen_paths.insert(file_path.to_string()) {
+            files.push(CommitFile {
+                path: file_path.to_string(),
+                status: status.to_string(),
+            });
+        }
+    }
+
+    let untracked_commit = format!("{stash_ref}^3");
     let untracked_output = run_git(
         &path,
         &[
-            "diff",
+            "diff-tree",
+            "--root",
+            "--no-commit-id",
             "--name-status",
-            "--find-renames",
-            &untracked_parent,
-            &stash_ref,
+            "-r",
+            &untracked_commit,
         ],
     )
     .unwrap_or_default();
-    let output = format!("{tracked_output}\n{untracked_output}");
 
-    let files = output
-        .lines()
-        .filter_map(|line| {
-            let (status_code, path) = line.split_once('\t')?;
-            if path.trim().is_empty() {
-                return None;
-            }
+    for line in untracked_output.lines() {
+        let Some((_, raw_path)) = line.split_once('\t') else {
+            continue;
+        };
+        let file_path = raw_path.split('\t').last().unwrap_or(raw_path).trim();
+        if file_path.is_empty() {
+            continue;
+        }
 
-            let status = match status_code.trim().chars().next()? {
-                'A' => "added",
-                'D' => "deleted",
-                'R' => "renamed",
-                '?' => "untracked",
-                _ => "modified",
-            };
-
-            Some(CommitFile {
-                path: path.trim().to_string(),
-                status: status.to_string(),
-            })
-        })
-        .collect();
+        if seen_paths.insert(file_path.to_string()) {
+            files.push(CommitFile {
+                path: file_path.to_string(),
+                status: "untracked".to_string(),
+            });
+        }
+    }
 
     Ok(files)
 }
@@ -1245,22 +1270,21 @@ pub fn get_stash_file_diff(
         "--no-textconv".to_string(),
         "--unified=3".to_string(),
         base_commit,
-        stash_commit.clone(),
+        stash_commit,
         "--".to_string(),
         file_path.clone(),
     ];
     let mut diff = run_git_strings(&path, &tracked_args)?;
 
     if diff.trim().is_empty() {
-        let untracked_parent = format!("{stash_ref}^3");
+        let untracked_commit = format!("{stash_ref}^3");
         let untracked_args = vec![
-            "diff".to_string(),
-            "--patch".to_string(),
-            "--no-ext-diff".to_string(),
-            "--no-textconv".to_string(),
+            "diff-tree".to_string(),
+            "--root".to_string(),
+            "-p".to_string(),
+            "--no-commit-id".to_string(),
             "--unified=3".to_string(),
-            untracked_parent,
-            stash_commit,
+            untracked_commit,
             "--".to_string(),
             file_path,
         ];

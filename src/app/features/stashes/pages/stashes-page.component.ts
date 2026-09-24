@@ -35,6 +35,7 @@ export class StashesPageComponent implements OnInit {
   readonly selectedStash = signal<string | undefined>(undefined);
   readonly stashFiles = signal<CommitFile[]>([]);
   readonly selectedStashPaths = signal<string[]>([]);
+  readonly selectedStashPathSet = computed(() => new Set(this.selectedStashPaths()));
   readonly stashLoading = signal(false);
   readonly selectedFile = signal<CommitFile | undefined>(undefined);
   readonly fileDiff = signal("");
@@ -266,7 +267,7 @@ export class StashesPageComponent implements OnInit {
   }
 
   isStashFileSelected(filePath: string): boolean {
-    return this.selectedStashPaths().includes(filePath);
+    return this.selectedStashPathSet().has(filePath);
   }
 
   allStashFilesSelected(): boolean {
@@ -277,7 +278,7 @@ export class StashesPageComponent implements OnInit {
     event.stopPropagation();
     const selectedPaths = this.selectedStashPaths();
     this.selectedStashPaths.set(
-      selectedPaths.includes(filePath)
+      this.selectedStashPathSet().has(filePath)
         ? selectedPaths.filter((path) => path !== filePath)
         : [...selectedPaths, filePath],
     );

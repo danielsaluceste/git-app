@@ -23,6 +23,7 @@ export class StashDialogComponent implements AfterViewInit, OnInit {
   @Output() cancelled = new EventEmitter<void>();
 
   private selectedFilePaths: string[] = [];
+  private selectedFilePathsSet = new Set<string>();
 
   ngOnInit(): void {
     this.selectedFilePaths = this.selectedPaths.length > 0
@@ -51,7 +52,7 @@ export class StashDialogComponent implements AfterViewInit, OnInit {
   }
 
   isFileSelected(filePath: string): boolean {
-    return this.selectedFilePaths.includes(filePath);
+    return this.selectedFilePathsSet.has(filePath);
   }
 
   allFilesSelected(): boolean {
@@ -93,6 +94,7 @@ export class StashDialogComponent implements AfterViewInit, OnInit {
   }
 
   private emitSelectedPaths(): void {
+    this.selectedFilePathsSet = new Set(this.selectedFilePaths);
     this.selectedPathsChange.emit([...this.selectedFilePaths]);
   }
 }
