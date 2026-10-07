@@ -285,7 +285,7 @@ pub async fn list_repositories(
     Ok(repositories)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn disconnect_account(
     state: State<'_, GithubCredentialState>,
     workspace_id: String,

@@ -275,7 +275,16 @@
                       {{ commitInitial(row.commit.authorName) }}
                     </span>
                     @if (row.commit.avatarUrl) {
-                      <img [src]="row.commit.avatarUrl" [alt]="'Foto de ' + row.commit.authorName" (error)="hideAvatar($event)" />
+                      <img
+                        [src]="row.commit.avatarUrl"
+                        [alt]="'Foto de ' + row.commit.authorName"
+                        width="24"
+                        height="24"
+                        loading="lazy"
+                        decoding="async"
+                        referrerpolicy="no-referrer"
+                        (error)="hideAvatar($event)"
+                      />
                     }
                   </span>
                 </span>

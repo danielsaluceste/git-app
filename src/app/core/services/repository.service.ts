@@ -11,6 +11,7 @@ import {
   RepositoryRemote,
   RepositoryStatus,
   RepositoryReferences,
+  RepositorySignature,
   PullResult,
   RepositoryAuthenticationSource,
   ConflictFile,
@@ -51,7 +52,19 @@ export class RepositoryService {
   private readonly repositoryRefreshVersionState = signal(0);
   private readonly repositoryCache = new Map<string, RepositoryCache>();
   private readonly backgroundRefreshes = new Set<string>();
+  private readonly inFlightRequests = new Map<string, Promise<unknown>>();
+  private readonly repositorySignatures = new Map<string, string>();
+  private readonly lastLocalRefreshAt = new Map<string, number>();
+  private readonly lastAutoFetchAt = new Map<string, number>();
+  private readonly localRefreshMinGap = 1_500;
+  private readonly fileChangeRefreshMinGap = 2_000;
+  private readonly watcherRefreshDebounce = 500;
+  private readonly autoFetchInterval = 3 * 60_000;
+  private readonly idleSafetyRefreshInterval = 120_000;
+  private readonly duplicateFetchGap = 20_000;
   private watcherUnlisten?: UnlistenFn;
+  private watcherRefreshTimer?: ReturnType<typeof setTimeout>;
+  private pendingWatcherRepository?: Repository;
 
   constructor() {
     void this.initWatcherListener();
@@ -89,7 +102,10 @@ export class RepositoryService {
   }
 
   async getReferences(path: string): Promise<RepositoryReferences> {
-    const references = await invoke<RepositoryReferences>("get_repository_references", { path });
+    const references = await this.dedupe(
+      `references:${this.normalizeRepositoryPath(path)}`,
+      () => invoke<RepositoryReferences>("get_repository_references", { path }),
+    );
     this.cacheFor(path).references = references;
     if (this.isActiveRepositoryPath(path)) {
       this.repositoryReferencesState.set(references);
@@ -106,7 +122,10 @@ export class RepositoryService {
   }
 
   async getOperation(path: string): Promise<RepositoryOperation | null> {
-    const operation = await invoke<RepositoryOperation | null>("get_repository_operation", { path });
+    const operation = await this.dedupe(
+      `operation:${this.normalizeRepositoryPath(path)}`,
+      () => invoke<RepositoryOperation | null>("get_repository_operation", { path }),
+    );
     this.cacheFor(path).operation = operation;
     return operation;
   }
@@ -120,7 +139,10 @@ export class RepositoryService {
   }
 
   async getStatus(path: string): Promise<RepositoryStatus> {
-    const status = await invoke<RepositoryStatus>("get_repository_status", { path });
+    const status = await this.dedupe(
+      `status:${this.normalizeRepositoryPath(path)}`,
+      () => invoke<RepositoryStatus>("get_repository_status", { path }),
+    );
     this.cacheFor(path).status = status;
     if (this.isActiveRepositoryPath(path)) {
       this.repositoryStatusState.set(status);
@@ -130,6 +152,17 @@ export class RepositoryService {
 
   async getConflicts(path: string): Promise<ConflictFile[]> {
     return invoke<ConflictFile[]>("get_repository_conflicts", { path });
+  }
+
+  /**
+   * Assinatura leve do repositório (apenas leitura de metadados do `.git`, sem
+   * criar processos Git) usada para saber se vale a pena atualizar a interface.
+   */
+  async getSignature(path: string): Promise<RepositorySignature> {
+    return this.dedupe(
+      `signature:${this.normalizeRepositoryPath(path)}`,
+      () => invoke<RepositorySignature>("get_repository_signature", { path }),
+    );
   }
 
   async resolveConflict(
@@ -308,17 +341,17 @@ export class RepositoryService {
 
     this.backgroundRefreshes.add(cacheKey);
     try {
-      // 1. Atualização instantânea dos dados locais
-      await Promise.allSettled([
-        this.getReferences(repository.path),
-        this.getStatus(repository.path),
-        this.getOperation(repository.path),
-      ]);
-      this.repositoryRefreshVersionState.update((version) => version + 1);
+      await this.refreshLocalStateLocked(repository, cacheKey);
+      await this.storeSignature(repository, cacheKey);
 
-      // 2. O fetch continua assíncrono para a interface, mas permanece dentro
-      // do bloqueio da atualização. Assim, uma segunda atualização não inicia
-      // outro processo Git enquanto este ainda está executando.
+      // Evita disparar vários `git fetch` seguidos ao abrir/trocar de
+      // repositório em sequência.
+      if (Date.now() - (this.lastAutoFetchAt.get(cacheKey) ?? 0) < this.duplicateFetchGap) {
+        return;
+      }
+
+      this.lastAutoFetchAt.set(cacheKey, Date.now());
+
       const syncCredentials = this.getSyncCredentials(repository);
       await this.fetch(
         repository.path,
@@ -331,9 +364,144 @@ export class RepositoryService {
         this.getStatus(repository.path),
       ]);
       this.repositoryRefreshVersionState.update((version) => version + 1);
+      await this.storeSignature(repository, cacheKey);
     } finally {
       this.backgroundRefreshes.delete(cacheKey);
     }
+  }
+
+  /**
+   * Atualização automática (timer, foco da janela, volta do sistema): só cria
+   * processos Git quando a assinatura do `.git` mudou ou quando já passou do
+   * intervalo de segurança. O app continua se atualizando sozinho, porém sem
+   * rodar `git status`/`git log` a cada ciclo quando nada aconteceu.
+   */
+  async refreshAutomatically(repository: Repository): Promise<void> {
+    const cacheKey = this.normalizeRepositoryPath(repository.path);
+    if (this.backgroundRefreshes.has(cacheKey)) {
+      return;
+    }
+
+    const signature = await this.getSignature(repository.path).catch(() => undefined);
+    const previousSignature = this.repositorySignatures.get(cacheKey);
+    const hasLocalSnapshot = this.lastLocalRefreshAt.has(cacheKey);
+    const signatureChanged =
+      !!signature && !!previousSignature && signature.signature !== previousSignature;
+    const now = Date.now();
+    const lastLocalRefresh = this.lastLocalRefreshAt.get(cacheKey) ?? 0;
+    const safetyRefreshDue = now - lastLocalRefresh >= this.idleSafetyRefreshInterval;
+
+    if (hasLocalSnapshot && !signatureChanged && !safetyRefreshDue) {
+      return;
+    }
+
+    if (now - lastLocalRefresh < this.localRefreshMinGap) {
+      return;
+    }
+
+    this.backgroundRefreshes.add(cacheKey);
+    try {
+      if (signature) {
+        this.repositorySignatures.set(cacheKey, signature.signature);
+      }
+
+      await this.refreshLocalStateLocked(repository, cacheKey);
+      await this.syncRemoteWhenDue(repository, cacheKey);
+    } finally {
+      this.backgroundRefreshes.delete(cacheKey);
+    }
+  }
+
+  /** Atualiza somente dados locais (sem rede). Retorna se a atualização rodou. */
+  async refreshLocalState(repository: Repository): Promise<boolean> {
+    const cacheKey = this.normalizeRepositoryPath(repository.path);
+    if (this.backgroundRefreshes.has(cacheKey)) {
+      return false;
+    }
+
+    this.backgroundRefreshes.add(cacheKey);
+    try {
+      await this.refreshLocalStateLocked(repository, cacheKey);
+      return true;
+    } finally {
+      this.backgroundRefreshes.delete(cacheKey);
+    }
+  }
+
+  private async refreshLocalStateLocked(repository: Repository, cacheKey: string): Promise<void> {
+    await Promise.allSettled([
+      this.getReferences(repository.path),
+      this.getStatus(repository.path),
+      this.getOperation(repository.path),
+    ]);
+    this.lastLocalRefreshAt.set(cacheKey, Date.now());
+    this.repositoryRefreshVersionState.update((version) => version + 1);
+  }
+
+  private async storeSignature(repository: Repository, cacheKey: string): Promise<void> {
+    const signature = await this.getSignature(repository.path).catch(() => undefined);
+
+    if (signature) {
+      this.repositorySignatures.set(cacheKey, signature.signature);
+    }
+  }
+
+  /**
+   * Sincroniza com o remoto respeitando um intervalo mínimo entre fetches
+   * automáticos, para que foco/visibilidade da janela não gerem tráfego de rede
+   * a cada alternância de contexto.
+   */
+  private async syncRemoteWhenDue(repository: Repository, cacheKey: string): Promise<void> {
+    const now = Date.now();
+    if (now - (this.lastAutoFetchAt.get(cacheKey) ?? 0) < this.autoFetchInterval) {
+      return;
+    }
+
+    this.lastAutoFetchAt.set(cacheKey, now);
+
+    const references = this.getCachedReferences(repository.path);
+    if (!references || references.remoteBranches.length === 0) {
+      // Sem remote configurado não existe o que sincronizar.
+      return;
+    }
+
+    const syncCredentials = this.getSyncCredentials(repository);
+
+    try {
+      await this.fetch(
+        repository.path,
+        syncCredentials.workspaceId,
+        syncCredentials.githubUserId,
+      );
+    } catch {
+      return;
+    }
+
+    await Promise.allSettled([
+      this.getReferences(repository.path),
+      this.getStatus(repository.path),
+    ]);
+    this.repositoryRefreshVersionState.update((version) => version + 1);
+    await this.storeSignature(repository, cacheKey);
+  }
+
+  /** Reaproveita requisições concorrentes para o mesmo dado. */
+  private dedupe<T>(key: string, factory: () => Promise<T>): Promise<T> {
+    const inFlight = this.inFlightRequests.get(key) as Promise<T> | undefined;
+
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request = factory();
+    const tracked = request.finally(() => {
+      if (this.inFlightRequests.get(key) === tracked) {
+        this.inFlightRequests.delete(key);
+      }
+    });
+
+    this.inFlightRequests.set(key, tracked);
+    return tracked;
   }
 
   async checkoutBranch(path: string, branch: string): Promise<void> {
@@ -520,7 +688,7 @@ export class RepositoryService {
           const eventPath = this.normalizeRepositoryPath(event.payload.path);
           const activePath = this.normalizeRepositoryPath(active.path);
           if (eventPath === activePath) {
-            void this.handleRepositoryFileChange(active);
+            this.handleRepositoryFileChange(active);
           }
         },
       );
@@ -529,14 +697,48 @@ export class RepositoryService {
     }
   }
 
-  private async handleRepositoryFileChange(repository: Repository): Promise<void> {
+  private handleRepositoryFileChange(repository: Repository): void {
+    this.pendingWatcherRepository = repository;
+
+    if (this.watcherRefreshTimer !== undefined) {
+      return;
+    }
+
+    // Agrupa a rajada de eventos que um único comando Git costuma gerar.
+    this.watcherRefreshTimer = setTimeout(() => {
+      this.watcherRefreshTimer = undefined;
+      const pending = this.pendingWatcherRepository;
+      this.pendingWatcherRepository = undefined;
+
+      if (pending) {
+        void this.refreshAfterRepositoryFileChange(pending);
+      }
+    }, this.watcherRefreshDebounce);
+  }
+
+  private async refreshAfterRepositoryFileChange(repository: Repository): Promise<void> {
+    if (!this.isSameRepository(this.activeRepositoryState(), repository)) {
+      return;
+    }
+
+    const cacheKey = this.normalizeRepositoryPath(repository.path);
+    if (this.backgroundRefreshes.has(cacheKey)) {
+      return;
+    }
+
+    const elapsed = Date.now() - (this.lastLocalRefreshAt.get(cacheKey) ?? 0);
+    if (this.lastLocalRefreshAt.has(cacheKey) && elapsed < this.fileChangeRefreshMinGap) {
+      // Evita rodar Git novamente por causa do mesmo evento logo em seguida.
+      setTimeout(
+        () => void this.refreshAfterRepositoryFileChange(repository),
+        this.fileChangeRefreshMinGap - elapsed,
+      );
+      return;
+    }
+
     try {
-      await Promise.allSettled([
-        this.getReferences(repository.path),
-        this.getStatus(repository.path),
-        this.getOperation(repository.path),
-      ]);
-      this.repositoryRefreshVersionState.update((version) => version + 1);
+      await this.refreshLocalState(repository);
+      await this.storeSignature(repository, cacheKey);
     } catch (error) {
       console.warn("Erro ao atualizar dados após evento do file watcher:", error);
     }

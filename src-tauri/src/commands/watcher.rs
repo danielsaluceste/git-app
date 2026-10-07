@@ -23,15 +23,36 @@ pub struct WatcherState {
 
 fn is_noise_path(path_str: &str) -> bool {
     let normalized = path_str.replace('\\', "/");
-    normalized.contains("/.git/objects/")
-        || normalized.contains("/.git/logs/")
-        || normalized.ends_with(".lock")
-        || normalized.contains("/node_modules/")
-        || normalized.contains("/target/")
-        || normalized.contains("/dist/")
-        || normalized.contains("/.angular/")
-        || normalized.contains("/.vscode/")
-        || normalized.contains("/.idea/")
+
+    if normalized.ends_with(".lock") {
+        return true;
+    }
+
+    const NOISE_FRAGMENTS: [&str; 19] = [
+        "/.git/objects/",
+        "/.git/logs/",
+        "/.git/lfs/",
+        "/.git/fsmonitor--daemon/",
+        "/node_modules/",
+        "/target/",
+        "/dist/",
+        "/build/",
+        "/.angular/",
+        "/.vscode/",
+        "/.idea/",
+        "/.cache/",
+        "/.next/",
+        "/.nuxt/",
+        "/.svelte-kit/",
+        "/.turbo/",
+        "/coverage/",
+        "/.venv/",
+        "/__pycache__/",
+    ];
+
+    NOISE_FRAGMENTS
+        .iter()
+        .any(|fragment| normalized.contains(fragment))
 }
 
 fn is_relevant_event(event: &Event) -> bool {
@@ -45,7 +66,7 @@ fn is_relevant_event(event: &Event) -> bool {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn watch_repository(
     app: AppHandle,
     state: State<'_, WatcherState>,
@@ -145,7 +166,7 @@ pub fn watch_repository(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn unwatch_repository(state: State<'_, WatcherState>) -> Result<(), String> {
     let mut lock = state
         .active_watcher

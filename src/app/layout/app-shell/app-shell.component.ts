@@ -290,7 +290,7 @@ export class AppShellComponent implements OnDestroy {
     this.lastRepositoryRefreshAt = now;
     this.repositoryRefreshInFlight = true;
     void this.repositoryService
-      .refreshAfterRepositoryOpened(repository)
+      .refreshAutomatically(repository)
       .catch(() => undefined)
       .finally(() => {
         this.repositoryRefreshInFlight = false;

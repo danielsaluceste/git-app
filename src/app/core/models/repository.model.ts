@@ -32,6 +32,11 @@ export interface RepositoryRemote {
   url?: string;
 }
 
+export interface RepositorySignature {
+  signature: string;
+  headHash?: string;
+}
+
 export type RepositoryOperationKind = "merge" | "rebase" | "cherry-pick";
 
 export interface RepositoryOperation {

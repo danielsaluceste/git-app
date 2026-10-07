@@ -52,7 +52,7 @@ pub struct PullResult {
     auto_stashed: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
     let repository_path = PathBuf::from(&path);
 
@@ -75,7 +75,7 @@ pub fn inspect_repository(path: String) -> Result<LocalRepositoryInfo, String> {
 }
 
 #[tauri::command]
-pub fn clone_repository(
+pub async fn clone_repository(
     app: AppHandle,
     state: State<'_, CloneProcessState>,
     github_state: State<'_, github::GithubCredentialState>,
@@ -202,45 +202,22 @@ pub fn clone_repository(
         Arc::clone(&stderr_output),
     );
 
-    let started_at = Instant::now();
-    let status = loop {
-        let process_status = process
-            .child
-            .lock()
-            .map_err(|_| "Não foi possível acompanhar o clone.".to_string())?
-            .try_wait()
-            .map_err(|error| format!("Não foi possível acompanhar o clone: {error}"))?;
+    let wait_process = Arc::clone(&process);
 
-        if let Some(status) = process_status {
-            break status;
-        }
+    let wait_result = tauri::async_runtime::spawn_blocking(move || {
+        wait_for_clone_process(&wait_process, stdout_thread, stderr_thread)
+    })
+    .await
+    .map_err(|error| format!("Falha ao acompanhar o clone em segundo plano: {error}"))?;
 
-        if started_at.elapsed() >= GIT_NETWORK_TIMEOUT {
-            let _ = process.child.lock().map(|mut child| child.kill());
-            let _ = stdout_thread.join();
-            let _ = stderr_thread.join();
-            state
-                .processes
-                .lock()
-                .ok()
-                .and_then(|mut processes| processes.remove(&operation_id));
-            return Err(
-                "O clone demorou muito para responder. Verifique a conexão e tente novamente."
-                    .to_string(),
-            );
-        }
-
-        thread::sleep(Duration::from_millis(40));
-    };
-
-    let _ = stdout_thread.join();
-    let _ = stderr_thread.join();
     let was_cancelled = process.cancelled.load(Ordering::Relaxed);
     state
         .processes
         .lock()
         .ok()
         .and_then(|mut processes| processes.remove(&operation_id));
+
+    let status = wait_result?;
 
     if was_cancelled {
         emit_clone_progress(
@@ -288,7 +265,48 @@ pub fn clone_repository(
     inspect_repository(destination_path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+/// Aguarda o término do clone fora da thread principal e junta as threads de
+/// leitura antes de devolver o status final do processo.
+fn wait_for_clone_process(
+    process: &Arc<CloneProcess>,
+    stdout_thread: thread::JoinHandle<()>,
+    stderr_thread: thread::JoinHandle<()>,
+) -> Result<std::process::ExitStatus, String> {
+    let started_at = Instant::now();
+
+    let status = loop {
+        let process_status = process
+            .child
+            .lock()
+            .map_err(|_| "Não foi possível acompanhar o clone.".to_string())?
+            .try_wait()
+            .map_err(|error| format!("Não foi possível acompanhar o clone: {error}"))?;
+
+        if let Some(status) = process_status {
+            break status;
+        }
+
+        if started_at.elapsed() >= GIT_NETWORK_TIMEOUT {
+            let _ = process.child.lock().map(|mut child| child.kill());
+            let _ = stdout_thread.join();
+            let _ = stderr_thread.join();
+
+            return Err(
+                "O clone demorou muito para responder. Verifique a conexão e tente novamente."
+                    .to_string(),
+            );
+        }
+
+        thread::sleep(Duration::from_millis(40));
+    };
+
+    let _ = stdout_thread.join();
+    let _ = stderr_thread.join();
+
+    Ok(status)
+}
+
+#[tauri::command(async)]
 pub fn cancel_clone(
     state: State<'_, CloneProcessState>,
     operation_id: String,
@@ -366,7 +384,11 @@ fn parse_branch_header(line: &str) -> (Option<String>, usize, usize) {
 }
 
 #[tauri::command]
-pub fn get_repository_references(path: String) -> Result<RepositoryReferences, String> {
+pub async fn get_repository_references(path: String) -> Result<RepositoryReferences, String> {
+    run_blocking(move || get_repository_references_impl(path)).await
+}
+
+fn get_repository_references_impl(path: String) -> Result<RepositoryReferences, String> {
     let repository_path = PathBuf::from(&path);
 
     if !repository_path.is_dir() || !repository_path.join(".git").exists() {
@@ -404,7 +426,13 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
         }
     }
 
-    let stashes = run_git_lines(&path, &["stash", "list", "--format=%gd|%s"]).unwrap_or_default();
+    let stashes = if stash_reflog_exists(&path) {
+        run_git_lines(&path, &["stash", "list", "--format=%gd|%s"]).unwrap_or_default()
+    } else {
+        // Sem reflog de stash não existe stash para listar: evita um processo
+        // Git em cada atualização de referências.
+        Vec::new()
+    };
 
     Ok(RepositoryReferences {
         current_branch,
@@ -415,7 +443,7 @@ pub fn get_repository_references(path: String) -> Result<RepositoryReferences, S
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_repository_remote(path: String) -> Result<RepositoryRemote, String> {
     ensure_repository(&path)?;
     let name = preferred_configured_remote(&path);
@@ -426,7 +454,7 @@ pub fn get_repository_remote(path: String) -> Result<RepositoryRemote, String> {
     Ok(RepositoryRemote { name, url })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn set_repository_remote_url(path: String, url: String) -> Result<RepositoryRemote, String> {
     ensure_repository(&path)?;
     let normalized_url = url.trim();
@@ -457,7 +485,11 @@ pub fn set_repository_remote_url(path: String, url: String) -> Result<Repository
 }
 
 #[tauri::command]
-pub fn get_repository_operation(path: String) -> Result<Option<RepositoryOperation>, String> {
+pub async fn get_repository_operation(path: String) -> Result<Option<RepositoryOperation>, String> {
+    run_blocking(move || get_repository_operation_impl(path)).await
+}
+
+fn get_repository_operation_impl(path: String) -> Result<Option<RepositoryOperation>, String> {
     ensure_repository(&path)?;
     let Some(kind) = detect_repository_operation(&path) else {
         return Ok(None);
@@ -470,7 +502,11 @@ pub fn get_repository_operation(path: String) -> Result<Option<RepositoryOperati
 }
 
 #[tauri::command]
-pub fn continue_repository_operation(path: String, operation: String) -> Result<(), String> {
+pub async fn continue_repository_operation(path: String, operation: String) -> Result<(), String> {
+    run_blocking(move || continue_repository_operation_impl(path, operation)).await
+}
+
+fn continue_repository_operation_impl(path: String, operation: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_repository_operation(&path, &operation)?;
 
@@ -485,7 +521,11 @@ pub fn continue_repository_operation(path: String, operation: String) -> Result<
 }
 
 #[tauri::command]
-pub fn abort_repository_operation(path: String, operation: String) -> Result<(), String> {
+pub async fn abort_repository_operation(path: String, operation: String) -> Result<(), String> {
+    run_blocking(move || abort_repository_operation_impl(path, operation)).await
+}
+
+fn abort_repository_operation_impl(path: String, operation: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_repository_operation(&path, &operation)?;
 
@@ -500,7 +540,11 @@ pub fn abort_repository_operation(path: String, operation: String) -> Result<(),
 }
 
 #[tauri::command]
-pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
+pub async fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
+    run_blocking(move || get_repository_status_impl(path)).await
+}
+
+fn get_repository_status_impl(path: String) -> Result<RepositoryStatus, String> {
     let repository_path = PathBuf::from(&path);
 
     if !repository_path.is_dir() || !repository_path.join(".git").exists() {
@@ -599,7 +643,11 @@ pub fn get_repository_status(path: String) -> Result<RepositoryStatus, String> {
 }
 
 #[tauri::command]
-pub fn get_repository_conflicts(path: String) -> Result<Vec<ConflictFile>, String> {
+pub async fn get_repository_conflicts(path: String) -> Result<Vec<ConflictFile>, String> {
+    run_blocking(move || get_repository_conflicts_impl(path)).await
+}
+
+fn get_repository_conflicts_impl(path: String) -> Result<Vec<ConflictFile>, String> {
     ensure_repository(&path)?;
     let status_output = run_git(&path, &["status", "--porcelain=v1", "--untracked-files=no"])?;
     let mut conflicts = Vec::new();
@@ -638,7 +686,7 @@ pub fn get_repository_conflicts(path: String) -> Result<Vec<ConflictFile>, Strin
     Ok(conflicts)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resolve_repository_conflict(
     path: String,
     file_path: String,
@@ -677,7 +725,7 @@ pub fn resolve_repository_conflict(
     run_git_strings(&path, &add_args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resolve_repository_conflict_side(
     path: String,
     file_path: String,
@@ -719,7 +767,7 @@ pub fn resolve_repository_conflict_side(
     run_git_strings(&path, &add_args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn stage_repository_files(path: String, files: Vec<String>) -> Result<(), String> {
     ensure_repository(&path)?;
 
@@ -732,7 +780,7 @@ pub fn stage_repository_files(path: String, files: Vec<String>) -> Result<(), St
     run_git_strings(&path, &args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn unstage_repository_files(path: String, files: Vec<String>) -> Result<(), String> {
     ensure_repository(&path)?;
 
@@ -749,7 +797,7 @@ pub fn unstage_repository_files(path: String, files: Vec<String>) -> Result<(), 
     run_git_strings(&path, &args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn discard_repository_file(path: String, file_path: String) -> Result<(), String> {
     ensure_repository(&path)?;
     let relative_path = validate_repository_file_path(&file_path)?;
@@ -800,7 +848,7 @@ pub fn discard_repository_file(path: String, file_path: String) -> Result<(), St
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn commit_repository(path: String, message: String, amend: bool) -> Result<(), String> {
     ensure_repository(&path)?;
 
@@ -823,7 +871,7 @@ pub fn commit_repository(path: String, message: String, amend: bool) -> Result<(
     run_git_strings(&path, &args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_last_commit_message(path: String) -> Result<String, String> {
     ensure_repository(&path)?;
 
@@ -836,7 +884,7 @@ pub fn get_last_commit_message(path: String) -> Result<String, String> {
     Ok(message.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn revert_commit(path: String, commit_hash: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_commit_hash(&commit_hash)?;
@@ -864,7 +912,11 @@ pub fn revert_commit(path: String, commit_hash: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn cherry_pick_commit(path: String, commit_hash: String) -> Result<(), String> {
+pub async fn cherry_pick_commit(path: String, commit_hash: String) -> Result<(), String> {
+    run_blocking(move || cherry_pick_commit_impl(path, commit_hash)).await
+}
+
+fn cherry_pick_commit_impl(path: String, commit_hash: String) -> Result<(), String> {
     ensure_repository(&path)?;
 
     if is_running_development_repository(&path) {
@@ -956,7 +1008,15 @@ pub async fn get_repository_staged_diff(path: String) -> Result<String, String> 
 }
 
 #[tauri::command]
-pub fn get_repository_file_diff(
+pub async fn get_repository_file_diff(
+    path: String,
+    file_path: String,
+    staged: bool,
+) -> Result<String, String> {
+    run_blocking(move || get_repository_file_diff_impl(path, file_path, staged)).await
+}
+
+fn get_repository_file_diff_impl(
     path: String,
     file_path: String,
     staged: bool,
@@ -1038,7 +1098,7 @@ fn build_new_file_diff(file_path: &str, content: &str) -> String {
     diff
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn stash_repository(
     path: String,
     message: Option<String>,
@@ -1070,7 +1130,7 @@ pub fn stash_repository(
     run_git_strings(&path, &args).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn apply_stash(path: String, stash_ref: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_stash_reference(&path, &stash_ref)?;
@@ -1082,7 +1142,7 @@ pub fn apply_stash(path: String, stash_ref: String) -> Result<(), String> {
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn apply_stash_files(
     path: String,
     stash_ref: String,
@@ -1122,7 +1182,7 @@ pub fn apply_stash_files(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn rename_stash(path: String, stash_ref: String, message: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_stash_reference(&path, &stash_ref)?;
@@ -1157,7 +1217,7 @@ pub fn rename_stash(path: String, stash_ref: String, message: String) -> Result<
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn drop_stash(path: String, stash_ref: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_stash_reference(&path, &stash_ref)?;
@@ -1169,7 +1229,7 @@ pub fn drop_stash(path: String, stash_ref: String) -> Result<(), String> {
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_stash_files(path: String, stash_ref: String) -> Result<Vec<CommitFile>, String> {
     ensure_repository(&path)?;
     validate_stash_reference(&path, &stash_ref)?;
@@ -1248,7 +1308,7 @@ pub fn get_stash_files(path: String, stash_ref: String) -> Result<Vec<CommitFile
     Ok(files)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_stash_file_diff(
     path: String,
     stash_ref: String,
@@ -1359,7 +1419,16 @@ fn summarize_changed_areas(changed_files: &str) -> String {
 }
 
 #[tauri::command]
-pub fn get_repository_commits(
+pub async fn get_repository_commits(
+    path: String,
+    all_branches: bool,
+    skip: usize,
+    limit: usize,
+) -> Result<Vec<RepositoryCommit>, String> {
+    run_blocking(move || get_repository_commits_impl(path, all_branches, skip, limit)).await
+}
+
+fn get_repository_commits_impl(
     path: String,
     all_branches: bool,
     skip: usize,
@@ -1420,7 +1489,11 @@ pub fn get_repository_commits(
 }
 
 #[tauri::command]
-pub fn get_commit_files(path: String, commit_hash: String) -> Result<Vec<CommitFile>, String> {
+pub async fn get_commit_files(path: String, commit_hash: String) -> Result<Vec<CommitFile>, String> {
+    run_blocking(move || get_commit_files_impl(path, commit_hash)).await
+}
+
+fn get_commit_files_impl(path: String, commit_hash: String) -> Result<Vec<CommitFile>, String> {
     ensure_repository(&path)?;
     validate_commit_hash(&commit_hash)?;
 
@@ -1475,7 +1548,15 @@ pub fn get_commit_files(path: String, commit_hash: String) -> Result<Vec<CommitF
 }
 
 #[tauri::command]
-pub fn get_commit_file_diff(
+pub async fn get_commit_file_diff(
+    path: String,
+    commit_hash: String,
+    file_path: String,
+) -> Result<String, String> {
+    run_blocking(move || get_commit_file_diff_impl(path, commit_hash, file_path)).await
+}
+
+fn get_commit_file_diff_impl(
     path: String,
     commit_hash: String,
     file_path: String,
@@ -1715,7 +1796,7 @@ fn sync_access_token(
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &branch)?;
@@ -1723,7 +1804,15 @@ pub fn checkout_branch(path: String, branch: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn merge_branch(
+pub async fn merge_branch(
+    path: String,
+    source_branch: String,
+    target_branch: String,
+) -> Result<(), String> {
+    run_blocking(move || merge_branch_impl(path, source_branch, target_branch)).await
+}
+
+fn merge_branch_impl(
     path: String,
     source_branch: String,
     target_branch: String,
@@ -1752,7 +1841,15 @@ pub fn merge_branch(
 }
 
 #[tauri::command]
-pub fn rebase_branch(
+pub async fn rebase_branch(
+    path: String,
+    source_branch: String,
+    target_branch: String,
+) -> Result<(), String> {
+    run_blocking(move || rebase_branch_impl(path, source_branch, target_branch)).await
+}
+
+fn rebase_branch_impl(
     path: String,
     source_branch: String,
     target_branch: String,
@@ -1780,7 +1877,7 @@ pub fn rebase_branch(
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> {
     ensure_repository(&path)?;
 
@@ -1799,7 +1896,7 @@ pub fn checkout_commit(path: String, commit_hash: String) -> Result<(), String> 
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_branch(
     path: String,
     branch: String,
@@ -1833,7 +1930,7 @@ pub fn create_branch(
     run_git_with_timeout(&path, &args, GIT_COMMAND_TIMEOUT).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn rename_branch(path: String, current_name: String, new_name: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &current_name)?;
@@ -1846,7 +1943,7 @@ pub fn rename_branch(path: String, current_name: String, new_name: String) -> Re
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn delete_branch(path: String, branch: String) -> Result<(), String> {
     ensure_repository(&path)?;
     validate_branch_name(&path, &branch)?;
@@ -1854,7 +1951,11 @@ pub fn delete_branch(path: String, branch: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), String> {
+pub async fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), String> {
+    run_blocking(move || delete_remote_branch_impl(path, remote_branch)).await
+}
+
+fn delete_remote_branch_impl(path: String, remote_branch: String) -> Result<(), String> {
     ensure_repository(&path)?;
 
     let (remote, branch) = remote_branch.split_once('/').ok_or_else(|| {
@@ -1877,7 +1978,7 @@ pub fn delete_remote_branch(path: String, remote_branch: String) -> Result<(), S
     .map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_repository_tags(path: String) -> Result<Vec<RepositoryTag>, String> {
     ensure_repository(&path)?;
 
@@ -1931,7 +2032,17 @@ pub fn get_repository_tags(path: String) -> Result<Vec<RepositoryTag>, String> {
 }
 
 #[tauri::command]
-pub fn create_repository_tag(
+pub async fn create_repository_tag(
+    path: String,
+    name: String,
+    commit_hash: Option<String>,
+    message: Option<String>,
+    push: bool,
+) -> Result<(), String> {
+    run_blocking(move || create_repository_tag_impl(path, name, commit_hash, message, push)).await
+}
+
+fn create_repository_tag_impl(
     path: String,
     name: String,
     commit_hash: Option<String>,
@@ -1983,7 +2094,15 @@ pub fn create_repository_tag(
 }
 
 #[tauri::command]
-pub fn delete_repository_tag(
+pub async fn delete_repository_tag(
+    path: String,
+    name: String,
+    delete_remote: bool,
+) -> Result<(), String> {
+    run_blocking(move || delete_repository_tag_impl(path, name, delete_remote)).await
+}
+
+fn delete_repository_tag_impl(
     path: String,
     name: String,
     delete_remote: bool,
@@ -2010,7 +2129,11 @@ pub fn delete_repository_tag(
 }
 
 #[tauri::command]
-pub fn push_repository_tags(path: String) -> Result<(), String> {
+pub async fn push_repository_tags(path: String) -> Result<(), String> {
+    run_blocking(move || push_repository_tags_impl(path)).await
+}
+
+fn push_repository_tags_impl(path: String) -> Result<(), String> {
     ensure_repository(&path)?;
     let remote = preferred_push_remote(&path)?;
     run_git_with_timeout(
@@ -2022,7 +2145,11 @@ pub fn push_repository_tags(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn push_repository_tag(path: String, name: String) -> Result<(), String> {
+pub async fn push_repository_tag(path: String, name: String) -> Result<(), String> {
+    run_blocking(move || push_repository_tag_impl(path, name)).await
+}
+
+fn push_repository_tag_impl(path: String, name: String) -> Result<(), String> {
     ensure_repository(&path)?;
     let tag_name = name.trim();
     if tag_name.is_empty() {
@@ -2211,7 +2338,7 @@ fn validate_worktree_file_selection(
         return Err("Selecione pelo menos um arquivo para guardar no stash.".to_string());
     }
 
-    let status = get_repository_status(path.to_string())?;
+    let status = get_repository_status_impl(path.to_string())?;
     let available_paths: HashSet<String> = status.files.into_iter().map(|file| file.path).collect();
     let mut selected_paths = Vec::new();
     let mut seen_paths = HashSet::new();
@@ -2275,6 +2402,14 @@ fn validate_branch_name(path: &str, branch: &str) -> Result<(), String> {
 
 
 
+fn stash_reflog_exists(path: &str) -> bool {
+    let Some(git_dir) = resolve_git_dir(path) else {
+        return true;
+    };
+
+    git_dir.join("logs").join("refs").join("stash").exists()
+}
+
 fn preferred_configured_remote(path: &str) -> Option<String> {
     let remotes = run_git_lines(path, &["remote"]).ok()?;
 
@@ -2315,16 +2450,11 @@ fn validate_repository_operation(path: &str, operation: &str) -> Result<(), Stri
 }
 
 fn git_path_exists(path: &str, git_path: &str) -> bool {
-    let Ok(resolved_path) = run_git(path, &["rev-parse", "--git-path", git_path]) else {
+    let Some(git_dir) = resolve_git_dir(path) else {
         return false;
     };
 
-    let resolved_path = PathBuf::from(resolved_path.trim());
-    if resolved_path.is_absolute() {
-        resolved_path.exists()
-    } else {
-        PathBuf::from(path).join(resolved_path).exists()
-    }
+    git_dir.join(git_path).exists()
 }
 
 fn preferred_push_remote(path: &str) -> Result<String, String> {
@@ -2513,6 +2643,199 @@ impl Drop for AskpassGuard {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.path);
     }
+}
+
+/// Executa uma tarefa bloqueante (Git, leitura de arquivos, rede) no pool de
+/// threads bloqueantes do runtime, longe da thread principal da janela.
+/// Comandos `#[tauri::command(async)]` executam o trecho síncrono do corpo na
+/// thread principal, por isso todo trabalho pesado precisa passar por aqui.
+fn run_blocking<T, F>(task: F) -> impl std::future::Future<Output = Result<T, String>>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    async move {
+        tauri::async_runtime::spawn_blocking(task)
+            .await
+            .map_err(|error| format!("Falha ao executar a operação em segundo plano: {error}"))?
+    }
+}
+
+/// Caminho real do diretório `.git`, cobrindo worktrees e submódulos, onde
+/// `.git` é um arquivo com a linha `gitdir: ...`.
+fn resolve_git_dir(path: &str) -> Option<PathBuf> {
+    let candidate = PathBuf::from(path).join(".git");
+
+    if candidate.is_dir() {
+        return Some(candidate);
+    }
+
+    if candidate.is_file() {
+        let content = std::fs::read_to_string(&candidate).ok()?;
+        let target = content
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("gitdir:"))?
+            .trim();
+        let target_path = PathBuf::from(target);
+
+        return Some(if target_path.is_absolute() {
+            target_path
+        } else {
+            PathBuf::from(path).join(target_path)
+        });
+    }
+
+    // Repositório bare (quando a pasta apontada já é o próprio diretório Git).
+    let bare_candidate = PathBuf::from(path);
+    bare_candidate.join("HEAD").exists().then_some(bare_candidate)
+}
+
+/// Arquivos do `.git` que mudam quando o usuário executa um comando Git.
+/// A assinatura permite pular `git status`/`git log` quando nada mudou.
+const SIGNATURE_FILES: [&str; 13] = [
+    "HEAD",
+    "index",
+    "packed-refs",
+    "FETCH_HEAD",
+    "ORIG_HEAD",
+    "MERGE_HEAD",
+    "MERGE_MSG",
+    "CHERRY_PICK_HEAD",
+    "REVERT_HEAD",
+    "REBASE_HEAD",
+    "COMMIT_EDITMSG",
+    "config",
+    "shallow",
+];
+
+const SIGNATURE_DIRECTORIES: [&str; 3] = ["refs", "rebase-merge", "rebase-apply"];
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositorySignature {
+    pub signature: String,
+    pub head_hash: Option<String>,
+}
+
+fn push_entry_fingerprint(target: &Path, relative: &str, parts: &mut Vec<String>) {
+    match std::fs::metadata(target) {
+        Ok(metadata) => {
+            let modified = metadata
+                .modified()
+                .ok()
+                .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|value| value.as_millis())
+                .unwrap_or(0);
+
+            parts.push(format!("{relative}:{}:{modified}", metadata.len()));
+        }
+        Err(_) => parts.push(format!("{relative}:-")),
+    }
+}
+
+fn collect_directory_fingerprint(
+    root: &Path,
+    relative: &Path,
+    depth: usize,
+    parts: &mut Vec<String>,
+) {
+    if depth > 4 || parts.len() > 4000 {
+        return;
+    }
+
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let child_relative = relative.join(entry.file_name());
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+
+        if file_type.is_dir() {
+            collect_directory_fingerprint(&entry.path(), &child_relative, depth + 1, parts);
+        } else {
+            push_entry_fingerprint(&entry.path(), &child_relative.to_string_lossy(), parts);
+        }
+    }
+}
+
+fn read_head_hash(git_dir: &Path) -> Option<String> {
+    let head = std::fs::read_to_string(git_dir.join("HEAD")).ok()?;
+    let head = head.trim();
+
+    let Some(reference) = head.strip_prefix("ref:") else {
+        return (!head.is_empty()).then(|| head.to_string());
+    };
+    let reference = reference.trim();
+
+    if let Ok(content) = std::fs::read_to_string(git_dir.join(reference)) {
+        let hash = content.trim();
+        if !hash.is_empty() {
+            return Some(hash.to_string());
+        }
+    }
+
+    let packed = std::fs::read_to_string(git_dir.join("packed-refs")).ok()?;
+
+    packed.lines().find_map(|line| {
+        if line.starts_with('#') {
+            return None;
+        }
+
+        let mut fields = line.split_whitespace();
+        let hash = fields.next()?;
+        let name = fields.next()?;
+
+        (name == reference).then(|| hash.to_string())
+    })
+}
+
+fn fingerprint_hash(value: &str) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+
+    for byte in value.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+
+    format!("{hash:016x}")
+}
+
+/// Lê apenas metadados do disco (sem criar processos Git) para responder se o
+/// estado do repositório mudou desde a última verificação da interface.
+fn repository_signature(path: &str) -> Result<RepositorySignature, String> {
+    let repository_path = PathBuf::from(path);
+
+    if !repository_path.is_dir() {
+        return Err("A pasta do repositório não está disponível.".to_string());
+    }
+
+    let git_dir = resolve_git_dir(path)
+        .ok_or_else(|| "O repositório Git não está disponível.".to_string())?;
+
+    let mut parts: Vec<String> = Vec::with_capacity(32);
+
+    for name in SIGNATURE_FILES {
+        push_entry_fingerprint(&git_dir.join(name), name, &mut parts);
+    }
+
+    for name in SIGNATURE_DIRECTORIES {
+        collect_directory_fingerprint(&git_dir.join(name), Path::new(name), 0, &mut parts);
+    }
+
+    parts.sort();
+
+    Ok(RepositorySignature {
+        signature: fingerprint_hash(&parts.join("|")),
+        head_hash: read_head_hash(&git_dir),
+    })
+}
+
+#[tauri::command]
+pub async fn get_repository_signature(path: String) -> Result<RepositorySignature, String> {
+    run_blocking(move || repository_signature(&path)).await
 }
 
 fn run_git(path: &str, args: &[&str]) -> Result<String, String> {

@@ -21,6 +21,7 @@ import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
+import { md5 } from "../../../shared/utils/md5";
 import { CreateTagRequest } from "../../../core/models/tag.model";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
@@ -45,6 +46,10 @@ interface CommitContextMenu {
 }
 
 const GRAVATAR_HASH_CACHE = new Map<string, string>();
+
+function gravatarUrl(hash: string): string {
+  return `https://www.gravatar.com/avatar/${hash}?s=64&d=404`;
+}
 
 @Component({
   selector: "app-history-page",
@@ -287,7 +292,7 @@ export class HistoryPageComponent implements AfterViewInit {
         currentList[currentList.length - 1]?.hash === commits[commits.length - 1]?.hash;
 
       if (!isIdentical) {
-        const commitsWithAvatars = await this.enrichCommitAvatars(commits);
+        const commitsWithAvatars = this.enrichCommitAvatars(commits);
         if (loadVersion !== this.overviewLoadVersion || !this.isSameRepository(repository, this.activeRepository())) {
           return;
         }
@@ -637,7 +642,7 @@ export class HistoryPageComponent implements AfterViewInit {
         this.historyOffset,
         this.historyPageSize,
       );
-      const commitsWithAvatars = await this.enrichCommitAvatars(commits);
+      const commitsWithAvatars = this.enrichCommitAvatars(commits);
       this.commits.update((currentCommits) => {
         const knownHashes = new Set(currentCommits.map((commit) => commit.hash));
         return [
@@ -1138,48 +1143,30 @@ export class HistoryPageComponent implements AfterViewInit {
       || normalized.includes("diverging branches can't be fast-forwarded");
   }
 
-  private async enrichCommitAvatars(commits: Commit[]): Promise<Commit[]> {
-    const subtle = globalThis.crypto?.subtle;
+  private enrichCommitAvatars(commits: Commit[]): Commit[] {
+    return commits.map((commit) => {
+      if (commit.avatarUrl) {
+        return commit;
+      }
 
-    return Promise.all(
-      commits.map(async (commit) => {
-        if (commit.avatarUrl) {
-          return commit;
-        }
+      const email = commit.authorEmail.trim().toLowerCase();
+      if (!email) {
+        return commit;
+      }
 
-        const email = commit.authorEmail.trim().toLowerCase();
-        if (!email) {
-          return commit;
-        }
+      const cached = GRAVATAR_HASH_CACHE.get(email);
+      if (cached) {
+        return { ...commit, avatarUrl: gravatarUrl(cached) };
+      }
 
-        const cached = GRAVATAR_HASH_CACHE.get(email);
-        if (cached) {
-          return {
-            ...commit,
-            avatarUrl: `https://www.gravatar.com/avatar/${cached}?s=64&d=404`,
-          };
-        }
+      // O Gravatar exige o hash MD5 do e-mail em minúsculas. Um hash diferente
+      // fazia cada linha do histórico disparar uma requisição que sempre
+      // falhava com 404.
+      const hash = md5(email);
+      GRAVATAR_HASH_CACHE.set(email, hash);
 
-        if (!subtle) {
-          return commit;
-        }
-
-        try {
-          const digest = await subtle.digest("SHA-256", new TextEncoder().encode(email));
-          const hash = Array.from(new Uint8Array(digest))
-            .map((byte) => byte.toString(16).padStart(2, "0"))
-            .join("");
-          GRAVATAR_HASH_CACHE.set(email, hash);
-
-          return {
-            ...commit,
-            avatarUrl: `https://www.gravatar.com/avatar/${hash}?s=64&d=404`,
-          };
-        } catch {
-          return commit;
-        }
-      }),
-    );
+      return { ...commit, avatarUrl: gravatarUrl(hash) };
+    });
   }
 
   private getSyncCredentials(repository: Repository): {

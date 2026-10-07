@@ -30,6 +30,7 @@ pub fn run() {
             commands::repository::get_repository_operation,
             commands::repository::continue_repository_operation,
             commands::repository::abort_repository_operation,
+            commands::repository::get_repository_signature,
             commands::repository::get_repository_status,
             commands::repository::get_repository_conflicts,
             commands::repository::resolve_repository_conflict,

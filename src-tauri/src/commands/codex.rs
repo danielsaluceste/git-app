@@ -103,7 +103,7 @@ pub struct CodexUsage {
     pub lifetime_tokens: Option<i64>,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn check_codex_cli() -> CodexCliStatus {
     let mut last_error = None;
 
@@ -752,7 +752,7 @@ impl CodexServer {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cancel_codex(state: State<'_, CodexProcessState>) -> Result<(), String> {
     if let Ok(active_pid) = state.active_server_pid.lock() {
         if let Some(pid) = *active_pid {

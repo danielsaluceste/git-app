@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
 static SESSION_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -46,7 +47,7 @@ pub struct TerminalState {
     pub sessions: Mutex<HashMap<String, TerminalSession>>,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_available_shells() -> Result<Vec<ShellInfo>, String> {
     let mut shells = Vec::new();
 
@@ -142,7 +143,7 @@ pub fn get_available_shells() -> Result<Vec<ShellInfo>, String> {
     Ok(shells)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_terminal_session(
     app: AppHandle,
     state: State<'_, TerminalState>,
@@ -216,42 +217,52 @@ pub fn create_terminal_session(
         .map_err(|e| format!("Falha ao obter stream de escrita do terminal: {e}"))?;
 
     let session_id = format!("term-{}", SESSION_COUNTER.fetch_add(1, Ordering::SeqCst));
-    let session_id_clone = session_id.clone();
-    let app_clone = app.clone();
 
-    // Background thread to read stdout/stderr from PTY
+    // A saída do PTY é acumulada e enviada em lotes. Sem isso, cada bloco de
+    // 4 KB lido vira um evento IPC + um `eval` no webview, o que derruba a
+    // fluidez do app quando o comando imprime muita coisa (npm install, logs).
+    let buffered_output = Arc::new((
+        Mutex::new(TerminalOutputBuffer::default()),
+        Condvar::new(),
+    ));
+
+    let flusher_app = app.clone();
+    let flusher_output = Arc::clone(&buffered_output);
+    let flusher_session_id = session_id.clone();
+
     thread::spawn(move || {
-        let mut buf = [0u8; 4096];
+        loop {
+            let flushed = flush_terminal_output(&flusher_output, &flusher_app, &flusher_session_id);
+
+            if !flushed {
+                break;
+            }
+        }
+
+        let _ = flusher_app.emit(
+            "terminal-exit",
+            TerminalExitPayload {
+                session_id: flusher_session_id,
+                exit_code: None,
+            },
+        );
+    });
+
+    let reader_output = Arc::clone(&buffered_output);
+
+    thread::spawn(move || {
+        let mut buf = [0u8; 8192];
         loop {
             match reader.read(&mut buf) {
                 Ok(0) => {
-                    let _ = app_clone.emit(
-                        "terminal-exit",
-                        TerminalExitPayload {
-                            session_id: session_id_clone.clone(),
-                            exit_code: None,
-                        },
-                    );
+                    close_terminal_output(&reader_output);
                     break;
                 }
                 Ok(n) => {
-                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let _ = app_clone.emit(
-                        "terminal-output",
-                        TerminalOutputPayload {
-                            session_id: session_id_clone.clone(),
-                            data: text,
-                        },
-                    );
+                    push_terminal_output(&reader_output, &String::from_utf8_lossy(&buf[..n]));
                 }
                 Err(_) => {
-                    let _ = app_clone.emit(
-                        "terminal-exit",
-                        TerminalExitPayload {
-                            session_id: session_id_clone.clone(),
-                            exit_code: None,
-                        },
-                    );
+                    close_terminal_output(&reader_output);
                     break;
                 }
             }
@@ -274,7 +285,7 @@ pub fn create_terminal_session(
     Ok(session_id)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn write_terminal(
     state: State<'_, TerminalState>,
     session_id: String,
@@ -305,7 +316,7 @@ pub fn write_terminal(
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resize_terminal(
     state: State<'_, TerminalState>,
     session_id: String,
@@ -340,7 +351,7 @@ pub fn resize_terminal(
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn close_terminal(
     state: State<'_, TerminalState>,
     session_id: String,
@@ -358,6 +369,81 @@ pub fn close_terminal(
     } else {
         Ok(())
     }
+}
+
+type TerminalOutputChannel = Arc<(Mutex<TerminalOutputBuffer>, Condvar)>;
+
+/// Janela máxima de agrupamento da saída do terminal antes de notificar a
+/// interface (60 eventos por segundo no pior caso).
+const TERMINAL_FLUSH_INTERVAL: Duration = Duration::from_millis(16);
+
+#[derive(Default)]
+struct TerminalOutputBuffer {
+    data: String,
+    closed: bool,
+}
+
+fn push_terminal_output(channel: &TerminalOutputChannel, data: &str) {
+    let (lock, condvar) = &**channel;
+
+    if let Ok(mut buffer) = lock.lock() {
+        buffer.data.push_str(data);
+    }
+
+    condvar.notify_one();
+}
+
+fn close_terminal_output(channel: &TerminalOutputChannel) {
+    let (lock, condvar) = &**channel;
+
+    if let Ok(mut buffer) = lock.lock() {
+        buffer.closed = true;
+    }
+
+    condvar.notify_one();
+}
+
+/// Envia o conteúdo acumulado em um único evento. Retorna `false` quando a
+/// sessão terminou e todo o buffer já foi entregue.
+fn flush_terminal_output(
+    channel: &TerminalOutputChannel,
+    app: &AppHandle,
+    session_id: &str,
+) -> bool {
+    let (lock, condvar) = &**channel;
+
+    let data = {
+        let mut buffer = lock.lock().unwrap_or_else(|error| error.into_inner());
+
+        if buffer.data.is_empty() && !buffer.closed {
+            let (guard, _timeout) = condvar
+                .wait_timeout(buffer, TERMINAL_FLUSH_INTERVAL)
+                .unwrap_or_else(|error| error.into_inner());
+            buffer = guard;
+        }
+
+        if !buffer.data.is_empty() {
+            Some(std::mem::take(&mut buffer.data))
+        } else if buffer.closed {
+            None
+        } else {
+            return true;
+        }
+    };
+
+    let Some(data) = data else {
+        return false;
+    };
+
+    let _ = app.emit(
+        "terminal-output",
+        TerminalOutputPayload {
+            session_id: session_id.to_string(),
+            data,
+        },
+    );
+
+    true
 }
 
 #[cfg(target_os = "windows")]
