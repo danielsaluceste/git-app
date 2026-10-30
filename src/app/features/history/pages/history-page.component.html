@@ -120,7 +120,7 @@
                   [attr.aria-label]="'history.filterAuthor' | translate"
                   (click)="toggleFilterMenu('author', $event)"
                 >
-                  <span>{{ authorFilter() || "Todos" }}</span>
+                  <span>{{ authorFilter() || ("history.all" | translate) }}</span>
                   <span class="history-select-chevron" aria-hidden="true">⌄</span>
                 </button>
                 @if (isFilterMenuOpen('author')) {
@@ -277,7 +277,7 @@
                     @if (row.commit.avatarUrl) {
                       <img
                         [src]="row.commit.avatarUrl"
-                        [alt]="'Foto de ' + row.commit.authorName"
+                        [alt]="'history.avatarAlt' | translate: { name: row.commit.authorName }"
                         width="24"
                         height="24"
                         loading="lazy"
@@ -294,7 +294,7 @@
                   </span>
                   <span class="commit-meta">
                     @if (row.commit.references.length > 0) {
-                      <span class="commit-refs" aria-label="Referências">
+                      <span class="commit-refs" [attr.aria-label]="'history.references' | translate">
                         @for (reference of row.commit.references; track reference) {
                           <span class="commit-ref" [title]="reference">{{ formatReference(reference) }}</span>
                         }

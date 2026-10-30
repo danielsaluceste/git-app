@@ -1,4 +1,4 @@
-﻿:host {
+:host {
   display: contents;
 }
 
@@ -184,6 +184,42 @@ h2 {
 .diff-hunk {
   background: rgb(88 28 135 / 25%);
   color: var(--app-purple);
+}
+
+.diff-hunk-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-right: 0.85rem;
+}
+
+.diff-hunk-code {
+  flex: 1;
+}
+
+.hunk-action {
+  flex: none;
+  border: 1px solid var(--app-accent-border);
+  border-radius: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.hunk-action:hover:not(:disabled) {
+  border-color: var(--app-accent-hover);
+  color: var(--app-accent-hover);
+}
+
+.hunk-action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .diff-file-header {

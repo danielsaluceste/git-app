@@ -22,6 +22,7 @@ import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { md5 } from "../../../shared/utils/md5";
+import { formatCommitDate, localDayKey } from "../../../shared/utils/commit-date";
 import { CreateTagRequest } from "../../../core/models/tag.model";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
@@ -59,6 +60,8 @@ function gravatarUrl(hash: string): string {
 })
 export class HistoryPageComponent implements AfterViewInit {
   private readonly historyPageSize = 100;
+  /** Mesmo limite aplicado pelo backend em `get_repository_commits`. */
+  private readonly historyMaxPageSize = 500;
   private readonly repositoryService = inject(RepositoryService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
@@ -71,6 +74,7 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly isLoading = signal(true);
   readonly selectedCommit = signal<Commit | undefined>(undefined);
   readonly currentBranch = signal(this.translationService.translate("repository.headDetached"));
+  readonly isHeadDetached = signal(true);
   readonly aheadCount = signal(0);
   readonly behindCount = signal(0);
   readonly actionBarScrolled = signal(false);
@@ -106,6 +110,29 @@ export class HistoryPageComponent implements AfterViewInit {
       a.localeCompare(b, "pt-BR"),
     ),
   );
+  /**
+   * Data de referência para os rótulos "Hoje"/"Ontem". Fica num signal para que
+   * o histórico se atualize sozinho quando o dia vira com o app aberto, sem
+   * precisar fechar e abrir a janela.
+   */
+  private readonly referenceDate = signal(new Date());
+  readonly commitDateLabels = computed<ReadonlyMap<string, string>>(() => {
+    const reference = this.referenceDate();
+    const language = this.translationService.language();
+    const labels = {
+      today: this.translationService.translate("history.today"),
+      yesterday: this.translationService.translate("history.yesterday"),
+    };
+    const byDate = new Map<string, string>();
+
+    for (const commit of this.commits()) {
+      if (!byDate.has(commit.date)) {
+        byDate.set(commit.date, formatCommitDate(commit.date, language, reference, labels));
+      }
+    }
+
+    return byDate;
+  });
   private historyOffset = 0;
   private overviewLoadVersion = 0;
   private lastLoadedRepoKey = "";
@@ -144,7 +171,7 @@ export class HistoryPageComponent implements AfterViewInit {
     }
 
     untracked(() => {
-      this.currentBranch.set(status.currentBranch || "HEAD destacado");
+      this.setCurrentBranch(status.currentBranch);
       this.aheadCount.set(status.aheadCount);
       this.behindCount.set(status.behindCount);
     });
@@ -184,6 +211,11 @@ export class HistoryPageComponent implements AfterViewInit {
   });
 
   constructor() {
+    // Mantém "Hoje"/"Ontem" corretos mesmo com o app aberto durante a virada do
+    // dia. O timer é barato e só troca o signal quando a data local muda.
+    const dateWatcher = setInterval(() => this.syncReferenceDate(), 30_000);
+    this.destroyRef.onDestroy(() => clearInterval(dateWatcher));
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -232,12 +264,43 @@ export class HistoryPageComponent implements AfterViewInit {
       .subscribe(() => this.actionBarScrolled.set(scrollContainer.scrollTop > 8));
   }
 
+  @HostListener("window:focus")
+  onWindowFocus(): void {
+    this.syncReferenceDate();
+  }
+
+  @HostListener("document:visibilitychange")
+  onVisibilityChange(): void {
+    if (document.visibilityState === "visible") {
+      this.syncReferenceDate();
+    }
+  }
+
+  /** Recalcula os rótulos relativos apenas quando a data local virou. */
+  private syncReferenceDate(): void {
+    const now = new Date();
+    if (localDayKey(now) === localDayKey(this.referenceDate())) {
+      return;
+    }
+
+    this.referenceDate.set(now);
+  }
+
+  /** Guarda o nome cru da branch e mantém o rótulo de HEAD destacado traduzido. */
+  private setCurrentBranch(branch: string | null | undefined): void {
+    const name = branch?.trim();
+    this.isHeadDetached.set(!name);
+    this.currentBranch.set(
+      name || this.translationService.translate("repository.headDetached"),
+    );
+  }
+
   private isCurrentRoute(url = this.router.url): boolean {
     const path = url.split(/[?#]/, 1)[0];
     return path.endsWith("/overview") || path === "/overview";
   }
 
-  async loadOverview(repository = this.activeRepository(), forceFresh = false): Promise<void> {
+  async loadOverview(repository = this.activeRepository(), resetPagination = false): Promise<void> {
     if (!repository) {
       this.isLoading.set(false);
       this.hasMoreCommits.set(false);
@@ -246,18 +309,24 @@ export class HistoryPageComponent implements AfterViewInit {
 
     const loadVersion = ++this.overviewLoadVersion;
     const allBranches = this.historyScope() === "all";
+    // Preserva a profundidade já carregada: uma atualização automática não deve
+    // encolher a lista de volta para a primeira página.
+    const requestedLimit = Math.min(
+      this.historyMaxPageSize,
+      Math.max(this.historyPageSize, resetPagination ? 0 : this.commits().length),
+    );
     const cachedCommits = this.repositoryService.getCachedCommits(repository.path, allBranches);
     const cachedReferences = this.repositoryService.getCachedReferences(repository.path);
     const cachedStatus = this.repositoryService.getCachedStatus(repository.path);
     const hasCachedData = !!cachedCommits && cachedCommits.length > 0;
 
-    if (cachedCommits && (this.commits().length === 0 || forceFresh)) {
+    if (cachedCommits && (this.commits().length === 0 || resetPagination)) {
       this.commits.set(cachedCommits);
       this.historyOffset = cachedCommits.length;
       this.hasMoreCommits.set(cachedCommits.length === this.historyPageSize);
     }
     if (cachedReferences) {
-      this.currentBranch.set(cachedReferences.currentBranch || "HEAD destacado");
+      this.setCurrentBranch(cachedReferences.currentBranch);
     }
     if (cachedStatus) {
       this.aheadCount.set(cachedStatus.aheadCount);
@@ -271,7 +340,7 @@ export class HistoryPageComponent implements AfterViewInit {
           repository.path,
           allBranches,
           0,
-          this.historyPageSize,
+          requestedLimit,
         ),
         this.repositoryService.getReferences(repository.path),
         this.repositoryService.getStatus(repository.path),
@@ -280,16 +349,17 @@ export class HistoryPageComponent implements AfterViewInit {
         return;
       }
 
-      this.currentBranch.set(references.currentBranch || "HEAD destacado");
+      this.setCurrentBranch(references.currentBranch);
       this.aheadCount.set(status.aheadCount);
       this.behindCount.set(status.behindCount);
 
       const currentList = this.commits();
+      // Compara a lista inteira, não só as pontas: commits que entram no meio
+      // (fetch, rebase, amend) também precisam aparecer sem reiniciar o app.
       const isIdentical =
         currentList.length === commits.length &&
         currentList.length > 0 &&
-        currentList[0]?.hash === commits[0]?.hash &&
-        currentList[currentList.length - 1]?.hash === commits[commits.length - 1]?.hash;
+        currentList.every((commit, index) => commit.hash === commits[index]?.hash);
 
       if (!isIdentical) {
         const commitsWithAvatars = this.enrichCommitAvatars(commits);
@@ -299,7 +369,7 @@ export class HistoryPageComponent implements AfterViewInit {
 
         this.commits.set(commitsWithAvatars);
         this.historyOffset = commits.length;
-        this.hasMoreCommits.set(commits.length === this.historyPageSize);
+        this.hasMoreCommits.set(commits.length === requestedLimit);
 
         if (this.selectedCommit() && !commitsWithAvatars.some((commit) => commit.hash === this.selectedCommit()?.hash)) {
           this.selectedCommit.set(undefined);
@@ -702,7 +772,7 @@ export class HistoryPageComponent implements AfterViewInit {
 
     this.historyScope.set(value);
     this.closeCommitDetails();
-    void this.loadOverview();
+    void this.loadOverview(undefined, true);
   }
 
   selectCommitKindFilter(value: CommitKindFilter, event: MouseEvent): void {
@@ -744,7 +814,7 @@ export class HistoryPageComponent implements AfterViewInit {
   historyScopeLabel(): string {
     return this.historyScope() === "all"
       ? this.translationService.translate("history.allBranches")
-      : (this.currentBranch() === "HEAD destacado"
+      : (this.isHeadDetached()
         ? this.translationService.translate("history.currentBranch")
         : this.currentBranch());
   }
@@ -1016,55 +1086,14 @@ export class HistoryPageComponent implements AfterViewInit {
     });
   }
 
-  private readonly compactDateCache = new Map<string, string>();
   private readonly avatarColorCache = new Map<string, string>();
 
+  /**
+   * Rótulos pré-calculados em `commitDateLabels`. Nada de cache por data do
+   * commit: "Hoje" de ontem continuaria "Hoje" enquanto o app ficasse aberto.
+   */
   formatCompactDate(date: string): string {
-    const cached = this.compactDateCache.get(date);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const parsedDate = new Date(date);
-    if (Number.isNaN(parsedDate.getTime())) {
-      this.compactDateCache.set(date, date);
-      return date;
-    }
-
-    const now = new Date();
-    const isToday = parsedDate.getFullYear() === now.getFullYear()
-      && parsedDate.getMonth() === now.getMonth()
-      && parsedDate.getDate() === now.getDate();
-
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const isYesterday = parsedDate.getFullYear() === yesterday.getFullYear()
-      && parsedDate.getMonth() === yesterday.getMonth()
-      && parsedDate.getDate() === yesterday.getDate();
-
-    let result = "";
-    if (isToday) {
-      result = `${this.translationService.translate("history.today")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`;
-    } else if (isYesterday) {
-      result = `${this.translationService.translate("history.yesterday")}, ${parsedDate.toLocaleTimeString(this.translationService.language(), {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`;
-    } else {
-      result = parsedDate.toLocaleString(this.translationService.language(), {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-
-    this.compactDateCache.set(date, result);
-    return result;
+    return this.commitDateLabels().get(date) ?? date;
   }
 
   commitInitial(authorName: string): string {

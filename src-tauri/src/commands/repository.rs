@@ -1,14 +1,14 @@
 use crate::commands::github;
 use crate::models::repository::{
-    CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
+    BlameLine, CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
     RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
-    RepositoryTag,
+    RepositoryTag, UndoCandidate,
 };
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
@@ -621,6 +621,7 @@ fn get_repository_status_impl(path: String) -> Result<RepositoryStatus, String> 
             path: file_path,
             status: status.to_string(),
             is_staged,
+            is_unstaged,
             is_conflicted,
         });
     }
@@ -798,6 +799,101 @@ pub fn unstage_repository_files(path: String, files: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command(async)]
+pub fn stage_repository_hunk(
+    path: String,
+    file_path: String,
+    hunk_index: usize,
+) -> Result<(), String> {
+    apply_repository_hunk(path, file_path, hunk_index, true)
+}
+
+#[tauri::command(async)]
+pub fn unstage_repository_hunk(
+    path: String,
+    file_path: String,
+    hunk_index: usize,
+) -> Result<(), String> {
+    apply_repository_hunk(path, file_path, hunk_index, false)
+}
+
+/// Aplica (ou reverte) um único trecho do diff no índice, sem tocar no working
+/// tree. É a base do staging por hunk: o front envia o índice do trecho e o
+/// patch é reconstruído aqui a partir do diff atual, evitando confiar em texto
+/// de patch vindo da interface.
+fn apply_repository_hunk(
+    path: String,
+    file_path: String,
+    hunk_index: usize,
+    stage: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+    let operation_lock = repository_operation_lock(&path);
+    let _operation_guard = operation_lock
+        .lock()
+        .map_err(|_| "Não foi possível bloquear o repositório.".to_string())?;
+
+    let diff = if stage {
+        run_git(&path, &["diff", "--no-color", "--", relative_path.as_str()])?
+    } else {
+        run_git(
+            &path,
+            &["diff", "--no-color", "--cached", "--", relative_path.as_str()],
+        )?
+    };
+
+    if diff.trim().is_empty() {
+        return Err(
+            "Não há alterações para aplicar neste momento. Atualize a lista e tente novamente."
+                .to_string(),
+        );
+    }
+
+    let patch = build_hunk_patch(&diff, hunk_index)?;
+    let mut args = vec!["apply", "--cached", "--whitespace=nowarn"];
+    if !stage {
+        args.push("--reverse");
+    }
+
+    run_git_with_input(&path, &args, &patch).map(|_| ())
+}
+
+/// Monta um patch válido contendo apenas o cabeçalho do arquivo e o trecho
+/// escolhido. Os índices seguem a ordem em que os `@@` aparecem no diff, que é
+/// a mesma usada pela interface.
+fn build_hunk_patch(diff: &str, hunk_index: usize) -> Result<String, String> {
+    let mut header = String::new();
+    let mut hunks: Vec<String> = Vec::new();
+    let mut current: Option<String> = None;
+
+    for line in diff.lines() {
+        if line.starts_with("@@") {
+            if let Some(hunk) = current.take() {
+                hunks.push(hunk);
+            }
+            current = Some(format!("{line}\n"));
+        } else if let Some(hunk) = current.as_mut() {
+            hunk.push_str(line);
+            hunk.push('\n');
+        } else {
+            header.push_str(line);
+            header.push('\n');
+        }
+    }
+
+    if let Some(hunk) = current {
+        hunks.push(hunk);
+    }
+
+    let hunk = hunks.get(hunk_index).ok_or_else(|| {
+        "O trecho selecionado não está mais disponível. Atualize o diff e tente novamente."
+            .to_string()
+    })?;
+
+    Ok(format!("{header}{hunk}"))
+}
+
+#[tauri::command(async)]
 pub fn discard_repository_file(path: String, file_path: String) -> Result<(), String> {
     ensure_repository(&path)?;
     let relative_path = validate_repository_file_path(&file_path)?;
@@ -947,6 +1043,129 @@ fn cherry_pick_commit_impl(path: String, commit_hash: String) -> Result<(), Stri
     args.push(commit_hash);
 
     run_git_with_timeout(&path, &args, GIT_BRANCH_OPERATION_TIMEOUT).map(|_| ())
+}
+
+#[tauri::command]
+pub async fn get_undo_candidate(path: String) -> Result<Option<UndoCandidate>, String> {
+    run_blocking(move || get_undo_candidate_impl(path)).await
+}
+
+/// Só sugere desfazer quando a última entrada do reflog é uma operação que
+/// criou um commit. Checkout, pull e reset ficam de fora de propósito.
+fn get_undo_candidate_impl(path: String) -> Result<Option<UndoCandidate>, String> {
+    ensure_repository(&path)?;
+
+    let output = run_git(
+        &path,
+        &["reflog", "show", "HEAD", "-n", "2", "--format=%H%x1f%gs%x1e"],
+    )?;
+    let entries = parse_reflog_entries(&output);
+
+    if entries.len() < 2 {
+        return Ok(None);
+    }
+
+    let (current_hash, action) = &entries[0];
+    let (previous_hash, _) = &entries[1];
+
+    if !is_undoable_action(action) {
+        return Ok(None);
+    }
+
+    if run_git(
+        &path,
+        &["cat-file", "-e", &format!("{previous_hash}^{{commit}}")],
+    )
+    .is_err()
+    {
+        return Ok(None);
+    }
+
+    let subject = run_git(&path, &["log", "-1", "--format=%s", current_hash])?
+        .trim()
+        .to_string();
+
+    Ok(Some(UndoCandidate {
+        current_hash: current_hash.clone(),
+        previous_hash: previous_hash.clone(),
+        action: action.clone(),
+        subject,
+    }))
+}
+
+/// Converte a saída do reflog (`%H%x1f%gs%x1e`) em pares (hash, ação).
+fn parse_reflog_entries(output: &str) -> Vec<(String, String)> {
+    output
+        .split('\x1e')
+        .filter_map(|record| {
+            let trimmed = record.trim();
+            if trimmed.is_empty() {
+                return None;
+            }
+
+            let mut parts = trimmed.split('\x1f');
+            let hash = parts.next()?.trim();
+            let action = parts.next()?.trim();
+            if hash.is_empty() {
+                return None;
+            }
+
+            Some((hash.to_string(), action.to_string()))
+        })
+        .collect()
+}
+
+fn is_undoable_action(action: &str) -> bool {
+    ["commit", "merge", "cherry-pick", "revert"]
+        .iter()
+        .any(|prefix| action.starts_with(prefix))
+}
+
+#[tauri::command]
+pub async fn undo_last_operation(
+    path: String,
+    current_hash: String,
+    previous_hash: String,
+) -> Result<(), String> {
+    run_blocking(move || undo_last_operation_impl(path, current_hash, previous_hash)).await
+}
+
+/// Volta o ponteiro da branch para o estado anterior mantendo índice e working
+/// tree (`reset --soft`). Exige árvore limpa e confere se o HEAD ainda é o
+/// mesmo commit mostrado na interface, para não desfazer outra coisa.
+fn undo_last_operation_impl(
+    path: String,
+    current_hash: String,
+    previous_hash: String,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&current_hash)?;
+    validate_commit_hash(&previous_hash)?;
+
+    let operation_lock = repository_operation_lock(&path);
+    let _operation_guard = operation_lock
+        .lock()
+        .map_err(|_| "Não foi possível bloquear o repositório.".to_string())?;
+
+    let head = run_git(&path, &["rev-parse", "HEAD"])?.trim().to_string();
+    if head != current_hash.trim() {
+        return Err(
+            "O repositório mudou desde que a ação foi proposta. Atualize e tente novamente."
+                .to_string(),
+        );
+    }
+
+    let status = run_git(&path, &["status", "--porcelain"])?;
+    if !status.trim().is_empty() {
+        return Err("Salve ou faça stash das alterações antes de desfazer o commit.".to_string());
+    }
+
+    let reflog = run_git(&path, &["reflog", "show", "HEAD", "-n", "1", "--format=%gs"])?;
+    if !is_undoable_action(reflog.trim()) {
+        return Err("A última operação não pode ser desfeita com segurança.".to_string());
+    }
+
+    run_git(&path, &["reset", "--soft", previous_hash.trim()]).map(|_| ())
 }
 
 #[tauri::command]
@@ -1445,19 +1664,31 @@ fn get_repository_commits_impl(
     if all_branches {
         arguments.push("--all".to_string());
     }
+    // `--date-order` mantém a ordem cronológica entre branches (o
+    // `--topo-order` agrupava commits antigos de uma branch antes dos recentes
+    // de outra) e ainda garante que nenhum pai apareça antes dos filhos, o que
+    // o desenho do grafo precisa. A data exibida é a data de commit (`%cI`),
+    // que é justamente a chave usada nessa ordenação; usar a data de autoria
+    // (`%aI`) fazia o horário na tela parecer fora de ordem.
     arguments.extend([
         format!("--skip={skip}"),
         format!("--max-count={safe_limit}"),
-        "--topo-order".to_string(),
+        "--date-order".to_string(),
         "--date=iso-strict".to_string(),
         "--decorate=short".to_string(),
-        "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%P%x1f%D%x1e".to_string(),
+        "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%cI%x1f%P%x1f%D%x1e".to_string(),
     ]);
     let argument_refs = arguments.iter().map(String::as_str).collect::<Vec<_>>();
     let log = run_git(&path, &argument_refs)?;
 
-    let commits = log
-        .split('\x1e')
+    Ok(parse_commit_log(&log))
+}
+
+/// Converte a saída de `git log` (campos separados por 0x1f e registros por
+/// 0x1e) em estrutura. Isolado do processo Git para poder ser testado sem
+/// repositório — é o ponto onde um formato inesperado some com commits da tela.
+fn parse_commit_log(log: &str) -> Vec<RepositoryCommit> {
+    log.split('\x1e')
         .filter_map(|record| {
             let fields: Vec<&str> = record.trim().split('\x1f').collect();
             if fields.len() < 8 || fields[0].is_empty() {
@@ -1483,9 +1714,7 @@ fn get_repository_commits_impl(
                     .collect(),
             })
         })
-        .collect();
-
-    Ok(commits)
+        .collect()
 }
 
 #[tauri::command]
@@ -1554,6 +1783,116 @@ pub async fn get_commit_file_diff(
     file_path: String,
 ) -> Result<String, String> {
     run_blocking(move || get_commit_file_diff_impl(path, commit_hash, file_path)).await
+}
+
+#[tauri::command]
+pub async fn get_file_blame(path: String, file_path: String) -> Result<Vec<BlameLine>, String> {
+    run_blocking(move || get_file_blame_impl(path, file_path)).await
+}
+
+fn get_file_blame_impl(path: String, file_path: String) -> Result<Vec<BlameLine>, String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+
+    let output = run_git_with_timeout(
+        &path,
+        ["blame", "--line-porcelain", "--", relative_path.as_str()],
+        GIT_DIFF_TIMEOUT,
+    )?;
+
+    Ok(parse_blame_output(&output))
+}
+
+/// Converte a saída de `git blame --line-porcelain` em linhas atribuídas.
+/// O Git omite os metadados quando o mesmo commit se repete, por isso os
+/// valores são mantidos até o próximo cabeçalho.
+fn parse_blame_output(output: &str) -> Vec<BlameLine> {
+    let mut lines = Vec::new();
+    // Metadados por commit: o `--line-porcelain` repete tudo em cada linha, mas
+    // guardar por hash deixa o parser correto mesmo se o Git omitir a repetição.
+    let mut metadata: HashMap<String, (String, String, i64)> = HashMap::new();
+    let mut hash = String::new();
+
+    for raw in output.lines() {
+        if let Some(content) = raw.strip_prefix('\t') {
+            let (author, author_email, author_time) =
+                metadata.get(&hash).cloned().unwrap_or_default();
+
+            lines.push(BlameLine {
+                line: lines.len() + 1,
+                short_hash: hash.chars().take(7).collect(),
+                hash: hash.clone(),
+                author,
+                author_email,
+                author_time,
+                content: content.to_string(),
+            });
+            continue;
+        }
+
+        let bytes = raw.as_bytes();
+        let is_header =
+            bytes.len() > 40 && bytes[..40].iter().all(u8::is_ascii_hexdigit) && bytes[40] == b' ';
+
+        if is_header {
+            hash = raw.split_whitespace().next().unwrap_or_default().to_string();
+            metadata.entry(hash.clone()).or_default();
+            continue;
+        }
+
+        if hash.is_empty() {
+            continue;
+        }
+
+        let entry = metadata.entry(hash.clone()).or_default();
+        if let Some(value) = raw.strip_prefix("author ") {
+            entry.0 = value.to_string();
+        } else if let Some(value) = raw.strip_prefix("author-mail ") {
+            entry.1 = value
+                .trim()
+                .trim_matches(|character| character == '<' || character == '>')
+                .to_string();
+        } else if let Some(value) = raw.strip_prefix("author-time ") {
+            entry.2 = value.trim().parse().unwrap_or(0);
+        }
+    }
+
+    lines
+}
+
+#[tauri::command]
+pub async fn get_file_history(
+    path: String,
+    file_path: String,
+    limit: usize,
+) -> Result<Vec<RepositoryCommit>, String> {
+    run_blocking(move || get_file_history_impl(path, file_path, limit)).await
+}
+
+fn get_file_history_impl(
+    path: String,
+    file_path: String,
+    limit: usize,
+) -> Result<Vec<RepositoryCommit>, String> {
+    ensure_repository(&path)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+    let safe_limit = limit.clamp(1, 200);
+
+    let output = run_git(
+        &path,
+        &[
+            "log",
+            "--follow",
+            "--date-order",
+            &format!("--max-count={safe_limit}"),
+            "--date=iso-strict",
+            "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%cI%x1f%P%x1f%D%x1e",
+            "--",
+            relative_path.as_str(),
+        ],
+    )?;
+
+    Ok(parse_commit_log(&output))
 }
 
 fn get_commit_file_diff_impl(
@@ -2227,7 +2566,28 @@ fn validate_repository_file_path(file_path: &str) -> Result<PathBuf, String> {
     Ok(relative_path.to_path_buf())
 }
 
+/// Caminho relativo seguro para comandos Git que recebem `<path>` (sempre com
+/// barras normais). Rejeita caminhos absolutos, com `..` ou com `:` para não
+/// permitir escapar do repositório.
+fn validate_relative_file_path(file_path: &str) -> Result<String, String> {
+    let normalized = file_path.trim().replace('\\', "/");
+    let is_safe = !normalized.is_empty()
+        && !normalized.chars().any(char::is_control)
+        && !normalized.starts_with('/')
+        && !normalized.contains(':')
+        && normalized
+            .split('/')
+            .all(|part| !part.is_empty() && part != "." && part != "..");
+
+    if !is_safe {
+        return Err("O arquivo selecionado não é válido.".to_string());
+    }
+
+    Ok(normalized)
+}
+
 fn read_conflict_stage(path: &str, file_path: &str, stage: u8) -> (String, bool) {
+
     let spec = format!(":{stage}:{file_path}");
     let args = vec!["show".to_string(), spec];
     match run_git_strings(path, &args) {
@@ -2900,10 +3260,44 @@ where
 }
 
 fn run_git_process(mut command: Command, timeout: Duration) -> Result<String, String> {
+    let child = command
+        .spawn()
+        .map_err(|error| format!("Não foi possível executar o Git: {error}"))?;
+
+    collect_git_output(child, timeout)
+}
+
+/// Executa o Git enviando um patch pelo stdin (usado por `git apply`).
+fn run_git_with_input(path: &str, args: &[&str], input: &str) -> Result<String, String> {
+    let mut command = Command::new("git");
+    command
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(path)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
     let mut child = command
         .spawn()
         .map_err(|error| format!("Não foi possível executar o Git: {error}"))?;
 
+    {
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "Não foi possível enviar o patch para o Git.".to_string())?;
+        stdin
+            .write_all(input.as_bytes())
+            .map_err(|error| format!("Não foi possível enviar o patch para o Git: {error}"))?;
+    }
+
+    collect_git_output(child, GIT_COMMAND_TIMEOUT)
+}
+
+fn collect_git_output(mut child: Child, timeout: Duration) -> Result<String, String> {
     let mut stdout = child
         .stdout
         .take()
@@ -2988,4 +3382,317 @@ fn run_git_lines(path: &str, args: &[&str]) -> Result<Vec<String>, String> {
         .filter(|line| !line.is_empty())
         .map(ToOwned::to_owned)
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn log_record(fields: &[&str]) -> String {
+        format!("{}\x1e", fields.join("\x1f"))
+    }
+
+    #[test]
+    fn parse_commit_log_le_campos_e_referencias() {
+        let log = log_record(&[
+            "abc1234",
+            "abc1234",
+            "Ajusta a timeline",
+            "Daniel",
+            "daniel@example.com",
+            "2026-10-29T13:30:00-03:00",
+            "def5678 ghi9012",
+            "HEAD -> main, origin/main",
+        ]);
+
+        let commits = parse_commit_log(&log);
+
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].hash, "abc1234");
+        assert_eq!(commits[0].subject, "Ajusta a timeline");
+        assert_eq!(commits[0].date, "2026-10-29T13:30:00-03:00");
+        assert_eq!(commits[0].parents, vec!["def5678", "ghi9012"]);
+        assert_eq!(commits[0].references, vec!["HEAD -> main", "origin/main"]);
+    }
+
+    #[test]
+    fn parse_commit_log_aceita_commit_sem_pais_nem_referencias() {
+        let log = log_record(&[
+            "abc1234", "abc1234", "initial", "Daniel", "d@e.com", "2026-01-01T00:00:00+00:00", "", "",
+        ]);
+
+        let commits = parse_commit_log(&log);
+
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].parents.is_empty());
+        assert!(commits[0].references.is_empty());
+    }
+
+    #[test]
+    fn parse_commit_log_descarta_registros_incompletos_sem_perder_os_validos() {
+        let log = format!(
+            "{}{}{}",
+            log_record(&["1111111", "1111111", "ok", "D", "d@e.com", "2026-01-01T00:00:00+00:00", "", ""]),
+            "lixo\x1fquebrado\x1e",
+            log_record(&["2222222", "2222222", "ok2", "D", "d@e.com", "2026-01-02T00:00:00+00:00", "", ""]),
+        );
+
+        let commits = parse_commit_log(&log);
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].hash, "1111111");
+        assert_eq!(commits[1].hash, "2222222");
+    }
+
+    #[test]
+    fn validate_commit_hash_aceita_hex_de_7_a_64() {
+        assert!(validate_commit_hash("abc1234").is_ok());
+        assert!(validate_commit_hash(&"a".repeat(40)).is_ok());
+        assert!(validate_commit_hash(&"f".repeat(64)).is_ok());
+    }
+
+    #[test]
+    fn validate_commit_hash_rejeita_entrada_invalida() {
+        assert!(validate_commit_hash("").is_err());
+        assert!(validate_commit_hash("abc123").is_err());
+        assert!(validate_commit_hash(&"a".repeat(65)).is_err());
+        assert!(validate_commit_hash("HEAD~1").is_err());
+        assert!(validate_commit_hash("abc1234; rm -rf /").is_err());
+    }
+
+    #[test]
+    fn parse_stash_index_le_o_indice() {
+        assert_eq!(parse_stash_index("stash@{0}").unwrap(), 0);
+        assert_eq!(parse_stash_index("stash@{12}").unwrap(), 12);
+    }
+
+    #[test]
+    fn parse_stash_index_rejeita_referencia_invalida() {
+        assert!(parse_stash_index("stash@{a}").is_err());
+        assert!(parse_stash_index("stash@{1").is_err());
+        assert!(parse_stash_index("main").is_err());
+    }
+
+    #[test]
+    fn is_unmerged_status_detecta_conflitos() {
+        assert!(is_unmerged_status('U', 'U'));
+        assert!(is_unmerged_status('U', 'M'));
+        assert!(is_unmerged_status('A', 'A'));
+        assert!(is_unmerged_status('D', 'D'));
+        assert!(!is_unmerged_status('M', 'M'));
+        assert!(!is_unmerged_status('?', '?'));
+        assert!(!is_unmerged_status(' ', 'M'));
+    }
+
+    #[test]
+    fn parse_branch_header_le_ahead_e_behind() {
+        assert_eq!(
+            parse_branch_header("## main...origin/main [ahead 2, behind 1]"),
+            (Some("main".to_string()), 1, 2)
+        );
+        assert_eq!(
+            parse_branch_header("## main...origin/main"),
+            (Some("main".to_string()), 0, 0)
+        );
+    }
+
+    #[test]
+    fn parse_branch_header_lida_com_head_destacado_e_repo_novo() {
+        assert_eq!(parse_branch_header("## HEAD (no branch)"), (None, 0, 0));
+        assert_eq!(
+            parse_branch_header("## No commits yet on main"),
+            (Some("main".to_string()), 0, 0)
+        );
+        assert_eq!(
+            parse_branch_header("## Initial commit on trunk"),
+            (Some("trunk".to_string()), 0, 0)
+        );
+    }
+
+    #[test]
+    fn clone_progress_from_line_extrai_a_porcentagem() {
+        assert_eq!(clone_progress_from_line("Receiving objects:  42% (42/100)"), Some(42));
+        assert_eq!(clone_progress_from_line("Resolving deltas: 100% (10/10), done."), Some(100));
+        assert_eq!(clone_progress_from_line("Cloning into 'repo'..."), None);
+    }
+
+    #[test]
+    fn build_new_file_diff_monta_cabecalho_e_linhas() {
+        let diff = build_new_file_diff("src/app.ts", "linha 1\nlinha 2\n");
+
+        assert!(diff.starts_with("diff --git a/src/app.ts b/src/app.ts\nnew file mode 100644\n"));
+        assert!(diff.contains("@@ -0,0 +1,2 @@"));
+        assert!(diff.contains("+linha 1\n+linha 2\n"));
+        assert!(!diff.contains("\\ No newline at end of file"));
+    }
+
+    #[test]
+    fn build_new_file_diff_marca_arquivo_sem_newline_final() {
+        let diff = build_new_file_diff("README.md", "sem quebra");
+
+        assert!(diff.contains("\\ No newline at end of file"));
+    }
+}
+
+#[cfg(test)]
+mod hunk_tests {
+    use super::*;
+
+    const DIFF: &str = "diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,3 +1,4 @@
+ linha 1
++linha nova
+ linha 2
+ linha 3
+@@ -10,3 +11,3 @@
+ linha 10
+-linha 11
++linha onze
+ linha 12
+";
+
+    #[test]
+    fn build_hunk_patch_pega_apenas_o_trecho_escolhido() {
+        let patch = build_hunk_patch(DIFF, 1).unwrap();
+
+        assert!(patch.starts_with("diff --git a/src/app.ts b/src/app.ts\n"));
+        assert!(patch.contains("--- a/src/app.ts\n+++ b/src/app.ts\n"));
+        assert!(!patch.contains("@@ -1,3 +1,4 @@"));
+        assert!(patch.contains("@@ -10,3 +11,3 @@"));
+        assert!(patch.contains("-linha 11\n+linha onze\n"));
+    }
+
+    #[test]
+    fn build_hunk_patch_inclui_os_dois_trechos_quando_pedido() {
+        let patch = build_hunk_patch(DIFF, 0).unwrap();
+
+        assert!(patch.contains("@@ -1,3 +1,4 @@"));
+        assert!(patch.contains("+linha nova"));
+        assert!(!patch.contains("@@ -10,3 +11,3 @@"));
+    }
+
+    #[test]
+    fn build_hunk_patch_rejeita_indice_fora_da_faixa() {
+        assert!(build_hunk_patch(DIFF, 2).is_err());
+        assert!(build_hunk_patch("", 0).is_err());
+    }
+
+    #[test]
+    fn validate_relative_file_path_aceita_caminho_do_git() {
+        assert_eq!(
+            validate_relative_file_path("src/app/features/changes.ts").unwrap(),
+            "src/app/features/changes.ts"
+        );
+        assert_eq!(
+            validate_relative_file_path("src\\app\\file.ts").unwrap(),
+            "src/app/file.ts"
+        );
+    }
+
+    #[test]
+    fn validate_relative_file_path_rejeita_escapar_do_repositorio() {
+        assert!(validate_relative_file_path("../segredo.txt").is_err());
+        assert!(validate_relative_file_path("/etc/passwd").is_err());
+        assert!(validate_relative_file_path("C:/Windows/system32").is_err());
+        assert!(validate_relative_file_path("").is_err());
+        assert!(validate_relative_file_path("src/./app.ts").is_err());
+    }
+}
+
+#[cfg(test)]
+mod blame_tests {
+    use super::*;
+
+    const BLAME: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 1 1 2
+author Daniel
+author-mail <daniel@example.com>
+author-time 1761742200
+author-tz -0300
+committer Daniel
+committer-mail <daniel@example.com>
+committer-time 1761742200
+committer-tz -0300
+summary Primeiro commit
+
+	linha um
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 2 2
+author Juan
+author-mail <juan@example.com>
+author-time 1761745800
+author-tz -0300
+summary Segundo commit
+
+	linha dois
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 3 3
+	linha três
+";
+
+    #[test]
+    fn parse_blame_output_atribui_cada_linha() {
+        let lines = parse_blame_output(BLAME);
+
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[0].line, 1);
+        assert_eq!(lines[0].hash, "a".repeat(40));
+        assert_eq!(lines[0].short_hash, "aaaaaaa");
+        assert_eq!(lines[0].author, "Daniel");
+        assert_eq!(lines[0].author_email, "daniel@example.com");
+        assert_eq!(lines[0].author_time, 1761742200);
+        assert_eq!(lines[0].content, "linha um");
+    }
+
+    #[test]
+    fn parse_blame_output_reaproveita_metadados_do_commit_repetido() {
+        let lines = parse_blame_output(BLAME);
+
+        // A terceira linha repete o commit da primeira, e o Git omite os metadados.
+        assert_eq!(lines[2].hash, "a".repeat(40));
+        assert_eq!(lines[2].author, "Daniel");
+        assert_eq!(lines[2].author_time, 1761742200);
+        assert_eq!(lines[2].content, "linha três");
+        assert_eq!(lines[1].author, "Juan");
+    }
+
+    #[test]
+    fn parse_blame_output_aceita_saida_vazia() {
+        assert!(parse_blame_output("").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod undo_tests {
+    use super::*;
+
+    const REFLOG: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x1fcommit: Ajusta a timeline\x1ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\x1fcommit (initial): Base\x1e";
+
+    #[test]
+    fn parse_reflog_entries_le_hash_e_acao() {
+        let entries = parse_reflog_entries(REFLOG);
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].0, "a".repeat(40));
+        assert_eq!(entries[0].1, "commit: Ajusta a timeline");
+        assert_eq!(entries[1].1, "commit (initial): Base");
+    }
+
+    #[test]
+    fn parse_reflog_entries_ignora_registros_vazios() {
+        assert!(parse_reflog_entries("").is_empty());
+        assert!(parse_reflog_entries("\x1e\x1e").is_empty());
+    }
+
+    #[test]
+    fn is_undoable_action_aceita_apenas_criacao_de_commit() {
+        assert!(is_undoable_action("commit: mensagem"));
+        assert!(is_undoable_action("commit (amend): mensagem"));
+        assert!(is_undoable_action("merge feature: Merge made by the 'ort' strategy."));
+        assert!(is_undoable_action("cherry-pick: mensagem"));
+        assert!(is_undoable_action("revert: Revert \"mensagem\""));
+        assert!(!is_undoable_action("checkout: moving from main to feature"));
+        assert!(!is_undoable_action("pull: Fast-forward"));
+        assert!(!is_undoable_action("reset: moving to HEAD~1"));
+    }
 }

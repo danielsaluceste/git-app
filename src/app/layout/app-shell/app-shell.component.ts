@@ -1,13 +1,11 @@
-import { Component, DestroyRef, HostListener, effect, inject, OnDestroy, signal } from "@angular/core";
+import { Component, DestroyRef, HostListener, inject, OnDestroy, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { invoke } from "@tauri-apps/api/core";
 import { filter } from "rxjs";
 import { LayoutService } from "../../core/services/layout.service";
-import { CodexService } from "../../core/services/codex.service";
 import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
-import { SettingsService } from "../../core/services/settings.service";
 import { TerminalService } from "../../core/services/terminal.service";
 import { ToastService } from "../../core/services/toast.service";
 import { TranslationService } from "../../core/services/translation.service";
@@ -16,8 +14,8 @@ import { RepositorySidebarComponent } from "../repository-sidebar/repository-sid
 import { RepositoryTabsComponent } from "../repository-tabs/repository-tabs.component";
 import { SidebarComponent } from "../sidebar/sidebar.component";
 import { TopbarComponent } from "../topbar/topbar.component";
+import { CommandPaletteComponent } from "../command-palette/command-palette.component";
 import { ToastContainerComponent } from "../../shared/components/toast-container/toast-container.component";
-import { CodexSidebarComponent } from "../codex-sidebar/codex-sidebar.component";
 import { TerminalDrawerComponent } from "../../features/terminal/components/terminal-drawer/terminal-drawer.component";
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 
@@ -30,23 +28,18 @@ import { TranslatePipe } from "../../shared/pipes/translate.pipe";
     SidebarComponent,
     TopbarComponent,
     ToastContainerComponent,
-    CodexSidebarComponent,
     TerminalDrawerComponent,
+    CommandPaletteComponent,
     TranslatePipe,
   ],
   templateUrl: "./app-shell.component.html",
   styleUrl: "./app-shell.component.css",
 })
 export class AppShellComponent implements OnDestroy {
-  private readonly codexSidebarMinWidth = 300;
-  private readonly codexSidebarMaxWidth = 620;
-  private readonly codexSidebarWidthStorageKey = "git-app.codex-sidebar-width";
   private readonly repositoryRefreshInterval = 30_000;
   private readonly layoutService = inject(LayoutService);
-  private readonly codexService = inject(CodexService);
   private readonly repositoryService = inject(RepositoryService);
   private readonly sessionService = inject(SessionService);
-  private readonly settingsService = inject(SettingsService);
   private readonly terminalService = inject(TerminalService);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
@@ -65,11 +58,6 @@ export class AppShellComponent implements OnDestroy {
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly mainSidebarOpen = this.layoutService.mainSidebarOpen;
-  readonly codexStatus = this.codexService.status;
-  readonly codexEnabled = this.settingsService.codexEnabled;
-  readonly codexSidebarOpen = signal(false);
-  readonly codexSidebarWidth = signal(this.loadCodexSidebarWidth());
-  readonly codexResizeActive = signal(false);
   readonly terminalDrawerOpen = this.terminalService.isDrawerOpen;
   readonly updateAvailable = this.updateService.updateAvailable;
   readonly updateState = this.updateService.state;
@@ -78,18 +66,7 @@ export class AppShellComponent implements OnDestroy {
   readonly updateProgress = this.updateService.progress;
   readonly updateDialogOpen = signal(false);
 
-  private codexResizeStartX = 0;
-  private codexResizeStartWidth = 360;
-
   constructor() {
-    void this.codexService.check();
-
-    effect(() => {
-      if (!this.activeRepository() || !this.codexEnabled() || this.codexStatus()?.installed !== true) {
-        this.codexSidebarOpen.set(false);
-      }
-    });
-
     this.repositoryRefreshTimer = setInterval(
       () => this.refreshActiveRepository(),
       this.repositoryRefreshInterval,
@@ -146,16 +123,6 @@ export class AppShellComponent implements OnDestroy {
 
   closeMainSidebar(): void {
     this.layoutService.closeMainSidebar();
-  }
-
-  toggleCodexSidebar(): void {
-    if (this.activeRepository() && this.codexEnabled() && this.codexStatus()?.installed === true) {
-      this.codexSidebarOpen.update((isOpen) => !isOpen);
-    }
-  }
-
-  closeCodexSidebar(): void {
-    this.codexSidebarOpen.set(false);
   }
 
   toggleTerminalDrawer(): void {
@@ -226,52 +193,6 @@ export class AppShellComponent implements OnDestroy {
     }
   }
 
-  private readonly onCodexPointerMove = (event: PointerEvent): void => {
-    if (!this.codexResizeActive()) {
-      return;
-    }
-    const width = this.codexResizeStartWidth + this.codexResizeStartX - event.clientX;
-    this.codexSidebarWidth.set(
-      Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, width)),
-    );
-  };
-
-  private readonly onCodexPointerUp = (): void => {
-    this.stopCodexResize();
-  };
-
-  startCodexResize(event: PointerEvent): void {
-    if (event.button !== 0) {
-      return;
-    }
-
-    event.preventDefault();
-    this.codexResizeActive.set(true);
-    this.codexResizeStartX = event.clientX;
-    this.codexResizeStartWidth = this.codexSidebarWidth();
-
-    document.addEventListener("pointermove", this.onCodexPointerMove, { passive: true });
-    document.addEventListener("pointerup", this.onCodexPointerUp, { once: true });
-    document.addEventListener("pointercancel", this.onCodexPointerUp, { once: true });
-  }
-
-  stopCodexResize(): void {
-    document.removeEventListener("pointermove", this.onCodexPointerMove);
-    document.removeEventListener("pointerup", this.onCodexPointerUp);
-    document.removeEventListener("pointercancel", this.onCodexPointerUp);
-
-    if (!this.codexResizeActive()) {
-      return;
-    }
-
-    this.codexResizeActive.set(false);
-    try {
-      localStorage.setItem(this.codexSidebarWidthStorageKey, String(this.codexSidebarWidth()));
-    } catch {
-      // A largura continua funcionando mesmo se o armazenamento não estiver disponível.
-    }
-  }
-
   private refreshActiveRepository(): void {
     if (document.visibilityState === "hidden" || this.repositoryRefreshInFlight) {
       return;
@@ -318,17 +239,6 @@ export class AppShellComponent implements OnDestroy {
         .catch(() => undefined);
     } else {
       void this.repositoryService.refreshAfterRepositoryOpened(repository).catch(() => undefined);
-    }
-  }
-
-  private loadCodexSidebarWidth(): number {
-    try {
-      const stored = Number(localStorage.getItem(this.codexSidebarWidthStorageKey));
-      return Number.isFinite(stored)
-        ? Math.min(this.codexSidebarMaxWidth, Math.max(this.codexSidebarMinWidth, stored))
-        : 360;
-    } catch {
-      return 360;
     }
   }
 }

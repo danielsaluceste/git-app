@@ -11,13 +11,10 @@ import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 })
 export class TopbarComponent {
   @Input() showMainSidebarButton = false;
-  @Input() showCodexButton = false;
-  @Input() codexOpen = false;
   @Input() showTerminalButton = false;
   @Input() terminalOpen = false;
   @Input() updateAvailable = false;
   @Output() mainSidebarRequested = new EventEmitter<void>();
-  @Output() codexRequested = new EventEmitter<void>();
   @Output() terminalRequested = new EventEmitter<void>();
   @Output() updateRequested = new EventEmitter<void>();
 

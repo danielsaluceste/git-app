@@ -29,11 +29,13 @@ const targets = [
 
 const availableFiles = new Set(await readdir(artifactsDirectory));
 const platforms = {};
+const missingArtifacts = [];
 
 for (const [target, fileName] of targets) {
   const signatureName = `${fileName}.sig`;
 
   if (!availableFiles.has(fileName) || !availableFiles.has(signatureName)) {
+    missingArtifacts.push(`${fileName} e ${signatureName}`);
     continue;
   }
 
@@ -43,8 +45,8 @@ for (const [target, fileName] of targets) {
   };
 }
 
-if (Object.keys(platforms).length === 0) {
-  throw new Error("Nenhum artefato assinado foi encontrado para montar o latest.json.");
+if (missingArtifacts.length > 0) {
+  throw new Error(`Faltam artefatos assinados para publicar: ${missingArtifacts.join(", ")}`);
 }
 
 const manifest = {

@@ -10,17 +10,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(commands::codex::CodexProcessState::default())
         .manage(commands::repository::CloneProcessState::default())
         .manage(commands::github::GithubCredentialState::default())
         .manage(commands::watcher::WatcherState::default())
         .manage(commands::terminal::TerminalState::default())
         .invoke_handler(tauri::generate_handler![
-            commands::codex::check_codex_cli,
-            commands::codex::get_codex_models,
-            commands::codex::get_codex_usage,
-            commands::codex::run_codex,
-            commands::codex::cancel_codex,
             commands::repository::inspect_repository,
             commands::repository::clone_repository,
             commands::repository::cancel_clone,
@@ -37,11 +31,15 @@ pub fn run() {
             commands::repository::resolve_repository_conflict_side,
             commands::repository::stage_repository_files,
             commands::repository::unstage_repository_files,
+            commands::repository::stage_repository_hunk,
+            commands::repository::unstage_repository_hunk,
             commands::repository::discard_repository_file,
             commands::repository::commit_repository,
             commands::repository::get_last_commit_message,
             commands::repository::revert_commit,
             commands::repository::cherry_pick_commit,
+            commands::repository::get_undo_candidate,
+            commands::repository::undo_last_operation,
             commands::repository::get_repository_staged_diff,
             commands::repository::get_repository_file_diff,
             commands::repository::stash_repository,
@@ -54,6 +52,8 @@ pub fn run() {
             commands::repository::get_repository_commits,
             commands::repository::get_commit_files,
             commands::repository::get_commit_file_diff,
+            commands::repository::get_file_blame,
+            commands::repository::get_file_history,
             commands::repository::fetch_repository,
             commands::repository::pull_repository,
             commands::repository::push_repository,

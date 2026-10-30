@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
     "build:desktop": "node scripts/build-release.mjs",
@@ -38,6 +40,7 @@
     "@angular/cli": "^20.1.4",
     "@angular/compiler-cli": "^20.1.4",
     "@tauri-apps/cli": "^2",
-    "typescript": "~5.8.3"
+    "typescript": "~5.8.3",
+    "vitest": "^3.2.7"
   }
 }

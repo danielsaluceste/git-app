@@ -82,7 +82,7 @@
                         class="stash-file-check"
                         [class.checked]="isStashFileSelected(file.path)"
                         [attr.aria-pressed]="isStashFileSelected(file.path)"
-                        [attr.aria-label]="isStashFileSelected(file.path) ? 'Remover ' + file.path + ' da aplicação' : 'Selecionar ' + file.path + ' para aplicação'"
+                        [attr.aria-label]="isStashFileSelected(file.path) ? ('stashes.unselectFileAria' | translate: { path: file.path }) : ('stashes.selectFileAria' | translate: { path: file.path })"
                         (click)="toggleStashFile(file.path, $event)"
                       >
                         <span aria-hidden="true">✓</span>

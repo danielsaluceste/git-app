@@ -1,0 +1,120 @@
+<dialog
+  #dialog
+  class="history-dialog"
+  (cancel)="onCancel($event)"
+  (click)="onBackdropClick($event)"
+  aria-labelledby="file-history-title"
+>
+  <header class="history-header">
+    <div class="history-heading">
+      <span class="history-icon" aria-hidden="true">⟲</span>
+      <div>
+        <p class="eyebrow">{{ "fileHistory.title" | translate }}</p>
+        <h2 id="file-history-title" [title]="filePath">{{ filePath }}</h2>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="close-button"
+      [attr.aria-label]="'fileHistory.close' | translate"
+      (click)="closed.emit()"
+    >
+      ×
+    </button>
+  </header>
+
+  <div class="history-tabs" role="tablist" [attr.aria-label]="'fileHistory.tabs' | translate">
+    <button
+      type="button"
+      role="tab"
+      [class.active]="activeTab() === 'history'"
+      [attr.aria-selected]="activeTab() === 'history'"
+      (click)="selectTab('history')"
+    >
+      {{ "fileHistory.tabHistory" | translate }}
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [class.active]="activeTab() === 'blame'"
+      [attr.aria-selected]="activeTab() === 'blame'"
+      (click)="selectTab('blame')"
+    >
+      {{ "fileHistory.tabBlame" | translate }}
+    </button>
+  </div>
+
+  <div class="history-content">
+    @if (activeTab() === "history") {
+      @if (commitsLoading()) {
+        <div class="history-state">
+          <span class="history-spinner" aria-hidden="true"></span>
+          {{ "fileHistory.loading" | translate }}
+        </div>
+      } @else if (commitsError()) {
+        <div class="history-state error-state">
+          <p>{{ commitsError() }}</p>
+          <button type="button" class="history-retry" (click)="retryHistory()">
+            {{ "fileHistory.retry" | translate }}
+          </button>
+        </div>
+      } @else if (commits().length === 0) {
+        <div class="history-state">{{ "fileHistory.emptyHistory" | translate }}</div>
+      } @else {
+        <div class="history-commit-list" role="list">
+          @for (commit of commits(); track commit.hash) {
+            <div class="history-commit" role="listitem">
+              <code class="history-commit-hash" [title]="commit.hash">{{ commit.shortHash }}</code>
+              <div class="history-commit-copy">
+                <strong [title]="commit.subject">{{ commit.subject }}</strong>
+                <small>{{ commit.authorName }}</small>
+              </div>
+              <time class="history-commit-date">{{ formatDate(commit.date) }}</time>
+            </div>
+          }
+        </div>
+      }
+    } @else {
+      @if (blameLoading()) {
+        <div class="history-state">
+          <span class="history-spinner" aria-hidden="true"></span>
+          {{ "fileHistory.loadingBlame" | translate }}
+        </div>
+      } @else if (blameError()) {
+        <div class="history-state error-state">
+          <p>{{ blameError() }}</p>
+          <button type="button" class="history-retry" (click)="retryBlame()">
+            {{ "fileHistory.retry" | translate }}
+          </button>
+        </div>
+      } @else if (blame().length === 0) {
+        <div class="history-state">{{ "fileHistory.emptyBlame" | translate }}</div>
+      } @else {
+        <div class="blame-list" role="list">
+          @for (line of blame(); track line.line) {
+            <div class="blame-row" role="listitem">
+              <span class="blame-line">{{ line.line }}</span>
+              <code class="blame-hash" [title]="line.hash">{{ line.shortHash }}</code>
+              <span class="blame-author" [title]="line.authorEmail">{{ line.author }}</span>
+              <time class="blame-date">{{ formatBlameDate(line.authorTime) }}</time>
+              <span class="blame-content">{{ line.content || " " }}</span>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+
+  <footer class="history-footer">
+    <span>
+      @if (activeTab() === "history") {
+        {{ "fileHistory.commitsCount" | translate: { count: commits().length } }}
+      } @else {
+        {{ "fileHistory.linesCount" | translate: { count: blame().length } }}
+      }
+    </span>
+    <button type="button" class="history-close-action" (click)="closed.emit()">
+      {{ "fileHistory.closeAction" | translate }}
+    </button>
+  </footer>
+</dialog>

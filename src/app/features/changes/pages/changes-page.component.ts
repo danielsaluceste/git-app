@@ -14,6 +14,7 @@ import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
 import { FileDiffDialogComponent } from "../../../shared/dialogs/file-diff-dialog/file-diff-dialog.component";
+import { FileHistoryDialogComponent } from "../../../shared/dialogs/file-history-dialog/file-history-dialog.component";
 import { FixedBottomLayoutComponent } from "../../../shared/components/fixed-bottom-layout/fixed-bottom-layout.component";
 import { ConflictResolverComponent } from "../../../shared/components/conflict-resolver/conflict-resolver.component";
 import { StashDialogComponent } from "../../../shared/dialogs/stash-dialog/stash-dialog.component";
@@ -27,7 +28,7 @@ interface FileContextMenu {
 
 @Component({
   selector: "app-changes-page",
-  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule, TranslatePipe],
+  imports: [ConfirmDialogComponent, FileDiffDialogComponent, FileHistoryDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule, TranslatePipe],
   templateUrl: "./changes-page.component.html",
   styleUrl: "./changes-page.component.css",
 })
@@ -67,6 +68,8 @@ export class ChangesPageComponent {
   readonly fileDiff = signal("");
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
+  readonly pendingHunk = signal<number | null>(null);
+  readonly historyFile = signal<GitFile | undefined>(undefined);
   readonly isOperationActionRunning = signal(false);
   readonly pendingAbortOperation = signal(false);
   readonly fileContextMenu = signal<FileContextMenu | undefined>(undefined);
@@ -208,10 +211,15 @@ export class ChangesPageComponent {
 
       const currentSelected = this.selectedFile();
       if (currentSelected) {
-        const stillExists = repositoryStatus.files.find((f) => f.path === currentSelected.path);
+        const stillExists = repositoryStatus.files.find(
+          (file) =>
+            file.path === currentSelected.path &&
+            (currentSelected.isStaged ? file.isStaged : !file.isStaged || file.isUnstaged),
+        );
         if (stillExists) {
-          this.selectedFile.set(stillExists);
-          void this.refreshSelectedFileDiffQuietly(repository, stillExists);
+          const selected: GitFile = { ...stillExists, isStaged: currentSelected.isStaged };
+          this.selectedFile.set(selected);
+          void this.refreshSelectedFileDiffQuietly(repository, selected);
         } else {
           this.selectedFile.set(undefined);
           this.fileDiff.set("");
@@ -275,8 +283,15 @@ export class ChangesPageComponent {
     return url.split(/[?#]/, 1)[0].endsWith("/changes") || url.split(/[?#]/, 1)[0] === "/changes";
   }
 
+  /**
+   * Um arquivo com alterações nos dois lados aparece nas duas listas. Na lista
+   * de não preparados ele vira uma "visão" com `isStaged: false`, para que o
+   * diff e o stage por hunk usem o lado correto.
+   */
   unstagedFiles(files: GitFile[]): GitFile[] {
-    return files.filter((file) => !file.isStaged);
+    return files
+      .filter((file) => !file.isStaged || file.isUnstaged)
+      .map((file) => (file.isStaged ? { ...file, isStaged: false } : file));
   }
 
   setCommitMessage(message: string): void {
@@ -479,6 +494,15 @@ export class ChangesPageComponent {
     void this.openFileDiff(file);
   }
 
+  openFileHistory(file: GitFile): void {
+    this.closeFileContextMenu();
+    this.historyFile.set(file);
+  }
+
+  closeFileHistory(): void {
+    this.historyFile.set(undefined);
+  }
+
   openContextConflictResolver(file: GitFile): void {
     this.closeFileContextMenu();
     this.openConflictResolver(file);
@@ -577,6 +601,48 @@ export class ChangesPageComponent {
       (repository) => this.repositoryService.unstageFiles(repository.path, paths),
       this.translationService.translate("changes.unstagedAll"),
     );
+  }
+
+  /**
+   * Só arquivos modificados ou excluídos têm um patch por trecho confiável.
+   * Arquivos novos, renomeados e conflitos continuam sendo preparados inteiros.
+   */
+  hunkActionFor(file: GitFile | undefined): "stage" | "unstage" | "" {
+    if (!file || file.isConflicted || (file.status !== "modified" && file.status !== "deleted")) {
+      return "";
+    }
+
+    return file.isStaged ? "unstage" : "stage";
+  }
+
+  async requestHunkAction(event: { index: number; action: "stage" | "unstage" }): Promise<void> {
+    const repository = this.activeRepository();
+    const file = this.selectedFile();
+    if (!repository || !file || this.pendingHunk() !== null) {
+      return;
+    }
+
+    this.pendingHunk.set(event.index);
+    try {
+      if (event.action === "stage") {
+        await this.repositoryService.stageHunk(repository.path, file.path, event.index);
+      } else {
+        await this.repositoryService.unstageHunk(repository.path, file.path, event.index);
+      }
+
+      // Recarrega a lista e o diff: o arquivo pode mudar de lado (preparado /
+      // não preparado) e os índices dos trechos restantes são recalculados.
+      await this.loadStatus(repository);
+    } catch (error: unknown) {
+      this.toastService.error(
+        typeof error === "string" && error.trim()
+          ? error
+          : this.translationService.translate("changes.actionError"),
+        this.translationService.translate("changes.actionErrorTitle"),
+      );
+    } finally {
+      this.pendingHunk.set(null);
+    }
   }
 
   async commitChanges(files: GitFile[]): Promise<void> {

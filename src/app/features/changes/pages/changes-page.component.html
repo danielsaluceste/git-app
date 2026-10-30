@@ -306,6 +306,13 @@
           <small>{{ "changes.viewFileChanges" | translate }}</small>
         </span>
       </button>
+      <button type="button" (click)="openFileHistory(context.file)">
+        <span class="context-menu-symbol" aria-hidden="true">⟲</span>
+        <span>
+          <strong>{{ "changes.fileHistory" | translate }}</strong>
+          <small>{{ "changes.fileHistoryDescription" | translate }}</small>
+        </span>
+      </button>
       @if (isConflictFile(context.file)) {
         <button type="button" (click)="openContextConflictResolver(context.file)">
           <span class="context-menu-symbol conflict-symbol" aria-hidden="true">!</span>
@@ -379,8 +386,21 @@
       [diff]="fileDiff()"
       [loading]="fileDiffLoading()"
       [error]="fileDiffError()"
+      [hunkAction]="hunkActionFor(file)"
+      [pendingHunk]="pendingHunk()"
+      (hunkActionRequested)="requestHunkAction($event)"
       (closed)="closeFileDiff()"
     />
+  }
+
+  @if (historyFile(); as file) {
+    @if (activeRepository(); as repository) {
+      <app-file-history-dialog
+        [repositoryPath]="repository.path"
+        [filePath]="file.path"
+        (closed)="closeFileHistory()"
+      />
+    }
   }
 
   @if (showAiDownloadConfirm()) {

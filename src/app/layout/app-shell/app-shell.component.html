@@ -2,9 +2,6 @@
   class="app-shell"
   [class.main-sidebar-collapsed]="!mainSidebarOpen()"
   [class.repository-open]="!!activeRepository()"
-  [class.codex-open]="codexSidebarOpen()"
-  [class.codex-resizing]="codexResizeActive()"
-  [style.--codex-sidebar-width.px]="codexSidebarWidth()"
 >
   <app-sidebar
     [collapsed]="!mainSidebarOpen()"
@@ -18,13 +15,10 @@
   <section class="workspace">
     <app-topbar
       [showMainSidebarButton]="!mainSidebarOpen()"
-      [showCodexButton]="!!activeRepository() && codexEnabled() && codexStatus()?.installed === true"
-      [codexOpen]="codexSidebarOpen()"
       [showTerminalButton]="!!activeRepository()"
       [terminalOpen]="terminalDrawerOpen()"
       [updateAvailable]="updateAvailable()"
       (mainSidebarRequested)="openMainSidebar()"
-      (codexRequested)="toggleCodexSidebar()"
       (terminalRequested)="toggleTerminalDrawer()"
       (updateRequested)="openUpdateDialog()"
     />
@@ -39,24 +33,6 @@
       <app-terminal-drawer />
     }
   </section>
-
-  @if (activeRepository(); as repository) {
-    @if (codexSidebarOpen()) {
-      <div class="codex-resizable-panel">
-        <div
-          class="codex-resize-handle"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Redimensionar barra do Codex"
-          (pointerdown)="startCodexResize($event)"
-        ></div>
-        <app-codex-sidebar
-          [repository]="repository"
-          (closeRequested)="closeCodexSidebar()"
-        />
-      </div>
-    }
-  }
 
   @if (updateDialogOpen()) {
     <div class="update-dialog-backdrop" (click)="closeUpdateDialog()">
@@ -144,4 +120,5 @@
   }
 
   <app-toast-container />
+  <app-command-palette />
 </div>

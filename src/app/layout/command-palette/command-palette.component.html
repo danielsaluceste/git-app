@@ -1,0 +1,72 @@
+@if (isOpen()) {
+  <div class="palette-backdrop" (click)="close()">
+    <section
+      class="palette"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'palette.title' | translate"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="palette-search">
+        <span class="palette-search-icon" aria-hidden="true">⌘</span>
+        <input
+          #search
+          type="text"
+          [value]="query()"
+          (input)="setQuery($event)"
+          [placeholder]="'palette.placeholder' | translate"
+          [attr.aria-label]="'palette.placeholder' | translate"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <kbd>esc</kbd>
+      </header>
+
+      <div class="palette-results" role="listbox">
+        @if (filtered().length === 0) {
+          <p class="palette-empty">{{ "palette.empty" | translate }}</p>
+        }
+
+        @for (item of filtered(); track item.id; let index = $index) {
+          @if (index === 0 || filtered()[index - 1].group !== item.group) {
+            <p class="palette-group">{{ groupLabel(item.group) }}</p>
+          }
+
+          <button
+            type="button"
+            class="palette-item"
+            [class.active]="index === activeIndex()"
+            role="option"
+            [attr.aria-selected]="index === activeIndex()"
+            (mouseenter)="activeIndex.set(index)"
+            (click)="run(item)"
+          >
+            <span class="palette-symbol" aria-hidden="true">{{ item.symbol }}</span>
+            <span class="palette-copy">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.hint }}</small>
+            </span>
+            @if (index === activeIndex()) {
+              <kbd class="palette-enter">↵</kbd>
+            }
+          </button>
+        }
+      </div>
+
+      <footer class="palette-footer">{{ "palette.hint" | translate }}</footer>
+    </section>
+  </div>
+}
+
+@if (pendingUndo()) {
+  <app-confirm-dialog
+    [title]="'palette.undoConfirmTitle' | translate"
+    [message]="'palette.undoConfirmMessage' | translate: { subject: undoCandidate()?.subject || '', hash: (undoCandidate()?.currentHash || '').slice(0, 7) }"
+    [messageHighlight]="(undoCandidate()?.currentHash || '').slice(0, 7)"
+    [confirmLabel]="'palette.undoConfirm' | translate"
+    [cancelLabel]="'workspace.cancel' | translate"
+    [destructive]="true"
+    (confirmed)="confirmUndo()"
+    (cancelled)="cancelUndo()"
+  />
+}

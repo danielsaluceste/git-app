@@ -221,10 +221,10 @@
 
   @if (pendingCreateBranch(); as request) {
     <app-confirm-dialog
-      title="Criar e ativar branch?"
-      [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao criar e ativar a branch ' + request.name + '. Deseja continuar?'"
-      confirmLabel="Criar e ativar"
-      cancelLabel="Cancelar"
+      [title]="'branches.createConfirmTitle' | translate"
+      [message]="'branches.createConfirmMessage' | translate: { name: request.name }"
+      [confirmLabel]="'branches.createConfirm' | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
       (confirmed)="confirmCreateBranch()"
       (cancelled)="cancelCreateBranch()"
     />
@@ -232,10 +232,10 @@
 
   @if (pendingCheckoutBranch(); as branch) {
     <app-confirm-dialog
-      title="Trocar de branch?"
-      [message]="'Existem alterações não commitadas. O Git tentará preservá-las ao trocar para a branch ' + branch + '. Deseja continuar?'"
-      confirmLabel="Trocar branch"
-      cancelLabel="Continuar aqui"
+      [title]="'branches.checkoutConfirmTitle' | translate"
+      [message]="'branches.checkoutConfirmMessage' | translate: { branch }"
+      [confirmLabel]="'branches.checkoutConfirm' | translate"
+      [cancelLabel]="'branches.continueHere' | translate"
       (confirmed)="confirmCheckout()"
       (cancelled)="cancelCheckout()"
     />
@@ -243,10 +243,10 @@
 
   @if (pendingDeleteBranch(); as branch) {
     <app-confirm-dialog
-      title="Excluir branch?"
-      [message]="'Excluir a branch ' + branch + '? O Git só permitirá a exclusão se ela já tiver sido integrada. Os commits não serão apagados.'"
-      confirmLabel="Excluir branch"
-      cancelLabel="Cancelar"
+      [title]="'branches.deleteConfirmTitle' | translate"
+      [message]="'branches.deleteConfirmMessage' | translate: { branch }"
+      [confirmLabel]="'branches.deleteConfirm' | translate"
+      [cancelLabel]="'workspace.cancel' | translate"
       [destructive]="true"
       (confirmed)="confirmDeleteBranch()"
       (cancelled)="cancelDeleteBranch()"

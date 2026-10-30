@@ -23,8 +23,34 @@ env:
   UPDATE_BASE_URL: https://files.danielsaluceste.com.br/public/gitluna
 
 jobs:
+  validate-secrets:
+    name: Validate release secrets
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_USER: ${{ secrets.SFTP_USER }}
+      SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
+      SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+    steps:
+      - name: Check required secrets
+        shell: bash
+        run: |
+          missing=()
+          for name in TAURI_SIGNING_PRIVATE_KEY SFTP_HOST SFTP_USER SFTP_PRIVATE_KEY SFTP_KNOWN_HOSTS; do
+            if [[ -z "${!name}" ]]; then
+              missing+=("$name")
+            fi
+          done
+
+          if ((${#missing[@]} > 0)); then
+            printf 'Secrets obrigatorios ausentes: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
   build-windows:
     name: Build Windows update
+    needs: [validate-secrets]
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -60,6 +86,7 @@ jobs:
 
   build-linux:
     name: Build Linux update
+    needs: [validate-secrets]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -101,6 +128,13 @@ jobs:
   build-macos:
     name: Build macOS update
     runs-on: macos-latest
+    needs: [validate-secrets]
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -113,6 +147,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Install dependencies
         run: npm ci
@@ -122,15 +158,18 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+          TAURI_BUILD_TARGET: ${{ matrix.target }}
         run: npm run build:mac
 
       - name: Prepare update artifacts
+        env:
+          TAURI_BUILD_TARGET: ${{ matrix.target }}
         run: node scripts/prepare-update-artifacts.mjs macos update-artifacts
 
       - name: Upload prepared artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: update-macos
+          name: update-macos-${{ matrix.target }}
           path: update-artifacts/**
 
   publish:
@@ -156,8 +195,9 @@ jobs:
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          name: update-macos
+          pattern: update-macos-*
           path: update-artifacts
+          merge-multiple: true
 
       - name: Resolve release metadata
         id: release
@@ -166,7 +206,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ -n "$INPUT_VERSION" ]; then
-            version="$INPUT_VERSION"
+            version="${INPUT_VERSION#v}"
           else
             version="${GITHUB_REF_NAME#v}"
           fi
@@ -218,3 +258,36 @@ jobs:
           printf 'rename "%s/.latest.json.tmp" "%s/latest.json"\n' "$remote_path" "$remote_path" >> "$batch_file"
 
           sftp -P "$port" -i "$HOME/.ssh/gitluna_deploy" -o BatchMode=yes -b "$batch_file" "$SFTP_USER@$SFTP_HOST"
+
+      - name: Verify public update files
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          manifest="$RUNNER_TEMP/published-latest.json"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            "$UPDATE_BASE_URL/latest.json" --output "$manifest"
+
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const manifest = JSON.parse(readFileSync(process.argv[1], "utf8"));
+            const expectedVersion = process.env.EXPECTED_VERSION;
+            const required = ["windows-x86_64", "linux-x86_64", "darwin-x86_64", "darwin-aarch64"];
+            if (manifest.version !== expectedVersion) {
+              throw new Error(`latest.json version ${manifest.version} does not match ${expectedVersion}`);
+            }
+            for (const target of required) {
+              const platform = manifest.platforms?.[target];
+              if (!platform?.url || !platform?.signature) {
+                throw new Error(`latest.json is missing a signed update for ${target}`);
+              }
+            }
+          ' "$manifest"
+
+          for file in \
+            GitLuna-windows-x86_64.exe \
+            GitLuna-linux-x86_64.AppImage \
+            GitLuna-macos-x86_64.app.tar.gz \
+            GitLuna-macos-aarch64.app.tar.gz; do
+            curl --fail --silent --show-error --head "$UPDATE_BASE_URL/$file" >/dev/null
+          done

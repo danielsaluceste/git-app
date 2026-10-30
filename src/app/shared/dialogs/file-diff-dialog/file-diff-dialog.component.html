@@ -32,7 +32,13 @@
     } @else if (error) {
       <div class="diff-state error-state">{{ error }}</div>
     } @else if (diff.trim()) {
-      <pre class="diff-code">@for (line of diffLines(); track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}</pre>
+      <pre class="diff-code">@for (line of diffSegments().headerLines; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}@for (hunk of diffSegments().hunks; track hunk.index) {<span class="diff-line diff-hunk diff-hunk-row"><span class="diff-hunk-code">{{ hunk.header }}</span>@if (hunkAction) {<button
+              type="button"
+              class="hunk-action"
+              [disabled]="pendingHunk !== null"
+              [attr.aria-label]="(hunkAction === 'stage' ? 'diffDialog.stageHunk' : 'diffDialog.unstageHunk') | translate"
+              (click)="requestHunkAction(hunk.index)"
+            >{{ pendingHunk === hunk.index ? "…" : ((hunkAction === "stage" ? "diffDialog.stageHunk" : "diffDialog.unstageHunk") | translate) }}</button>}</span>@for (line of hunk.body; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}}</pre>
     } @else {
       <div class="diff-state">
         {{ "diffDialog.noDiff" | translate }}

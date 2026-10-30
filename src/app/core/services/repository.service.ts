@@ -18,6 +18,8 @@ import {
 } from "../models/repository.model";
 import { Commit } from "../models/commit.model";
 import { CommitFile } from "../models/commit-file.model";
+import { BlameLine } from "../models/blame.model";
+import { UndoCandidate } from "../models/undo.model";
 import { CreateTagRequest, GitTag } from "../models/tag.model";
 
 const STORAGE_KEY = "git-app.repositories";
@@ -195,6 +197,15 @@ export class RepositoryService {
     await invoke("unstage_repository_files", { path, files });
   }
 
+  /** Aplica um único trecho do diff no índice (staging por hunk). */
+  async stageHunk(path: string, filePath: string, hunkIndex: number): Promise<void> {
+    await invoke("stage_repository_hunk", { path, filePath, hunkIndex });
+  }
+
+  async unstageHunk(path: string, filePath: string, hunkIndex: number): Promise<void> {
+    await invoke("unstage_repository_hunk", { path, filePath, hunkIndex });
+  }
+
   async discardFile(path: string, filePath: string): Promise<void> {
     await invoke("discard_repository_file", { path, filePath });
   }
@@ -275,6 +286,30 @@ export class RepositoryService {
 
   async getCommitFiles(path: string, commitHash: string): Promise<CommitFile[]> {
     return invoke<CommitFile[]>("get_commit_files", { path, commitHash });
+  }
+
+  /** Autoria linha a linha de um arquivo (`git blame --line-porcelain`). */
+  async getFileBlame(path: string, filePath: string): Promise<BlameLine[]> {
+    return invoke<BlameLine[]>("get_file_blame", { path, filePath });
+  }
+
+  /** Commits que tocaram o arquivo, seguindo renomeações (`git log --follow`). */
+  async getFileHistory(path: string, filePath: string, limit = 50): Promise<Commit[]> {
+    return invoke<Commit[]>("get_file_history", { path, filePath, limit });
+  }
+
+  /** Último commit que pode ser desfeito com segurança (via reflog). */
+  async getUndoCandidate(path: string): Promise<UndoCandidate | null> {
+    return invoke<UndoCandidate | null>("get_undo_candidate", { path });
+  }
+
+  /** Volta o ponteiro da branch um passo (`reset --soft`), preservando arquivos. */
+  async undoLastOperation(
+    path: string,
+    currentHash: string,
+    previousHash: string,
+  ): Promise<void> {
+    await invoke("undo_last_operation", { path, currentHash, previousHash });
   }
 
   async getCommitFileDiff(path: string, commitHash: string, filePath: string): Promise<string> {

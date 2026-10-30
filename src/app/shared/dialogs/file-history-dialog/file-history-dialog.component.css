@@ -1,0 +1,334 @@
+:host {
+  display: contents;
+}
+
+.history-dialog {
+  display: grid;
+  width: min(calc(100vw - 2.5rem), 66rem);
+  height: min(calc(100vh - 2.5rem), 44rem);
+  box-sizing: border-box;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 0.9rem;
+  padding: 1.25rem;
+  background: var(--app-dialog-bg);
+  box-shadow: var(--app-panel-shadow);
+  color: var(--app-dialog-text);
+  animation: dialog-enter 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.history-dialog::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+  animation: none;
+}
+
+.history-header,
+.history-heading,
+.history-footer {
+  display: flex;
+  align-items: center;
+}
+
+.history-header {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.history-heading {
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.history-heading > div {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.3rem;
+  color: var(--app-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2 {
+  max-width: 52rem;
+  margin: 0;
+  overflow: hidden;
+  color: var(--app-text-bright);
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-icon {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--app-accent-border);
+  border-radius: 0.7rem;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.close-button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.close-button:hover {
+  border-color: var(--app-border-strong);
+  background: var(--app-border-subtle);
+  color: var(--app-text-bright);
+}
+
+.history-tabs {
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--app-border-subtle);
+  padding-bottom: 0.75rem;
+}
+
+.history-tabs button {
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.history-tabs button:hover {
+  background: var(--app-border-subtle);
+  color: var(--app-text-bright);
+}
+
+.history-tabs button.active {
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+}
+
+.history-content {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.6rem;
+  background: var(--app-surface-3);
+}
+
+.history-state {
+  display: grid;
+  min-height: 14rem;
+  box-sizing: border-box;
+  place-items: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  color: var(--app-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.error-state {
+  color: var(--app-danger-text);
+}
+
+.history-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--app-accent-border);
+  border-top-color: var(--app-accent-hover);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.history-retry {
+  border: 1px solid var(--app-border-strong);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.history-commit-list,
+.blame-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-commit {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  border-bottom: 1px solid var(--app-border-subtle);
+  padding: 0.6rem 0.85rem;
+}
+
+.history-commit:last-child {
+  border-bottom: 0;
+}
+
+.history-commit-hash {
+  flex: 0 0 auto;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 0.35rem;
+  padding: 0.12rem 0.4rem;
+  background: var(--app-border-subtle);
+  color: var(--app-accent-soft);
+  font-family: var(--app-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.history-commit-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.12rem;
+}
+
+.history-commit-copy strong {
+  overflow: hidden;
+  color: var(--app-text-bright);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-commit-copy small {
+  overflow: hidden;
+  color: var(--app-muted);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-commit-date {
+  flex: 0 0 auto;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.blame-row {
+  display: grid;
+  grid-template-columns: 3.2rem 5rem 9rem 8.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.6rem;
+  border-bottom: 1px solid var(--app-border-subtle);
+  padding: 0.28rem 0.85rem;
+  font-family: var(--app-font-mono);
+  font-size: 0.72rem;
+}
+
+.blame-row:last-child {
+  border-bottom: 0;
+}
+
+.blame-line {
+  color: var(--app-muted);
+  text-align: right;
+}
+
+.blame-hash {
+  color: var(--app-accent-soft);
+  font-weight: 700;
+}
+
+.blame-author,
+.blame-date {
+  overflow: hidden;
+  color: var(--app-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blame-content {
+  overflow-wrap: anywhere;
+  color: var(--app-text);
+  white-space: pre-wrap;
+}
+
+.history-footer {
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--app-muted-strong);
+  font-size: 0.72rem;
+}
+
+.history-close-action {
+  border: 0;
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--app-secondary-bg);
+  color: var(--app-secondary-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.history-close-action:hover {
+  background: var(--app-border-strong);
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .history-dialog {
+    width: calc(100vw - 1rem);
+    height: calc(100vh - 1rem);
+    padding: 1rem;
+  }
+
+  .blame-row {
+    grid-template-columns: 2.4rem 4.6rem minmax(0, 1fr);
+  }
+
+  .blame-date {
+    display: none;
+  }
+}

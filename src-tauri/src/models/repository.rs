@@ -50,6 +50,7 @@ pub struct RepositoryFile {
     pub path: String,
     pub status: String,
     pub is_staged: bool,
+    pub is_unstaged: bool,
     pub is_conflicted: bool,
 }
 
@@ -79,6 +80,30 @@ pub struct RepositoryCommit {
     pub date: String,
     pub parents: Vec<String>,
     pub references: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UndoCandidate {
+    pub current_hash: String,
+    pub previous_hash: String,
+    /// Ação registrada no reflog (`commit`, `merge`, `cherry-pick`, `revert`).
+    pub action: String,
+    /// Assunto do commit que será desfeito.
+    pub subject: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlameLine {
+    pub line: usize,
+    pub hash: String,
+    pub short_hash: String,
+    pub author: String,
+    pub author_email: String,
+    /// Data de autoria em segundos desde a época (o front formata no fuso local).
+    pub author_time: i64,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize)]

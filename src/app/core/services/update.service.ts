@@ -126,11 +126,6 @@ export class UpdateService {
   }
 
   private canUseUpdater(): boolean {
-    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
-      return false;
-    }
-
-    const hostname = window.location.hostname;
-    return hostname !== "localhost" && hostname !== "127.0.0.1";
+    return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
   }
 }

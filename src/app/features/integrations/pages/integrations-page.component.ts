@@ -1,9 +1,7 @@
-import { Component, OnDestroy, OnInit, inject } from "@angular/core";
+import { Component, OnDestroy, inject } from "@angular/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { GithubConnection, GithubDeviceFlowStart } from "../../../core/models/github.model";
 import { GithubService } from "../../../core/services/github.service";
-import { CodexService } from "../../../core/services/codex.service";
-import { SettingsService } from "../../../core/services/settings.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
@@ -17,10 +15,8 @@ type ConnectionState = "idle" | "starting" | "waiting" | "success" | "error";
   templateUrl: "./integrations-page.component.html",
   styleUrl: "./integrations-page.component.css",
 })
-export class IntegrationsPageComponent implements OnInit, OnDestroy {
+export class IntegrationsPageComponent implements OnDestroy {
   private readonly githubService = inject(GithubService);
-  private readonly codexService = inject(CodexService);
-  private readonly settingsService = inject(SettingsService);
   private readonly workspaceService = inject(WorkspaceService);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
@@ -28,9 +24,6 @@ export class IntegrationsPageComponent implements OnInit, OnDestroy {
   readonly activeWorkspace = this.workspaceService.activeWorkspace;
   readonly connections = this.githubService.workspaceConnections;
   readonly Math = Math;
-  readonly codexStatus = this.codexService.status;
-  readonly codexChecking = this.codexService.isChecking;
-  readonly codexEnabled = this.settingsService.codexEnabled;
 
   connectionState: ConnectionState = "idle";
   deviceFlow: GithubDeviceFlowStart | undefined;
@@ -39,26 +32,6 @@ export class IntegrationsPageComponent implements OnInit, OnDestroy {
   copiedCode = false;
   private flowCancelled = false;
   private copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
-
-  ngOnInit(): void {
-    void this.codexService.check();
-  }
-
-  toggleCodex(event: Event): void {
-    this.settingsService.setCodexEnabled((event.target as HTMLInputElement).checked);
-  }
-
-  async checkCodex(): Promise<void> {
-    await this.codexService.check();
-  }
-
-  async openCodexDocumentation(): Promise<void> {
-    try {
-      await openUrl("https://developers.openai.com/codex/cli/");
-    } catch {
-      window.open("https://developers.openai.com/codex/cli/", "_blank", "noopener,noreferrer");
-    }
-  }
 
   async connectGithub(): Promise<void> {
     if (this.connectionState === "starting" || this.connectionState === "waiting") {

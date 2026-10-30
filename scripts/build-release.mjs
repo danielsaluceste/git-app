@@ -55,8 +55,13 @@ console.log(`Gerando instaladores para ${requestedTarget}: ${target.bundles}`);
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const releaseVersion = process.env.TAURI_RELEASE_VERSION?.trim().replace(/^v/, "");
+const buildTarget = process.env.TAURI_BUILD_TARGET?.trim();
 const tauriArguments = ["run", "tauri", "--", "build", "--bundles", target.bundles];
 let releaseConfigPath;
+
+if (buildTarget) {
+  tauriArguments.push("--target", buildTarget);
+}
 
 if (releaseVersion) {
   releaseConfigPath = path.resolve("src-tauri", ".tauri-release-config.json");

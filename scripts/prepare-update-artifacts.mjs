@@ -9,7 +9,10 @@ if (!platform || !["windows", "linux", "macos"].includes(platform)) {
   process.exit(2);
 }
 
-const bundleDirectory = path.resolve("src-tauri", "target", "release", "bundle");
+const targetTriple = process.env.TAURI_BUILD_TARGET?.trim();
+const bundleDirectory = targetTriple
+  ? path.resolve("src-tauri", "target", targetTriple, "release", "bundle")
+  : path.resolve("src-tauri", "target", "release", "bundle");
 const outputPath = path.resolve(outputDirectory);
 
 async function walk(directory) {
@@ -109,7 +112,13 @@ try {
       throw new Error("Nenhum pacote macOS assinado foi encontrado.");
     }
 
-    const architecture = process.arch === "arm64" ? "aarch64" : "x86_64";
+    const architecture = targetTriple?.startsWith("aarch64-")
+      ? "aarch64"
+      : targetTriple?.startsWith("x86_64-")
+        ? "x86_64"
+        : process.arch === "arm64"
+          ? "aarch64"
+          : "x86_64";
     await copyArtifact(archives[0], `GitLuna-macos-${architecture}.app.tar.gz`, { requireSignature: true });
 
     const dmg = bundleFiles.find((filePath) => hasExtension(filePath, ".dmg"));
