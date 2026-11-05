@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   display: grid;
   gap: 1.5rem;
   max-width: 1550px;
@@ -646,6 +646,14 @@ button:disabled {
 .clone-field input:focus {
   border-color: var(--app-accent);
   box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
+}
+
+.clone-field-hint {
+  color: var(--app-muted-strong);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .destination-picker {

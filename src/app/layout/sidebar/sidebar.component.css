@@ -73,6 +73,12 @@
   overflow: hidden;
 }
 
+/* O logo (wordmark) já inclui a lua: com a sidebar aberta só ele aparece, para
+   não repetir o símbolo. Recolhida, o ícone isolado assume o lugar. */
+:host(:not(.collapsed)) .brand-mark {
+  display: none;
+}
+
 .brand-luna-icon {
   width: 100%;
   height: 100%;

@@ -101,18 +101,34 @@
             <span class="selected-check" aria-hidden="true">✓</span>
           }
         </button>
+
+        <button
+          type="button"
+          class="auth-option"
+          [class.selected]="selectedSource === 'ssh'"
+          (click)="selectSource('ssh')"
+        >
+          <span class="option-icon ssh-icon" aria-hidden="true">⌘</span>
+          <span class="option-copy">
+            <strong>{{ "repoSettings.ssh" | translate }}</strong>
+            <small>{{ "repoSettings.sshDescription" | translate }}</small>
+          </span>
+          @if (selectedSource === "ssh") {
+            <span class="selected-check" aria-hidden="true">✓</span>
+          }
+        </button>
       </div>
 
       @if (selectedSource === "github") {
         <div class="github-account-picker">
-          @if (githubConnections().length > 0) {
+          @if (appConnections().length > 0) {
             <label>
               <span>{{ "repoSettings.accountUsed" | translate }}</span>
               <select
                 [value]="selectedGithubConnectionId ?? ''"
                 (change)="selectGithubConnectionFromEvent($event)"
               >
-                @for (connection of githubConnections(); track connection.id) {
+                @for (connection of appConnections(); track connection.id) {
                   <option [value]="connection.id">
                     @{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}
                   </option>
@@ -131,6 +147,43 @@
             </div>
           }
         </div>
+      }
+
+      @if (selectedSource === "ssh") {
+        <div class="github-account-picker">
+          @if (sshConnections().length > 0) {
+            <label>
+              <span>{{ "repoSettings.sshUsed" | translate }}</span>
+              <select
+                [value]="selectedSshConnectionId ?? ''"
+                (change)="selectSshConnectionFromEvent($event)"
+              >
+                @for (connection of sshConnections(); track connection.id) {
+                  <option [value]="connection.id">
+                    @{{ connection.login }}{{ connection.ssh?.keyName ? " · " + connection.ssh?.keyName : "" }}{{ connection.isDefault ? " · Principal" : "" }}
+                  </option>
+                }
+              </select>
+            </label>
+          } @else {
+            <div class="no-account-state">
+              <div>
+                <strong>{{ "repoSettings.noSshAccount" | translate }}</strong>
+                <span>{{ "repoSettings.connectSshAccount" | translate }}</span>
+              </div>
+              <button type="button" class="secondary-button" (click)="openIntegrations()">
+                {{ "repoSettings.openIntegrations" | translate }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (sshWithHttpsRemote()) {
+        <p class="auth-hint" role="status">
+          <span aria-hidden="true">!</span>
+          {{ "repoSettings.sshRemoteHint" | translate }}
+        </p>
       }
 
       <footer class="settings-actions">

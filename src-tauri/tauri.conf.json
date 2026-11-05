@@ -10,20 +10,7 @@
     "frontendDist": "../dist/git-app/browser"
   },
   "app": {
-    "windows": [
-      {
-        "title": "GitLuna",
-        "width": 1600,
-        "height": 900,
-        "minWidth": 960,
-        "minHeight": 600,
-        "center": true,
-        "decorations": false,
-        "transparent": false,
-        "shadow": true,
-        "resizable": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https:; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'",
       "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https: ws://localhost:1420 http://localhost:1420; worker-src 'self' blob:; media-src 'self' blob:"

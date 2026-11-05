@@ -988,25 +988,17 @@ export class HistoryPageComponent implements AfterViewInit {
     }
 
     this.syncAction.set(action);
-    const syncCredentials = this.getSyncCredentials(repository);
+    const syncCredentials = this.repositoryService.syncCredentials(repository);
 
     try {
       if (action === "fetch") {
-        await this.repositoryService.fetch(
-          repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
-        );
+        await this.repositoryService.fetch(repository.path, syncCredentials);
         this.toastService.success(
           this.translationService.translate("history.fetchSuccess"),
           this.translationService.translate("history.fetchSuccessTitle"),
         );
       } else if (action === "pull") {
-        const pullResult = await this.repositoryService.pull(
-          repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
-        );
+        const pullResult = await this.repositoryService.pull(repository.path, syncCredentials);
         this.toastService.success(
           pullResult.autoStashed
             ? this.translationService.translate("history.pullAutoStash")
@@ -1014,11 +1006,7 @@ export class HistoryPageComponent implements AfterViewInit {
           this.translationService.translate("history.pullSuccessTitle"),
         );
       } else {
-        await this.repositoryService.push(
-          repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
-        );
+        await this.repositoryService.push(repository.path, syncCredentials);
         this.toastService.success(
           this.translationService.translate("history.pushSuccess"),
           this.translationService.translate("history.pushSuccessTitle"),
@@ -1196,20 +1184,6 @@ export class HistoryPageComponent implements AfterViewInit {
 
       return { ...commit, avatarUrl: gravatarUrl(hash) };
     });
-  }
-
-  private getSyncCredentials(repository: Repository): {
-    workspaceId?: string;
-    githubUserId?: number;
-  } {
-    if (repository.authenticationSource !== "github" || repository.githubConnectionId === undefined) {
-      return {};
-    }
-
-    return {
-      workspaceId: repository.workspaceId,
-      githubUserId: repository.githubConnectionId,
-    };
   }
 
   private getCommitCheckoutErrorMessage(error: unknown): string {

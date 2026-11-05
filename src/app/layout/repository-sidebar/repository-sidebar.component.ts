@@ -190,11 +190,9 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
 
     this.isBranchActionRunning.set(true);
     try {
-      const syncCredentials = this.getSyncCredentials();
       await this.repositoryService.fetch(
         this.repository.path,
-        syncCredentials.workspaceId,
-        syncCredentials.githubUserId,
+        this.repositoryService.syncCredentials(this.repository),
       );
       await this.refreshRepositoryData();
       this.toastService.success(
@@ -609,11 +607,9 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
     this.isBranchActionRunning.set(true);
     try {
       try {
-        const syncCredentials = this.getSyncCredentials();
         await this.repositoryService.fetch(
           this.repository.path,
-          syncCredentials.workspaceId,
-          syncCredentials.githubUserId,
+          this.repositoryService.syncCredentials(this.repository),
         );
       } catch {
         // A troca de branch local continua mesmo quando o remoto está indisponível.
@@ -712,17 +708,6 @@ export class RepositorySidebarComponent implements OnInit, OnChanges {
       }
       this.isBranchActionRunning.set(false);
     }
-  }
-
-  private getSyncCredentials(): { workspaceId?: string; githubUserId?: number } {
-    if (this.repository.authenticationSource !== "github" || this.repository.githubConnectionId === undefined) {
-      return {};
-    }
-
-    return {
-      workspaceId: this.repository.workspaceId,
-      githubUserId: this.repository.githubConnectionId,
-    };
   }
 
   private localBranchName(remoteBranch: string): string {

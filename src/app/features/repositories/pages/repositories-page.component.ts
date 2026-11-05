@@ -2,10 +2,14 @@ import { Component, computed, HostListener, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { GithubRepository } from "../../../core/models/github.model";
+import { GithubConnection, GithubRepository } from "../../../core/models/github.model";
 import { LayoutService } from "../../../core/services/layout.service";
 import { GithubService } from "../../../core/services/github.service";
-import { Repository } from "../../../core/models/repository.model";
+import {
+  GitSyncCredentials,
+  Repository,
+  RepositoryAuthenticationSource,
+} from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
@@ -14,6 +18,14 @@ import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type AddRepositoryMode = "options" | "clone";
 type CloneSource = "url" | "github";
+
+/** `"system"` usa a configuração do computador; as demais chaves são `modo:id`. */
+type CloneAuthKey = "system" | string;
+
+const SYSTEM_AUTH_KEY = "system";
+const GIT_URL_PATTERN = /^(?:git@|ssh:\/\/|https?:\/\/|git:\/\/)/i;
+const GITHUB_HTTPS_URL_PATTERN =
+  /^https?:\/\/(?:www\.)?github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i;
 
 interface CloneProgress {
   operationId: string;
@@ -52,10 +64,12 @@ export class RepositoriesPageComponent {
   cloneSource: CloneSource = "url";
   cloneUrl = "";
   cloneDestination = "";
+  cloneAuthKey: CloneAuthKey = SYSTEM_AUTH_KEY;
+  sshRepositorySlug = "";
   githubRepositories: GithubRepository[] = [];
   githubRepositoriesLoading = false;
   githubRepositoriesError = "";
-  selectedGithubUserId: number | undefined;
+  selectedGithubConnectionKey: string | undefined;
   selectedGithubRepositoryId: number | undefined;
   cloneOperationId = "";
   cloneProgress = 0;
@@ -70,9 +84,11 @@ export class RepositoriesPageComponent {
     this.cloneUrl = "";
     this.cloneDestination = "";
     this.cloneSource = "url";
+    this.cloneAuthKey = SYSTEM_AUTH_KEY;
+    this.selectedGithubConnectionKey = undefined;
+    this.sshRepositorySlug = "";
     this.githubRepositories = [];
     this.githubRepositoriesError = "";
-    this.selectedGithubUserId = undefined;
     this.selectedGithubRepositoryId = undefined;
     this.isAddRepositoryModalOpen = true;
   }
@@ -99,38 +115,61 @@ export class RepositoriesPageComponent {
       return;
     }
 
+    const preferred = connections.find((connection) => connection.isDefault) ?? connections[0];
     this.addRepositoryMode = "clone";
     this.cloneSource = "github";
-    this.selectedGithubUserId = connections[0].id;
-    void this.loadGithubRepositories();
+    this.selectGithubAccount(this.connectionKey(preferred));
   }
 
   selectCloneSource(source: CloneSource): void {
     this.cloneSource = source;
     this.cloneUrl = "";
+    this.sshRepositorySlug = "";
     this.githubRepositoriesError = "";
     this.selectedGithubRepositoryId = undefined;
 
     if (source === "github") {
       const connections = this.githubConnections();
-      this.selectedGithubUserId ??= connections[0]?.id;
+      const current = this.connectionFromKey(this.selectedGithubConnectionKey);
+      const connection = current ?? connections.find((item) => item.isDefault) ?? connections[0];
+
+      if (connection) {
+        this.selectGithubAccount(this.connectionKey(connection));
+      }
+    }
+  }
+
+  selectGithubAccount(connectionKey: string): void {
+    const connection = this.connectionFromKey(connectionKey);
+
+    if (!connection) {
+      return;
+    }
+
+    this.selectedGithubConnectionKey = connectionKey;
+    this.cloneAuthKey = connectionKey;
+    this.selectedGithubRepositoryId = undefined;
+    this.cloneUrl = "";
+    this.sshRepositorySlug = "";
+    this.githubRepositories = [];
+    this.githubRepositoriesError = "";
+
+    if (connection.mode === "app") {
       void this.loadGithubRepositories();
     }
   }
 
-  selectGithubAccount(userId: number): void {
-    this.selectedGithubUserId = userId;
-    this.selectedGithubRepositoryId = undefined;
-    this.cloneUrl = "";
-    void this.loadGithubRepositories();
-  }
-
   selectGithubAccountFromEvent(event: Event): void {
-    const value = Number((event.target as HTMLSelectElement).value);
+    const value = (event.target as HTMLSelectElement).value;
 
-    if (Number.isFinite(value) && value > 0) {
+    if (value) {
       this.selectGithubAccount(value);
     }
+  }
+
+  selectCloneAuthFromEvent(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as CloneAuthKey;
+    this.cloneAuthKey = value || SYSTEM_AUTH_KEY;
   }
 
   selectGithubRepository(repository: GithubRepository): void {
@@ -139,7 +178,11 @@ export class RepositoriesPageComponent {
   }
 
   async loadGithubRepositories(): Promise<void> {
-    if (!this.selectedGithubUserId) {
+    const connection = this.selectedGithubConnection();
+
+    // A chave SSH não lista repositórios: ela autentica o Git, mas não tem
+    // acesso à API do GitHub. Nesse modo o repositório é informado à mão.
+    if (!connection || connection.mode !== "app") {
       this.githubRepositories = [];
       return;
     }
@@ -150,7 +193,7 @@ export class RepositoriesPageComponent {
     try {
       this.githubRepositories = await this.githubService.listRepositories(
         this.activeWorkspace().id,
-        this.selectedGithubUserId,
+        connection.id,
       );
     } catch (error: unknown) {
       this.githubRepositories = [];
@@ -234,11 +277,59 @@ export class RepositoriesPageComponent {
     }
   }
 
-  async cloneRepository(): Promise<void> {
-    const selectedRepository = this.githubRepositories.find(
-      (repository) => repository.id === this.selectedGithubRepositoryId,
+  /** O formulário só libera o clone quando a origem e a autenticação estão completas. */
+  cloneReady(): boolean {
+    if (this.cloneSource === "github") {
+      const connection = this.selectedGithubConnection();
+
+      if (!connection) {
+        return false;
+      }
+
+      return connection.mode === "ssh"
+        ? this.sshRepositorySlug.trim().length > 0
+        : this.selectedGithubRepositoryId !== undefined;
+    }
+
+    return this.cloneUrl.trim().length > 0;
+  }
+
+  connectionKey(connection: GithubConnection): string {
+    return `${connection.mode}:${connection.id}`;
+  }
+
+  connectionLabel(connection: GithubConnection): string {
+    const mode = this.translationService.translate(
+      connection.mode === "ssh" ? "integrations.modeSsh" : "integrations.modeApp",
     );
-    const remoteUrl = this.cloneSource === "github" ? selectedRepository?.cloneUrl ?? "" : this.cloneUrl;
+    const keyName = connection.ssh?.keyName ? ` · ${connection.ssh.keyName}` : "";
+    const isDefault = connection.isDefault
+      ? ` · ${this.translationService.translate("integrations.default")}`
+      : "";
+
+    return `${mode} · @${connection.login}${keyName}${isDefault}`;
+  }
+
+  selectedGithubConnection(): GithubConnection | undefined {
+    return this.connectionFromKey(this.selectedGithubConnectionKey);
+  }
+
+  selectedConnectionIsSsh(): boolean {
+    return this.selectedGithubConnection()?.mode === "ssh";
+  }
+
+  usesSshAuth(): boolean {
+    return this.connectionFromKey(this.cloneAuthKey)?.mode === "ssh";
+  }
+
+  sshCloneHint(): string {
+    return this.translationService.translate("repositories.sshCloneHint", {
+      url: this.sshRepositoryPreview(),
+    });
+  }
+
+  async cloneRepository(): Promise<void> {
+    const remoteUrl = this.resolveCloneUrl();
 
     if (!remoteUrl.trim() || !this.cloneDestination.trim()) {
       this.toastService.warning(
@@ -248,13 +339,15 @@ export class RepositoriesPageComponent {
       return;
     }
 
-    if (this.cloneSource === "github" && !this.selectedGithubUserId) {
+    if (this.cloneAuthKey !== SYSTEM_AUTH_KEY && !this.connectionFromKey(this.cloneAuthKey)) {
       this.toastService.warning(
         this.translationService.translate("repositories.accountRequired"),
         this.translationService.translate("repositories.accountRequiredTitle"),
       );
       return;
     }
+
+    const connection = this.connectionFromKey(this.cloneAuthKey);
 
     this.isLoading = true;
     this.cloneOperationId = this.createCloneOperationId();
@@ -269,17 +362,15 @@ export class RepositoriesPageComponent {
         remoteUrl.trim(),
         this.cloneDestination,
         this.cloneOperationId,
-        this.activeWorkspace().id,
-        this.cloneSource === "github" ? this.selectedGithubUserId : undefined,
+        this.cloneCredentials(connection),
       );
       const added = this.repositoryService.add({
         name: repositoryInfo.name,
         path: repositoryInfo.path,
         workspaceId: this.activeWorkspace().id,
         cloneSource: this.cloneSource,
-        authenticationSource: this.cloneSource === "github" ? "github" : "system",
-        githubConnectionId:
-          this.cloneSource === "github" ? this.selectedGithubUserId : undefined,
+        authenticationSource: this.authenticationSource(connection),
+        githubConnectionId: connection?.id,
       });
 
       this.isAddRepositoryModalOpen = false;
@@ -345,6 +436,90 @@ export class RepositoriesPageComponent {
 
   trackRepository(_index: number, repository: Repository): string {
     return `${repository.workspaceId}:${repository.path}`;
+  }
+
+  private connectionFromKey(connectionKey: string | undefined): GithubConnection | undefined {
+    if (!connectionKey || connectionKey === SYSTEM_AUTH_KEY) {
+      return undefined;
+    }
+
+    return this.githubConnections().find(
+      (connection) => this.connectionKey(connection) === connectionKey,
+    );
+  }
+
+  private cloneCredentials(connection: GithubConnection | undefined): GitSyncCredentials | undefined {
+    if (!connection) {
+      return undefined;
+    }
+
+    return connection.mode === "ssh"
+      ? { sshKeyPath: connection.ssh?.keyPath }
+      : { workspaceId: this.activeWorkspace().id, githubUserId: connection.id };
+  }
+
+  private authenticationSource(
+    connection: GithubConnection | undefined,
+  ): RepositoryAuthenticationSource {
+    if (!connection) {
+      return "system";
+    }
+
+    return connection.mode === "ssh" ? "ssh" : "github";
+  }
+
+  private resolveCloneUrl(): string {
+    const connection = this.connectionFromKey(this.cloneAuthKey);
+
+    if (this.cloneSource === "github") {
+      if (connection?.mode === "ssh") {
+        return this.sshRepositoryUrl(this.sshRepositorySlug);
+      }
+
+      const selectedRepository = this.githubRepositories.find(
+        (repository) => repository.id === this.selectedGithubRepositoryId,
+      );
+
+      return selectedRepository?.cloneUrl ?? "";
+    }
+
+    const url = this.cloneUrl.trim();
+
+    // Com chave SSH a URL HTTPS do GitHub é convertida para o formato SSH,
+    // senão o Git tentaria autenticar por HTTPS e ignoraria a chave.
+    return connection?.mode === "ssh" ? this.toSshUrl(url) : url;
+  }
+
+  private sshRepositoryUrl(value: string): string {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return "";
+    }
+
+    if (GIT_URL_PATTERN.test(trimmed)) {
+      return this.toSshUrl(trimmed);
+    }
+
+    const slug = trimmed.replace(/\.git$/i, "").replace(/^\/+|\/+$/g, "");
+
+    return `git@github.com:${slug}.git`;
+  }
+
+  private sshRepositoryPreview(): string {
+    const preview = this.sshRepositoryUrl(this.sshRepositorySlug);
+
+    return preview || "git@github.com:usuario/projeto.git";
+  }
+
+  private toSshUrl(url: string): string {
+    const match = GITHUB_HTTPS_URL_PATTERN.exec(url.trim());
+
+    if (!match) {
+      return url;
+    }
+
+    return `git@github.com:${match[1]}/${match[2]}.git`;
   }
 
   private async startCloneProgressListener(): Promise<void> {

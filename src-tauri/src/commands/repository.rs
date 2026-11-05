@@ -1,4 +1,5 @@
 use crate::commands::github;
+use crate::commands::process;
 use crate::models::repository::{
     BlameLine, CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
     RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
@@ -84,6 +85,7 @@ pub async fn clone_repository(
     operation_id: String,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
+    ssh_key_path: Option<String>,
 ) -> Result<LocalRepositoryInfo, String> {
     let remote_url = url.trim();
     if remote_url.is_empty() || remote_url.chars().any(char::is_control) {
@@ -130,19 +132,12 @@ pub async fn clone_repository(
         folder_name.to_string(),
     ];
 
-    let github_access_token = match (workspace_id.as_deref(), github_user_id) {
-        (Some(workspace_id), Some(user_id)) => Some(github::get_access_token(
-            &github_state,
-            workspace_id,
-            user_id,
-        )?),
-        (_, None) => None,
-        _ => return Err("A conta do GitHub selecionada está incompleta.".to_string()),
-    };
-    let askpass = github_access_token
-        .as_deref()
-        .map(AskpassGuard::new)
-        .transpose()?;
+    let network_auth = resolve_network_auth(
+        &github_state,
+        workspace_id.as_deref(),
+        github_user_id,
+        ssh_key_path.as_deref(),
+    )?;
 
     emit_clone_progress(
         &app,
@@ -155,9 +150,9 @@ pub async fn clone_repository(
     );
 
     let mut command = Command::new("git");
-    if askpass.is_some() {
-        command.arg("-c").arg("credential.helper=");
-    }
+    // O guardião do askpass precisa continuar vivo até o processo ser iniciado:
+    // ele apaga o script temporário ao ser descartado.
+    let _askpass = apply_network_auth(&mut command, &network_auth)?;
     command
         .arg("--no-optional-locks")
         .arg("-C")
@@ -166,12 +161,6 @@ pub async fn clone_repository(
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let (Some(askpass), Some(access_token)) = (askpass.as_ref(), github_access_token.as_deref())
-    {
-        command
-            .env("GIT_ASKPASS", askpass.path())
-            .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
-    }
     let child = command
         .spawn()
         .map_err(|error| format!("Não foi possível iniciar o clone: {error}"))?;
@@ -1948,20 +1937,26 @@ pub async fn fetch_repository(
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
+    ssh_key_path: Option<String>,
 ) -> Result<(), String> {
     ensure_repository(&path)?;
-    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let network_auth = resolve_network_auth(
+        &github_state,
+        workspace_id.as_deref(),
+        github_user_id,
+        ssh_key_path.as_deref(),
+    )?;
     let operation_lock = repository_operation_lock(&path);
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _operation_guard = operation_lock
             .lock()
             .map_err(|_| "Não foi possível sincronizar: o bloqueio do repositório foi interrompido.".to_string())?;
 
-        run_git_with_access_token(
+        run_git_with_network_auth(
             &path,
             &["fetch", "--all", "--prune"],
             GIT_NETWORK_TIMEOUT,
-            access_token.as_deref(),
+            &network_auth,
         )
         .map(|_| ())
     })
@@ -1977,9 +1972,15 @@ pub async fn pull_repository(
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
+    ssh_key_path: Option<String>,
 ) -> Result<PullResult, String> {
     ensure_repository(&path)?;
-    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let network_auth = resolve_network_auth(
+        &github_state,
+        workspace_id.as_deref(),
+        github_user_id,
+        ssh_key_path.as_deref(),
+    )?;
     let operation_lock = repository_operation_lock(&path);
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _operation_guard = operation_lock
@@ -1997,13 +1998,8 @@ pub async fn pull_repository(
             branch.as_str(),
         ];
 
-        run_git_with_access_token(
-            &path,
-            &pull_args,
-            GIT_NETWORK_TIMEOUT,
-            access_token.as_deref(),
-        )
-        .map(|_| PullResult { auto_stashed })
+        run_git_with_network_auth(&path, &pull_args, GIT_NETWORK_TIMEOUT, &network_auth)
+            .map(|_| PullResult { auto_stashed })
     })
     .await
     .map_err(|error| format!("Falha ao executar o Pull em segundo plano: {error}"))?;
@@ -2017,9 +2013,15 @@ pub async fn push_repository(
     github_state: State<'_, github::GithubCredentialState>,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
+    ssh_key_path: Option<String>,
 ) -> Result<(), String> {
     ensure_repository(&path)?;
-    let access_token = sync_access_token(&github_state, workspace_id, github_user_id)?;
+    let network_auth = resolve_network_auth(
+        &github_state,
+        workspace_id.as_deref(),
+        github_user_id,
+        ssh_key_path.as_deref(),
+    )?;
     let operation_lock = repository_operation_lock(&path);
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _operation_guard = operation_lock
@@ -2040,24 +2042,14 @@ pub async fn push_repository(
         )
         .is_ok()
         {
-            return run_git_with_access_token(
-                &path,
-                &["push"],
-                GIT_NETWORK_TIMEOUT,
-                access_token.as_deref(),
-            )
-            .map(|_| ());
+            return run_git_with_network_auth(&path, &["push"], GIT_NETWORK_TIMEOUT, &network_auth)
+                .map(|_| ());
         }
 
         let remote = preferred_push_remote(&path)?;
         let push_args = ["push", "--set-upstream", remote.as_str(), current_branch.trim()];
-        run_git_with_access_token(
-            &path,
-            &push_args,
-            GIT_NETWORK_TIMEOUT,
-            access_token.as_deref(),
-        )
-        .map(|_| ())
+        run_git_with_network_auth(&path, &push_args, GIT_NETWORK_TIMEOUT, &network_auth)
+            .map(|_| ())
     })
     .await
     .map_err(|error| format!("Falha ao executar o Push em segundo plano: {error}"))?;
@@ -2121,18 +2113,83 @@ fn configured_pull_target(path: &str) -> Result<(String, String), String> {
     Ok((remote.to_string(), branch.to_string()))
 }
 
-fn sync_access_token(
+/// Credencial usada nas operações que acessam o remoto.
+///
+/// O mesmo fluxo atende os três modos da interface: token do GitHub App,
+/// chave SSH do workspace ou a configuração Git do próprio computador.
+enum NetworkAuth {
+    Token(String),
+    Ssh(PathBuf),
+    System,
+}
+
+/// Decide a credencial a partir do que a interface enviou. A chave SSH tem
+/// precedência porque só é enviada quando o repositório usa o modo SSH.
+fn resolve_network_auth(
     state: &github::GithubCredentialState,
-    workspace_id: Option<String>,
+    workspace_id: Option<&str>,
     github_user_id: Option<u64>,
-) -> Result<Option<String>, String> {
+    ssh_key_path: Option<&str>,
+) -> Result<NetworkAuth, String> {
+    if let Some(key_path) = ssh_key_path.map(str::trim).filter(|value| !value.is_empty()) {
+        let key = PathBuf::from(key_path);
+
+        if !key.is_file() {
+            return Err(
+                "A chave SSH deste repositório não foi encontrada. Escolha outra chave em Integrações."
+                    .to_string(),
+            );
+        }
+
+        return Ok(NetworkAuth::Ssh(key));
+    }
+
     match (workspace_id, github_user_id) {
         (Some(workspace_id), Some(user_id)) => {
-            github::get_access_token(state, &workspace_id, user_id).map(Some)
+            github::get_access_token(state, workspace_id, user_id).map(NetworkAuth::Token)
         }
-        (None, None) => Ok(None),
+        (None, None) => Ok(NetworkAuth::System),
         _ => Err("A autenticação GitHub deste repositório está incompleta.".to_string()),
     }
+}
+
+/// Aplica a credencial ao comando Git e devolve o guardião do askpass, que
+/// precisa sobreviver até o processo ser iniciado.
+fn apply_network_auth(
+    command: &mut Command,
+    auth: &NetworkAuth,
+) -> Result<Option<AskpassGuard>, String> {
+    match auth {
+        NetworkAuth::Token(access_token) => {
+            let askpass = AskpassGuard::new(access_token)?;
+            command
+                .arg("-c")
+                .arg("credential.helper=")
+                .env("GIT_ASKPASS", askpass.path())
+                .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
+
+            Ok(Some(askpass))
+        }
+        NetworkAuth::Ssh(key) => {
+            // Sem helper e sem prompt: a chave escolhida é a única identidade
+            // usada, então outra chave carregada no agente não vence.
+            command
+                .arg("-c")
+                .arg("credential.helper=")
+                .env("GIT_SSH_COMMAND", ssh_command(key))
+                .env("GIT_SSH_VARIANT", "ssh");
+
+            Ok(None)
+        }
+        NetworkAuth::System => Ok(None),
+    }
+}
+
+fn ssh_command(key: &Path) -> String {
+    format!(
+        "ssh -i \"{}\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20",
+        key.to_string_lossy()
+    )
 }
 
 #[tauri::command(async)]
@@ -3224,22 +3281,18 @@ where
     run_git_process(command, timeout)
 }
 
-fn run_git_with_access_token<I, S>(
+fn run_git_with_network_auth<I, S>(
     path: &str,
     args: I,
     timeout: Duration,
-    access_token: Option<&str>,
+    auth: &NetworkAuth,
 ) -> Result<String, String>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,
 {
-    let askpass = access_token.map(AskpassGuard::new).transpose()?;
     let mut command = Command::new("git");
-
-    if askpass.is_some() {
-        command.arg("-c").arg("credential.helper=");
-    }
+    let _askpass = apply_network_auth(&mut command, auth)?;
 
     command
         .arg("--no-optional-locks")
@@ -3249,12 +3302,6 @@ where
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-
-    if let (Some(askpass), Some(access_token)) = (askpass.as_ref(), access_token) {
-        command
-            .env("GIT_ASKPASS", askpass.path())
-            .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
-    }
 
     run_git_process(command, timeout)
 }
@@ -3297,80 +3344,23 @@ fn run_git_with_input(path: &str, args: &[&str], input: &str) -> Result<String, 
     collect_git_output(child, GIT_COMMAND_TIMEOUT)
 }
 
-fn collect_git_output(mut child: Child, timeout: Duration) -> Result<String, String> {
-    let mut stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| "Não foi possível ler a saída do Git.".to_string())?;
-    let mut stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| "Não foi possível ler o erro do Git.".to_string())?;
+fn collect_git_output(child: Child, timeout: Duration) -> Result<String, String> {
+    let output = process::collect(
+        child,
+        timeout,
+        "Git",
+        "O Git demorou muito para responder. Verifique se o repositório não está em uma pasta muito grande ou indisponível.",
+    )?;
 
-    // Leia stdout e stderr enquanto o Git executa. Se esperarmos o processo
-    // terminar para ler os pipes, um diff grande pode preencher o buffer do
-    // Windows e bloquear o próprio Git até o timeout.
-    let stdout_reader = thread::spawn(move || {
-        let mut buffer = Vec::new();
-        let result = stdout.read_to_end(&mut buffer);
-        (buffer, result)
-    });
-    let stderr_reader = thread::spawn(move || {
-        let mut buffer = Vec::new();
-        let result = stderr.read_to_end(&mut buffer);
-        (buffer, result)
-    });
-
-    let started_at = Instant::now();
-    loop {
-        match child.try_wait() {
-            Ok(Some(_)) => break,
-            Ok(None) if started_at.elapsed() >= timeout => {
-                let _ = child.kill();
-                let _ = child.wait();
-                let _ = stdout_reader.join();
-                let _ = stderr_reader.join();
-                return Err(
-                    "O Git demorou muito para responder. Verifique se o repositório não está em uma pasta muito grande ou indisponível."
-                        .to_string(),
-                );
-            }
-            Ok(None) => thread::sleep(Duration::from_millis(25)),
-            Err(error) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                let _ = stdout_reader.join();
-                let _ = stderr_reader.join();
-                return Err(format!(
-                    "Não foi possível verificar o processo do Git: {error}"
-                ));
-            }
-        }
-    }
-
-    let status = child
-        .try_wait()
-        .map_err(|error| format!("Não foi possível finalizar o Git: {error}"))?
-        .ok_or_else(|| "O Git encerrou sem informar o resultado.".to_string())?;
-    let (stdout, stdout_result) = stdout_reader
-        .join()
-        .map_err(|_| "Não foi possível ler a saída do Git.".to_string())?;
-    let (stderr, stderr_result) = stderr_reader
-        .join()
-        .map_err(|_| "Não foi possível ler o erro do Git.".to_string())?;
-
-    stdout_result.map_err(|error| format!("Não foi possível ler a saída do Git: {error}"))?;
-    stderr_result.map_err(|error| format!("Não foi possível ler o erro do Git: {error}"))?;
-
-    if !status.success() {
-        return Err(String::from_utf8_lossy(&stderr).trim().to_string());
+    if !output.success() {
+        return Err(output.stderr().trim().to_string());
     }
 
     // O status --porcelain usa os dois primeiros caracteres para indicar o
     // estado do arquivo. O primeiro pode ser um espaco; por isso nao podemos
     // usar `trim()`, que removeria esse caractere e quebraria o caminho do
     // primeiro arquivo (por exemplo, `angular.json` viraria `ngular.json`).
-    Ok(String::from_utf8_lossy(&stdout).trim_end().to_string())
+    Ok(output.stdout().trim_end().to_string())
 }
 
 fn run_git_lines(path: &str, args: &[&str]) -> Result<Vec<String>, String> {

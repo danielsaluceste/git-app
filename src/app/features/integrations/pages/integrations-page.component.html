@@ -26,29 +26,29 @@
       </div>
     </header>
 
-    @if (connections().length === 0 && connectionState === "idle") {
+    @if (connections().length === 0 && connectionState === "idle" && !methodChooserOpen && !sshPanelOpen) {
       <div class="integration-empty">
         <div class="integration-empty-icon" aria-hidden="true">↗</div>
         <div>
           <strong>{{ "integrations.noAccount" | translate }}</strong>
           <p>{{ "integrations.authorization" | translate }}</p>
         </div>
-        <button type="button" class="primary-button" (click)="connectGithub()">
+        <button type="button" class="primary-button" (click)="openMethodChooser()">
           <span aria-hidden="true">+</span>
           {{ "integrations.connect" | translate }}
         </button>
       </div>
-    } @else {
+    } @else if (!methodChooserOpen && !sshPanelOpen) {
       <div class="accounts-heading">
         <div>
-            <strong>{{ "integrations.accounts" | translate }}</strong>
-            <span>{{ connections().length }} {{ (connections().length === 1 ? "integrations.account" : "integrations.accountsPlural") | translate }}</span>
+          <strong>{{ "integrations.accounts" | translate }}</strong>
+          <span>{{ connections().length }} {{ (connections().length === 1 ? "integrations.account" : "integrations.accountsPlural") | translate }}</span>
         </div>
         <button
           type="button"
           class="secondary-button"
-          [disabled]="connectionState === 'starting' || connectionState === 'waiting'"
-          (click)="connectGithub()"
+          [disabled]="connectionState === 'starting' || connectionState === 'waiting' || sshBusy !== 'idle'"
+          (click)="openMethodChooser()"
         >
           <span aria-hidden="true">+</span>
           {{ "integrations.connectAnother" | translate }}
@@ -67,14 +67,30 @@
             <div class="account-copy">
               <div class="account-name-row">
                 <strong>{{ connection.name || connection.login }}</strong>
+                <span class="mode-badge" [class.ssh-mode]="connection.mode === 'ssh'">{{ connectionModeLabel(connection) }}</span>
                 @if (connection.isDefault) {
                   <span class="default-badge">{{ "integrations.default" | translate }}</span>
                 }
               </div>
-              <span>@{{ connection.login }}</span>
+              <span class="account-detail">{{ connectionDetail(connection) }}</span>
             </div>
 
             <div class="account-actions">
+              @if (connection.mode === "ssh") {
+                <button
+                  type="button"
+                  class="text-button"
+                  [disabled]="sshBusy !== 'idle'"
+                  (click)="testSshConnection(connection)"
+                >
+                  {{ "integrations.sshTest" | translate }}
+                </button>
+                @if (connection.ssh?.managed) {
+                  <button type="button" class="text-button danger-text" (click)="removeSshKey(connection)">
+                    {{ "integrations.sshRemoveKey" | translate }}
+                  </button>
+                }
+              }
               @if (!connection.isDefault) {
                 <button type="button" class="text-button" (click)="setDefault(connection)">
                   {{ "integrations.makeDefault" | translate }}
@@ -86,6 +102,166 @@
             </div>
           </article>
         }
+      </div>
+    }
+
+    @if (methodChooserOpen) {
+      <div class="method-chooser" aria-live="polite">
+        <div class="method-chooser-heading">
+          <div>
+            <strong>{{ "integrations.chooseMethod" | translate }}</strong>
+            <p>{{ "integrations.chooseMethodDescription" | translate }}</p>
+          </div>
+          <button type="button" class="close-flow-button" [title]="'integrations.cancelConnection' | translate" (click)="closeMethodChooser()">×</button>
+        </div>
+
+        <div class="method-options">
+          <button type="button" class="method-option" (click)="chooseAppMethod()">
+            <span class="method-icon app-icon" aria-hidden="true">GH</span>
+            <span class="method-copy">
+              <strong>{{ "integrations.methodApp" | translate }}</strong>
+              <span>{{ "integrations.methodAppSummary" | translate }}</span>
+              <small>{{ "integrations.methodAppDetail" | translate }}</small>
+            </span>
+            <span class="method-badge">{{ "integrations.recommended" | translate }}</span>
+          </button>
+
+          <button type="button" class="method-option" (click)="chooseSshMethod()">
+            <span class="method-icon ssh-icon" aria-hidden="true">⌘</span>
+            <span class="method-copy">
+              <strong>{{ "integrations.methodSsh" | translate }}</strong>
+              <span>{{ "integrations.methodSshSummary" | translate }}</span>
+              <small>{{ "integrations.methodSshDetail" | translate }}</small>
+            </span>
+            <span class="method-arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (sshPanelOpen) {
+      <div class="ssh-panel" aria-live="polite">
+        <div class="ssh-panel-heading">
+          <div class="ssh-panel-icon" aria-hidden="true">⌘</div>
+          <div>
+            <strong>{{ "integrations.sshTitle" | translate }}</strong>
+            <p>{{ "integrations.sshDescription" | translate }}</p>
+          </div>
+          <button type="button" class="close-flow-button" [title]="'integrations.cancelConnection' | translate" (click)="closeSshPanel()">×</button>
+        </div>
+
+        <div class="ssh-panel-body">
+          <div class="ssh-field">
+            <span class="ssh-label">{{ "integrations.sshKeysTitle" | translate }}</span>
+            <small>{{ "integrations.sshKeysDescription" | translate }}</small>
+
+            @if (sshKeysLoading) {
+              <div class="ssh-loading">
+                <span class="device-spinner" aria-hidden="true"></span>
+                {{ "integrations.sshLoadingKeys" | translate }}
+              </div>
+            } @else {
+              <div class="ssh-key-list" role="radiogroup" [attr.aria-label]="'integrations.sshKeysTitle' | translate">
+                <label class="ssh-key-option" [class.selected]="usesComputerSsh()">
+                  <input type="radio" name="ssh-key" [checked]="usesComputerSsh()" (change)="selectSshKey('computer')" />
+                  <span class="ssh-key-copy">
+                    <strong>{{ "integrations.sshComputerKey" | translate }}</strong>
+                    <small>{{ "integrations.sshComputerKeyDescription" | translate }}</small>
+                  </span>
+                </label>
+
+                @for (key of sshKeys; track key.path) {
+                  <label class="ssh-key-option" [class.selected]="sshSelectedPath === key.path">
+                    <input type="radio" name="ssh-key" [checked]="sshSelectedPath === key.path" (change)="selectSshKey(key.path)" />
+                    <span class="ssh-key-copy">
+                      <strong>{{ key.name }}</strong>
+                      <small>{{ key.algorithm }} · ~/.ssh/{{ key.name }}</small>
+                    </span>
+                    @if (key.managed) {
+                      <span class="managed-badge">{{ "integrations.sshManaged" | translate }}</span>
+                    }
+                  </label>
+                }
+              </div>
+
+              @if (sshKeys.length === 0) {
+                <p class="ssh-empty">{{ "integrations.sshNoKeys" | translate }}</p>
+              }
+            }
+
+            <button
+              type="button"
+              class="secondary-button ssh-generate-button"
+              [disabled]="sshBusy !== 'idle'"
+              (click)="generateSshKey()"
+            >
+              <span aria-hidden="true">+</span>
+              {{ (sshBusy === "generating" ? "integrations.sshGenerating" : "integrations.sshGenerate") | translate }}
+            </button>
+          </div>
+
+          @if (selectedSshKey(); as key) {
+            <div class="ssh-public-key">
+              <div class="ssh-public-key-heading">
+                <span>{{ "integrations.sshPublicKeyTitle" | translate }}</span>
+                <button type="button" class="copy-button" (click)="copySshPublicKey()">
+                  {{ (sshCopied ? "integrations.copied" : "integrations.sshCopyKey") | translate }}
+                </button>
+              </div>
+              <code class="ssh-public-key-value">{{ key.publicKey }}</code>
+
+              <ol class="ssh-steps">
+                <li>{{ "integrations.sshStepCopy" | translate }}</li>
+                <li>{{ "integrations.sshStepAdd" | translate }}</li>
+                <li>{{ "integrations.sshStepVerify" | translate }}</li>
+              </ol>
+
+              <div class="ssh-actions">
+                <button type="button" class="secondary-button" (click)="openGithubSshKeys()">
+                  {{ "integrations.sshOpenGithub" | translate }}
+                  <span aria-hidden="true">↗</span>
+                </button>
+                <button type="button" class="primary-button" [disabled]="sshBusy !== 'idle'" (click)="verifySshConnection()">
+                  {{ (sshBusy === "verifying" ? "integrations.sshVerifying" : "integrations.sshVerify") | translate }}
+                </button>
+              </div>
+
+              <small class="ssh-hint">{{ "integrations.sshAgentHint" | translate }}</small>
+            </div>
+          } @else {
+            <div class="ssh-computer-option">
+              <p>{{ "integrations.sshComputerHint" | translate }}</p>
+              <small class="ssh-hint">{{ "integrations.sshAgentHint" | translate }}</small>
+              <div class="ssh-actions">
+                <button type="button" class="primary-button" [disabled]="sshBusy !== 'idle'" (click)="verifySshConnection()">
+                  {{ (sshBusy === "verifying" ? "integrations.sshVerifying" : "integrations.sshVerify") | translate }}
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (sshError) {
+            <div class="ssh-error" role="alert">
+              <span aria-hidden="true">!</span>
+              <div class="ssh-error-copy">
+                <strong>{{ sshError }}</strong>
+                @if (sshProbeMessage) {
+                  <pre>{{ sshProbeMessage }}</pre>
+                }
+              </div>
+            </div>
+          }
+
+          @if (sshKeysError) {
+            <div class="ssh-error" role="alert">
+              <span aria-hidden="true">!</span>
+              <div class="ssh-error-copy">
+                <strong>{{ sshKeysError }}</strong>
+                <button type="button" class="text-button" (click)="loadSshKeys()">{{ "integrations.retry" | translate }}</button>
+              </div>
+            </div>
+          }
+        </div>
       </div>
     }
 
@@ -138,7 +314,7 @@
       <div class="error-row" role="alert">
         <span aria-hidden="true">!</span>
         <span>{{ errorMessage }}</span>
-        <button type="button" class="text-button" (click)="connectGithub()">{{ "integrations.retry" | translate }}</button>
+        <button type="button" class="text-button" (click)="openMethodChooser()">{{ "integrations.retry" | translate }}</button>
       </div>
     }
   </section>

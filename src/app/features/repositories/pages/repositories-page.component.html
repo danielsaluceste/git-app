@@ -130,64 +130,83 @@
                 <label class="clone-field">
                   <span>{{ "repositories.githubAccount" | translate }}</span>
                   <select
-                    [value]="selectedGithubUserId ?? ''"
+                    [value]="selectedGithubConnectionKey ?? ''"
                     [disabled]="isLoading || githubRepositoriesLoading"
                     (change)="selectGithubAccountFromEvent($event)"
                   >
-                    @for (connection of githubConnections(); track connection.id) {
-                      <option [value]="connection.id">@{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}</option>
+                    @for (connection of githubConnections(); track connectionKey(connection)) {
+                      <option [value]="connectionKey(connection)">{{ connectionLabel(connection) }}</option>
                     }
                   </select>
                 </label>
 
-                <div class="github-repositories-heading">
-                  <div>
-                    <span>{{ "repositories.repository" | translate }}</span>
-                    <small>{{ "repositories.repositoryDescription" | translate }}</small>
-                  </div>
-                  <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" [title]="'repositories.refresh' | translate">
-                    ↻
-                  </button>
-                </div>
+                @if (selectedConnectionIsSsh()) {
+                  <label class="clone-field">
+                    <span>{{ "repositories.sshRepository" | translate }}</span>
+                    <input
+                      type="text"
+                      [value]="sshRepositorySlug"
+                      (input)="sshRepositorySlug = $any($event.target).value"
+                      [placeholder]="'repositories.sshRepositoryPlaceholder' | translate"
+                      autocomplete="off"
+                      spellcheck="false"
+                      required
+                      [disabled]="isLoading"
+                    />
+                    <small class="clone-field-hint">{{ sshCloneHint() }}</small>
+                  </label>
 
-                @if (githubRepositoriesLoading) {
-                  <div class="github-repositories-loading" aria-live="polite">
-                    <span class="clone-spinner" aria-hidden="true"></span>
-                    {{ "repositories.loadingGithub" | translate }}
-                  </div>
-                } @else if (githubRepositoriesError) {
-                  <div class="github-repositories-error" role="alert">
-                    <span>{{ githubRepositoriesError }}</span>
-                    <div class="github-repositories-error-actions">
-                      <button type="button" class="text-action-button" (click)="loadGithubRepositories()">{{ "repositories.retry" | translate }}</button>
-                      <button type="button" class="text-action-button" (click)="goToIntegrations()">{{ "repositories.reconnect" | translate }}</button>
-                    </div>
-                  </div>
-                } @else if (githubRepositories.length > 0) {
-                  <div class="github-repository-list" role="listbox" [attr.aria-label]="'repositories.title' | translate">
-                    @for (repository of githubRepositories; track repository.id) {
-                      <button
-                        type="button"
-                        class="github-repository-option"
-                        [class.selected]="selectedGithubRepositoryId === repository.id"
-                        [attr.aria-selected]="selectedGithubRepositoryId === repository.id"
-                        (click)="selectGithubRepository(repository)"
-                      >
-                        <span class="github-repository-icon" aria-hidden="true">{{ repository.private ? "▣" : "◌" }}</span>
-                        <span class="github-repository-copy">
-                          <strong>{{ repository.fullName }}</strong>
-                            <small>{{ repository.description || ("repositories.noDescription" | translate) }}</small>
-                        </span>
-                        @if (selectedGithubRepositoryId === repository.id) {
-                          <span class="github-repository-check" aria-hidden="true">✓</span>
-                        }
-                      </button>
-                    }
-                  </div>
+                  <p class="clone-hint">{{ "repositories.sshNoListing" | translate }}</p>
                 } @else {
-                  <div class="github-repositories-empty">
-                    {{ "repositories.noGithubRepositories" | translate }}
+                  <div class="github-repositories-heading">
+                    <div>
+                      <span>{{ "repositories.repository" | translate }}</span>
+                      <small>{{ "repositories.repositoryDescription" | translate }}</small>
+                    </div>
+                    <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" [title]="'repositories.refresh' | translate">
+                      ↻
+                    </button>
                   </div>
+
+                  @if (githubRepositoriesLoading) {
+                    <div class="github-repositories-loading" aria-live="polite">
+                      <span class="clone-spinner" aria-hidden="true"></span>
+                      {{ "repositories.loadingGithub" | translate }}
+                    </div>
+                  } @else if (githubRepositoriesError) {
+                    <div class="github-repositories-error" role="alert">
+                      <span>{{ githubRepositoriesError }}</span>
+                      <div class="github-repositories-error-actions">
+                        <button type="button" class="text-action-button" (click)="loadGithubRepositories()">{{ "repositories.retry" | translate }}</button>
+                        <button type="button" class="text-action-button" (click)="goToIntegrations()">{{ "repositories.reconnect" | translate }}</button>
+                      </div>
+                    </div>
+                  } @else if (githubRepositories.length > 0) {
+                    <div class="github-repository-list" role="listbox" [attr.aria-label]="'repositories.title' | translate">
+                      @for (repository of githubRepositories; track repository.id) {
+                        <button
+                          type="button"
+                          class="github-repository-option"
+                          [class.selected]="selectedGithubRepositoryId === repository.id"
+                          [attr.aria-selected]="selectedGithubRepositoryId === repository.id"
+                          (click)="selectGithubRepository(repository)"
+                        >
+                          <span class="github-repository-icon" aria-hidden="true">{{ repository.private ? "▣" : "◌" }}</span>
+                          <span class="github-repository-copy">
+                            <strong>{{ repository.fullName }}</strong>
+                              <small>{{ repository.description || ("repositories.noDescription" | translate) }}</small>
+                          </span>
+                          @if (selectedGithubRepositoryId === repository.id) {
+                            <span class="github-repository-check" aria-hidden="true">✓</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <div class="github-repositories-empty">
+                      {{ "repositories.noGithubRepositories" | translate }}
+                    </div>
+                  }
                 }
               </div>
             } @else {
@@ -202,6 +221,19 @@
                   required
                   [disabled]="isLoading"
                 />
+              </label>
+
+              <label class="clone-field">
+                <span>{{ "repositories.auth" | translate }}</span>
+                <select [value]="cloneAuthKey" [disabled]="isLoading" (change)="selectCloneAuthFromEvent($event)">
+                  <option value="system">{{ "repositories.authComputer" | translate }}</option>
+                  @for (connection of githubConnections(); track connectionKey(connection)) {
+                    <option [value]="connectionKey(connection)">{{ connectionLabel(connection) }}</option>
+                  }
+                </select>
+                @if (usesSshAuth()) {
+                  <small class="clone-field-hint">{{ "repositories.sshUrlHint" | translate }}</small>
+                }
               </label>
             }
 
@@ -223,7 +255,7 @@
 
             <p class="clone-hint">
               {{ "repositories.cloneHint" | translate }}
-              @if (cloneSource === "github") {
+              @if (cloneAuthKey !== "system") {
                 <span> {{ "repositories.authSelected" | translate }}</span>
               }
             </p>
@@ -253,7 +285,7 @@
               <button type="button" class="modal-secondary-button" [disabled]="isLoading" (click)="closeAddRepositoryModal()">
                 {{ "repositories.cancel" | translate }}
               </button>
-              <button type="submit" class="modal-primary-button" [disabled]="isLoading || (cloneSource === 'github' ? !selectedGithubRepositoryId : !cloneUrl.trim()) || !cloneDestination.trim()">
+              <button type="submit" class="modal-primary-button" [disabled]="isLoading || !cloneReady() || !cloneDestination.trim()">
                 {{ (isLoading ? "repositories.cloning" : "repositories.cloneAction") | translate }}
               </button>
             </footer>

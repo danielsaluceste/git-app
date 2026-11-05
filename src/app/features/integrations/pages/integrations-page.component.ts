@@ -1,6 +1,10 @@
 import { Component, OnDestroy, inject } from "@angular/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { GithubConnection, GithubDeviceFlowStart } from "../../../core/models/github.model";
+import {
+  GithubConnection,
+  GithubDeviceFlowStart,
+  GithubSshKey,
+} from "../../../core/models/github.model";
 import { GithubService } from "../../../core/services/github.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
@@ -8,6 +12,10 @@ import { WorkspaceService } from "../../../core/services/workspace.service";
 import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type ConnectionState = "idle" | "starting" | "waiting" | "success" | "error";
+type SshBusyState = "idle" | "generating" | "verifying";
+
+const GITHUB_SSH_KEYS_URL = "https://github.com/settings/ssh/new";
+const COMPUTER_SSH_OPTION = "computer";
 
 @Component({
   selector: "app-integrations-page",
@@ -30,8 +38,274 @@ export class IntegrationsPageComponent implements OnDestroy {
   connectionMessage = "";
   errorMessage = "";
   copiedCode = false;
+
+  methodChooserOpen = false;
+  sshPanelOpen = false;
+  sshKeys: GithubSshKey[] = [];
+  sshKeysLoading = false;
+  sshKeysError = "";
+  sshSelectedPath: string = COMPUTER_SSH_OPTION;
+  sshBusy: SshBusyState = "idle";
+  sshError = "";
+  sshCopied = false;
+  sshProbeMessage = "";
+
   private flowCancelled = false;
   private copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+  private sshCopyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Abre a escolha do método: GitHub App ou chave SSH. */
+  openMethodChooser(): void {
+    if (this.connectionState === "starting" || this.connectionState === "waiting") {
+      return;
+    }
+
+    this.methodChooserOpen = true;
+    this.sshPanelOpen = false;
+    this.connectionState = "idle";
+    this.connectionMessage = "";
+    this.errorMessage = "";
+  }
+
+  closeMethodChooser(): void {
+    this.methodChooserOpen = false;
+  }
+
+  chooseAppMethod(): void {
+    this.methodChooserOpen = false;
+    this.sshPanelOpen = false;
+    void this.connectGithub();
+  }
+
+  chooseSshMethod(): void {
+    this.methodChooserOpen = false;
+    this.openSshPanel();
+  }
+
+  openSshPanel(): void {
+    this.sshPanelOpen = true;
+    this.connectionState = "idle";
+    this.deviceFlow = undefined;
+    this.connectionMessage = "";
+    this.errorMessage = "";
+    this.sshError = "";
+    this.sshProbeMessage = "";
+    this.sshCopied = false;
+    void this.loadSshKeys();
+  }
+
+  closeSshPanel(): void {
+    this.sshPanelOpen = false;
+    this.sshBusy = "idle";
+    this.sshError = "";
+    this.sshProbeMessage = "";
+  }
+
+  async loadSshKeys(): Promise<void> {
+    this.sshKeysLoading = true;
+    this.sshKeysError = "";
+
+    try {
+      this.sshKeys = await this.githubService.listSshKeys();
+
+      if (
+        this.sshSelectedPath !== COMPUTER_SSH_OPTION &&
+        !this.sshKeys.some((key) => key.path === this.sshSelectedPath)
+      ) {
+        this.sshSelectedPath = COMPUTER_SSH_OPTION;
+      }
+    } catch (error: unknown) {
+      this.sshKeys = [];
+      this.sshKeysError = this.getErrorMessage(error);
+    } finally {
+      this.sshKeysLoading = false;
+    }
+  }
+
+  async generateSshKey(): Promise<void> {
+    if (this.sshBusy !== "idle") {
+      return;
+    }
+
+    this.sshBusy = "generating";
+    this.sshError = "";
+    this.sshProbeMessage = "";
+
+    try {
+      const key = await this.githubService.generateSshKey();
+      this.sshSelectedPath = key.path;
+      this.sshCopied = false;
+      await this.loadSshKeys();
+      this.toastService.success(
+        this.translationService.translate("integrations.sshKeyGenerated", { name: key.name }),
+        this.translationService.translate("integrations.sshTitle"),
+      );
+    } catch (error: unknown) {
+      this.sshError = this.getErrorMessage(error);
+    } finally {
+      this.sshBusy = "idle";
+    }
+  }
+
+  selectSshKey(path: string): void {
+    this.sshSelectedPath = path;
+    this.sshCopied = false;
+    this.sshError = "";
+    this.sshProbeMessage = "";
+  }
+
+  selectedSshKey(): GithubSshKey | undefined {
+    return this.sshKeys.find((key) => key.path === this.sshSelectedPath);
+  }
+
+  usesComputerSsh(): boolean {
+    return this.sshSelectedPath === COMPUTER_SSH_OPTION;
+  }
+
+  copySshPublicKey(): void {
+    const publicKey = this.selectedSshKey()?.publicKey;
+
+    if (!publicKey || !navigator.clipboard) {
+      return;
+    }
+
+    void navigator.clipboard.writeText(publicKey).then(() => {
+      this.sshCopied = true;
+      if (this.sshCopyFeedbackTimer) {
+        clearTimeout(this.sshCopyFeedbackTimer);
+      }
+      this.sshCopyFeedbackTimer = setTimeout(() => (this.sshCopied = false), 1800);
+    });
+  }
+
+  openGithubSshKeys(): void {
+    void openUrl(GITHUB_SSH_KEYS_URL).catch(() => {
+      this.sshError = this.translationService.translate("integrations.browserError");
+    });
+  }
+
+  /** Confirma com o GitHub que a chave escolhida autentica e salva a conexão. */
+  async verifySshConnection(): Promise<void> {
+    if (this.sshBusy !== "idle") {
+      return;
+    }
+
+    this.sshBusy = "verifying";
+    this.sshError = "";
+    this.sshProbeMessage = "";
+
+    try {
+      const selectedKey = this.selectedSshKey();
+      const probe = await this.githubService.probeSsh(selectedKey?.path);
+
+      if (!this.sshPanelOpen) {
+        // O usuário fechou o painel enquanto a verificação acontecia.
+        return;
+      }
+
+      if (!probe.authenticated || !probe.login) {
+        this.sshProbeMessage = probe.message;
+        this.sshError = this.translationService.translate("integrations.sshFailed");
+        return;
+      }
+
+      const connection = this.githubService.addSshConnection(
+        this.activeWorkspace().id,
+        probe.login,
+        {
+          keyPath: selectedKey?.path,
+          keyName: selectedKey?.name,
+          algorithm: selectedKey?.algorithm,
+          managed: selectedKey?.managed ?? false,
+        },
+      );
+
+      this.sshPanelOpen = false;
+      this.sshBusy = "idle";
+      this.connectionState = "success";
+      this.connectionMessage = this.translationService.translate("integrations.sshConnected", {
+        login: connection.login,
+      });
+      this.toastService.success(
+        this.translationService.translate("integrations.connectedToWorkspace", {
+          login: connection.login,
+        }),
+        this.translationService.translate("integrations.githubConnected"),
+      );
+    } catch (error: unknown) {
+      this.sshError = this.getErrorMessage(error);
+    } finally {
+      this.sshBusy = "idle";
+    }
+  }
+
+  async testSshConnection(connection: GithubConnection): Promise<void> {
+    if (this.sshBusy !== "idle") {
+      return;
+    }
+
+    this.sshBusy = "verifying";
+
+    try {
+      const probe = await this.githubService.probeSsh(connection.ssh?.keyPath);
+
+      if (probe.authenticated && probe.login) {
+        this.toastService.success(
+          this.translationService.translate("integrations.sshTestSuccess", { login: probe.login }),
+          this.translationService.translate("integrations.sshTestTitle"),
+        );
+      } else {
+        const detail = probe.message?.trim();
+
+        this.toastService.error(
+          detail
+            ? this.translationService.translate("integrations.sshTestError", { message: detail })
+            : this.translationService.translate("integrations.sshFailed"),
+          this.translationService.translate("integrations.sshTestTitle"),
+        );
+      }
+    } catch (error: unknown) {
+      this.toastService.error(
+        this.getErrorMessage(error),
+        this.translationService.translate("integrations.sshTestTitle"),
+      );
+    } finally {
+      this.sshBusy = "idle";
+    }
+  }
+
+  async removeSshKey(connection: GithubConnection): Promise<void> {
+    const keyPath = connection.ssh?.keyPath;
+
+    if (!keyPath) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      this.translationService.translate("integrations.sshRemoveKeyConfirm", {
+        name: connection.ssh?.keyName ?? keyPath,
+      }),
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await this.githubService.deleteSshKey(keyPath);
+      await this.githubService.disconnect(connection);
+      await this.loadSshKeys();
+      this.toastService.success(
+        this.translationService.translate("integrations.sshKeyRemoved"),
+        this.translationService.translate("integrations.sshTitle"),
+      );
+    } catch (error: unknown) {
+      this.toastService.error(
+        this.getErrorMessage(error),
+        this.translationService.translate("integrations.sshTitle"),
+      );
+    }
+  }
 
   async connectGithub(): Promise<void> {
     if (this.connectionState === "starting" || this.connectionState === "waiting") {
@@ -106,7 +380,12 @@ export class IntegrationsPageComponent implements OnDestroy {
 
   async disconnect(connection: GithubConnection): Promise<void> {
     const confirmed = window.confirm(
-      this.translationService.translate("integrations.disconnectConfirm", { login: connection.login }),
+      this.translationService.translate(
+        connection.mode === "ssh"
+          ? "integrations.sshDisconnectConfirm"
+          : "integrations.disconnectConfirm",
+        { login: connection.login },
+      ),
     );
 
     if (!confirmed) {
@@ -125,21 +404,44 @@ export class IntegrationsPageComponent implements OnDestroy {
   }
 
   setDefault(connection: GithubConnection): void {
-    this.githubService.setDefault(connection.workspaceId, connection.id);
+    this.githubService.setDefault(connection);
     this.toastService.info(
       this.translationService.translate("integrations.defaultInfo", { login: connection.login }),
       this.translationService.translate("integrations.githubTitle"),
     );
   }
 
-  trackConnection(_index: number, connection: GithubConnection): number {
-    return connection.id;
+  trackConnection(_index: number, connection: GithubConnection): string {
+    return `${connection.mode}:${connection.id}`;
+  }
+
+  connectionModeLabel(connection: GithubConnection): string {
+    return connection.mode === "ssh"
+      ? this.translationService.translate("integrations.modeSsh")
+      : this.translationService.translate("integrations.modeApp");
+  }
+
+  connectionDetail(connection: GithubConnection): string {
+    const login = `@${connection.login}`;
+
+    if (connection.mode !== "ssh") {
+      return login;
+    }
+
+    const keyName = connection.ssh?.keyName;
+
+    return keyName
+      ? `${login} · ${this.translationService.translate("integrations.sshKeyDetail", { name: keyName })}`
+      : `${login} · ${this.translationService.translate("integrations.sshComputerDetail")}`;
   }
 
   ngOnDestroy(): void {
     this.flowCancelled = true;
     if (this.copyFeedbackTimer) {
       clearTimeout(this.copyFeedbackTimer);
+    }
+    if (this.sshCopyFeedbackTimer) {
+      clearTimeout(this.sshCopyFeedbackTimer);
     }
   }
 

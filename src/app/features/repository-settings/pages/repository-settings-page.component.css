@@ -1,4 +1,4 @@
-﻿:host {
+:host {
   display: block;
 }
 
@@ -252,6 +252,12 @@ h3 {
   font-size: 0.68rem;
 }
 
+.ssh-icon {
+  background: rgb(59 130 246 / 14%);
+  color: rgb(147 197 253);
+  font-size: 1rem;
+}
+
 .option-copy {
   display: grid;
   min-width: 0;
@@ -382,6 +388,25 @@ h3 {
 .settings-actions > span {
   color: var(--app-muted-strong);
   font-size: 0.7rem;
+}
+
+.auth-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 1.35rem 0.25rem;
+  border: 1px solid rgb(250 204 21 / 26%);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  background: rgb(250 204 21 / 8%);
+  color: var(--app-text);
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+
+.auth-hint span {
+  color: rgb(250 204 21);
+  font-weight: 900;
 }
 
 .security-note {

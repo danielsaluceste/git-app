@@ -26,10 +26,12 @@ export class RepositorySettingsPageComponent {
   private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
-  readonly githubConnections = this.githubService.workspaceConnections;
+  readonly appConnections = this.githubService.appConnections;
+  readonly sshConnections = this.githubService.sshConnections;
 
   selectedSource: RepositoryAuthenticationSource = "system";
   selectedGithubConnectionId: number | undefined;
+  selectedSshConnectionId: number | undefined;
   isSaving = false;
   remote: RepositoryRemote = {};
   remoteUrl = "";
@@ -40,7 +42,13 @@ export class RepositorySettingsPageComponent {
   constructor() {
     const repository = this.activeRepository();
     this.selectedSource = repository?.authenticationSource ?? "system";
-    this.selectedGithubConnectionId = repository?.githubConnectionId;
+
+    if (this.selectedSource === "ssh") {
+      this.selectedSshConnectionId = repository?.githubConnectionId;
+    } else {
+      this.selectedGithubConnectionId = repository?.githubConnectionId;
+    }
+
     void this.loadRemote();
   }
 
@@ -123,10 +131,24 @@ export class RepositorySettingsPageComponent {
   selectSource(source: RepositoryAuthenticationSource): void {
     this.selectedSource = source;
 
-    if (source === "github" && this.selectedGithubConnectionId === undefined) {
-      this.selectedGithubConnectionId = this.githubConnections().find(
-        (connection) => connection.isDefault,
-      )?.id ?? this.githubConnections()[0]?.id;
+    if (
+      source === "github" &&
+      this.selectedGithubConnectionId === undefined &&
+      this.appConnections().length > 0
+    ) {
+      this.selectedGithubConnectionId =
+        this.appConnections().find((connection) => connection.isDefault)?.id ??
+        this.appConnections()[0]?.id;
+    }
+
+    if (
+      source === "ssh" &&
+      this.selectedSshConnectionId === undefined &&
+      this.sshConnections().length > 0
+    ) {
+      this.selectedSshConnectionId =
+        this.sshConnections().find((connection) => connection.isDefault)?.id ??
+        this.sshConnections()[0]?.id;
     }
   }
 
@@ -138,8 +160,21 @@ export class RepositorySettingsPageComponent {
     }
   }
 
+  selectSshConnectionFromEvent(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+
+    if (Number.isFinite(value) && value > 0) {
+      this.selectedSshConnectionId = value;
+    }
+  }
+
   openIntegrations(): void {
     void this.router.navigate(["/integrations"]);
+  }
+
+  /** Avisa quando a chave SSH não vai valer para um remoto HTTPS. */
+  sshWithHttpsRemote(): boolean {
+    return this.selectedSource === "ssh" && /^https?:\/\//i.test(this.remoteUrl.trim());
   }
 
   goBack(): void {
@@ -152,7 +187,14 @@ export class RepositorySettingsPageComponent {
       return;
     }
 
-    if (this.selectedSource === "github" && this.selectedGithubConnectionId === undefined) {
+    const connectionId =
+      this.selectedSource === "ssh"
+        ? this.selectedSshConnectionId
+        : this.selectedSource === "github"
+          ? this.selectedGithubConnectionId
+          : undefined;
+
+    if (this.selectedSource !== "system" && connectionId === undefined) {
       this.toastService.warning(
         this.translationService.translate("repoSettings.accountRequired"),
         this.translationService.translate("repoSettings.accountRequiredTitle"),
@@ -164,7 +206,7 @@ export class RepositorySettingsPageComponent {
     const updated = this.repositoryService.updateAuthentication(
       repository,
       this.selectedSource,
-      this.selectedGithubConnectionId,
+      connectionId,
     );
     this.isSaving = false;
 
@@ -176,20 +218,29 @@ export class RepositorySettingsPageComponent {
       return;
     }
 
-    const account = this.githubConnections().find(
-      (connection) => connection.id === this.selectedGithubConnectionId,
-    );
     this.toastService.success(
-      this.selectedSource === "github"
-        ? this.translationService.translate("repoSettings.githubSync", { login: account?.login ?? "GitHub account" })
-        : this.translationService.translate("repoSettings.computerSync"),
+      this.savedMessage(connectionId),
       this.translationService.translate("repoSettings.savedTitle"),
     );
   }
 
   sourceLabel(repository: Repository): string {
+    if (repository.authenticationSource === "ssh") {
+      const account = this.sshConnections().find(
+        (connection) => connection.id === repository.githubConnectionId,
+      );
+
+      if (!account) {
+        return this.translationService.translate("repoSettings.sshUnavailable");
+      }
+
+      return account.ssh?.keyName
+        ? `SSH · @${account.login} · ${account.ssh.keyName}`
+        : `SSH · @${account.login}`;
+    }
+
     if (repository.authenticationSource === "github") {
-      const account = this.githubConnections().find(
+      const account = this.appConnections().find(
         (connection) => connection.id === repository.githubConnectionId,
       );
       return account
@@ -198,5 +249,29 @@ export class RepositorySettingsPageComponent {
     }
 
     return this.translationService.translate("repoSettings.computerCredentials");
+  }
+
+  private savedMessage(connectionId: number | undefined): string {
+    if (this.selectedSource === "ssh") {
+      const account = this.sshConnections().find(
+        (connection) => connection.id === connectionId,
+      );
+
+      return this.translationService.translate("repoSettings.sshSync", {
+        login: account?.login ?? "GitHub",
+      });
+    }
+
+    if (this.selectedSource === "github") {
+      const account = this.appConnections().find(
+        (connection) => connection.id === connectionId,
+      );
+
+      return this.translationService.translate("repoSettings.githubSync", {
+        login: account?.login ?? "GitHub account",
+      });
+    }
+
+    return this.translationService.translate("repoSettings.computerSync");
   }
 }

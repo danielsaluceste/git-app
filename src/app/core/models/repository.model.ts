@@ -1,7 +1,18 @@
 import { GitFile } from "./git-file.model";
 
 export type RepositoryCloneSource = "local" | "url" | "github";
-export type RepositoryAuthenticationSource = "system" | "github";
+export type RepositoryAuthenticationSource = "system" | "github" | "ssh";
+
+/**
+ * Credencial enviada às operações de rede do Git. `githubUserId` aponta para uma
+ * conexão do GitHub App (token no keyring) e `sshKeyPath` para a chave de uma
+ * conexão SSH; sem nenhuma das duas o Git usa a configuração do computador.
+ */
+export interface GitSyncCredentials {
+  workspaceId?: string;
+  githubUserId?: number;
+  sshKeyPath?: string;
+}
 
 export interface Repository {
   name: string;
@@ -9,6 +20,7 @@ export interface Repository {
   workspaceId: string;
   cloneSource?: RepositoryCloneSource;
   authenticationSource?: RepositoryAuthenticationSource;
+  /** Conexão do workspace (GitHub App ou SSH) usada para autenticar este repositório. */
   githubConnectionId?: number;
   currentBranch?: string;
   isDirty?: boolean;

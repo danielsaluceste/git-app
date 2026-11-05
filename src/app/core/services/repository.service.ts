@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { AppRouteReuseStrategy } from "../strategies/app-route-reuse-strategy";
 import {
+  GitSyncCredentials,
   LocalRepositoryInfo,
   Repository,
   RepositoryOperation,
@@ -21,6 +22,7 @@ import { CommitFile } from "../models/commit-file.model";
 import { BlameLine } from "../models/blame.model";
 import { UndoCandidate } from "../models/undo.model";
 import { CreateTagRequest, GitTag } from "../models/tag.model";
+import { GithubService } from "./github.service";
 
 const STORAGE_KEY = "git-app.repositories";
 const OPEN_REPOSITORIES_KEY = "git-app.open-repositories";
@@ -46,6 +48,7 @@ interface RepositoryCache {
 @Injectable({ providedIn: "root" })
 export class RepositoryService {
   private readonly routeReuseStrategy = inject(RouteReuseStrategy, { optional: true });
+  private readonly githubService = inject(GithubService);
   private readonly repositoriesState = signal<Repository[]>(this.loadRepositories());
   private readonly openRepositoriesState = signal<Repository[]>(this.loadOpenRepositories());
   private readonly activeRepositoryState = signal<Repository | undefined>(undefined);
@@ -87,15 +90,13 @@ export class RepositoryService {
     url: string,
     destination: string,
     operationId: string,
-    workspaceId?: string,
-    githubUserId?: number,
+    credentials?: GitSyncCredentials,
   ): Promise<LocalRepositoryInfo> {
     return invoke<LocalRepositoryInfo>("clone_repository", {
       url,
       destination,
       operationId,
-      workspaceId: workspaceId ?? null,
-      githubUserId: githubUserId ?? null,
+      ...this.networkAuthArgs(credentials),
     });
   }
 
@@ -316,27 +317,24 @@ export class RepositoryService {
     return invoke<string>("get_commit_file_diff", { path, commitHash, filePath });
   }
 
-  async fetch(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
+  async fetch(path: string, credentials?: GitSyncCredentials): Promise<void> {
     await invoke("fetch_repository", {
       path,
-      workspaceId: workspaceId ?? null,
-      githubUserId: githubUserId ?? null,
+      ...this.networkAuthArgs(credentials),
     });
   }
 
-  async pull(path: string, workspaceId?: string, githubUserId?: number): Promise<PullResult> {
+  async pull(path: string, credentials?: GitSyncCredentials): Promise<PullResult> {
     return invoke<PullResult>("pull_repository", {
       path,
-      workspaceId: workspaceId ?? null,
-      githubUserId: githubUserId ?? null,
+      ...this.networkAuthArgs(credentials),
     });
   }
 
-  async push(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
+  async push(path: string, credentials?: GitSyncCredentials): Promise<void> {
     await invoke("push_repository", {
       path,
-      workspaceId: workspaceId ?? null,
-      githubUserId: githubUserId ?? null,
+      ...this.networkAuthArgs(credentials),
     });
   }
 
@@ -387,12 +385,8 @@ export class RepositoryService {
 
       this.lastAutoFetchAt.set(cacheKey, Date.now());
 
-      const syncCredentials = this.getSyncCredentials(repository);
-      await this.fetch(
-        repository.path,
-        syncCredentials.workspaceId,
-        syncCredentials.githubUserId,
-      );
+      const syncCredentials = this.syncCredentials(repository);
+      await this.fetch(repository.path, syncCredentials);
 
       await Promise.allSettled([
         this.getReferences(repository.path),
@@ -500,14 +494,10 @@ export class RepositoryService {
       return;
     }
 
-    const syncCredentials = this.getSyncCredentials(repository);
+    const syncCredentials = this.syncCredentials(repository);
 
     try {
-      await this.fetch(
-        repository.path,
-        syncCredentials.workspaceId,
-        syncCredentials.githubUserId,
-      );
+      await this.fetch(repository.path, syncCredentials);
     } catch {
       return;
     }
@@ -602,14 +592,14 @@ export class RepositoryService {
     source: RepositoryAuthenticationSource,
     githubConnectionId?: number,
   ): boolean {
-    if (source === "github" && githubConnectionId === undefined) {
+    if (source !== "system" && githubConnectionId === undefined) {
       return false;
     }
 
     const updatedRepository: Repository = {
       ...repository,
       authenticationSource: source,
-      githubConnectionId: source === "github" ? githubConnectionId : undefined,
+      githubConnectionId: source === "system" ? undefined : githubConnectionId,
     };
     const repositories = this.repositoriesState().map((item) =>
       item.workspaceId === repository.workspaceId && item.path === repository.path
@@ -909,17 +899,35 @@ export class RepositoryService {
     return cache;
   }
 
-  private getSyncCredentials(repository: Repository): {
-    workspaceId?: string;
-    githubUserId?: number;
-  } {
-    if (repository.authenticationSource !== "github" || repository.githubConnectionId === undefined) {
-      return {};
+  /**
+   * Credencial de rede do repositório, resolvida a partir da conexão escolhida
+   * nas configurações. Repositórios antigos (só com `githubConnectionId`) caem
+   * no modo GitHub App e continuam funcionando.
+   */
+  syncCredentials(repository: Repository): GitSyncCredentials {
+    const connectionId = repository.githubConnectionId;
+
+    if (repository.authenticationSource === "ssh" && connectionId !== undefined) {
+      return {
+        sshKeyPath: this.githubService.sshKeyPathFor(repository.workspaceId, connectionId),
+      };
     }
 
+    if (repository.authenticationSource === "github" && connectionId !== undefined) {
+      return {
+        workspaceId: repository.workspaceId,
+        githubUserId: connectionId,
+      };
+    }
+
+    return {};
+  }
+
+  private networkAuthArgs(credentials?: GitSyncCredentials): Record<string, string | number | null> {
     return {
-      workspaceId: repository.workspaceId,
-      githubUserId: repository.githubConnectionId,
+      workspaceId: credentials?.workspaceId ?? null,
+      githubUserId: credentials?.githubUserId ?? null,
+      sshKeyPath: credentials?.sshKeyPath ?? null,
     };
   }
 
