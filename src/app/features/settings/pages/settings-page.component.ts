@@ -1,12 +1,12 @@
 import { Component, computed, inject } from "@angular/core";
 import { AppLanguage } from "../../../core/models/language.model";
 import {
-  AI_MODEL_OPTIONS,
   AiModelOption,
   AiModelId,
   getAiModelOption,
 } from "../../../core/models/ai-model.model";
 import { ThemeId } from "../../../core/models/theme.model";
+import { CommitAiService } from "../../../core/services/commit-ai.service";
 import { SettingsService } from "../../../core/services/settings.service";
 import { ThemeService } from "../../../core/services/theme.service";
 import { TranslationService } from "../../../core/services/translation.service";
@@ -22,10 +22,12 @@ export class SettingsPageComponent {
   private readonly settingsService = inject(SettingsService);
   private readonly themeService = inject(ThemeService);
   private readonly translationService = inject(TranslationService);
-  
+  private readonly commitAiService = inject(CommitAiService);
+
   readonly activeTheme = this.themeService.theme;
   readonly themes = this.themeService.themes;
-  readonly aiModels = AI_MODEL_OPTIONS;
+  readonly aiModels = this.commitAiService.compatibleModels;
+  readonly hasUnsupportedModels = this.commitAiService.hasUnsupportedModels;
   readonly aiEnabled = this.settingsService.aiEnabled;
   readonly aiModel = this.settingsService.aiModel;
   readonly selectedAiModel = computed(() => getAiModelOption(this.aiModel()));
@@ -72,8 +74,20 @@ export class SettingsPageComponent {
     return this.translationService.translate(`settings.ai.model.${this.modelKey(model.id)}.size`);
   }
 
-  modelHardwareLabel(model: AiModelOption): string {
-    return this.translationService.translate(`settings.ai.model.${this.modelKey(model.id)}.hardware`);
+  modelGpuLabel(model: AiModelOption): string {
+    const adapter = this.commitAiService.adapterForModel(model);
+    if (!adapter) {
+      return this.translationService.translate("settings.ai.gpuUnknown");
+    }
+
+    return `${humanizeVendor(adapter.vendor)} (${adapter.architecture})`;
+  }
+
+  modelVramLabel(model: AiModelOption): string {
+    const gigabytes = new Intl.NumberFormat(this.settingsService.language(), {
+      maximumFractionDigits: 1,
+    }).format(model.vramMb / 1024);
+    return this.translationService.translate("settings.ai.vram", { size: `${gigabytes} GB` });
   }
 
   toggleGitCommandNotifications(event: Event): void {
@@ -107,4 +121,15 @@ export class SettingsPageComponent {
     }
     return "qwen7";
   }
+}
+
+function humanizeVendor(vendor: string): string {
+  const known: Record<string, string> = {
+    nvidia: "NVIDIA",
+    intel: "Intel",
+    amd: "AMD",
+    apple: "Apple",
+    google: "SwiftShader",
+  };
+  return known[vendor.toLowerCase()] ?? vendor.charAt(0).toUpperCase() + vendor.slice(1);
 }

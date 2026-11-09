@@ -1,13 +1,22 @@
 import { computed, inject, Injectable, signal } from "@angular/core";
 import type { InitProgressReport, MLCEngineInterface } from "@mlc-ai/web-llm";
-import { AiModelId, getAiModelOption } from "../models/ai-model.model";
+import {
+  AI_MODEL_OPTIONS,
+  AiModelId,
+  AiModelOption,
+  getAiModelOption,
+  getSameSizeModels,
+} from "../models/ai-model.model";
+import { AI_WORKER_F16_NAME, AI_WORKER_F32_NAME, GpuAdapterSummary } from "../models/webgpu.model";
 import { SettingsService } from "./settings.service";
 import { TranslationService } from "./translation.service";
+import { WebGpuSupportService } from "./webgpu-support.service";
 
 @Injectable({ providedIn: "root" })
 export class CommitAiService {
   private readonly settingsService = inject(SettingsService);
   private readonly translationService = inject(TranslationService);
+  private readonly webGpuSupport = inject(WebGpuSupportService);
   private readonly workerModel = signal<MLCEngineInterface | undefined>(undefined);
   private enginePromise: Promise<MLCEngineInterface> | undefined;
   private worker: Worker | undefined;
@@ -21,6 +30,49 @@ export class CommitAiService {
   readonly progressText = signal(this.translationService.translate("changes.preparingLocal"));
   readonly selectedModel = computed(() => getAiModelOption(this.settingsService.aiModel()));
   readonly modelSizeLabel = computed(() => this.selectedModel().sizeLabel);
+  /** Apenas modelos que a GPU atual consegue executar (ver `WebGpuSupportService`). */
+  readonly compatibleModels = computed(() => {
+    if (!this.webGpuSupport.detected()) {
+      return AI_MODEL_OPTIONS;
+    }
+    return AI_MODEL_OPTIONS.filter((model) => this.webGpuSupport.supportsModel(model));
+  });
+  readonly hasUnsupportedModels = computed(
+    () => this.webGpuSupport.detected() && this.compatibleModels().length < AI_MODEL_OPTIONS.length,
+  );
+
+  constructor() {
+    void this.detectCapabilities();
+  }
+
+  /** GPU em que o modelo vai rodar, para exibir na escolha de modelo. */
+  adapterForModel(model: AiModelOption): GpuAdapterSummary | null {
+    return this.webGpuSupport.adapterFor(model.requiresShaderF16);
+  }
+
+  private async detectCapabilities(): Promise<void> {
+    const capabilities = await this.webGpuSupport.detect();
+    if (!capabilities) {
+      this.isSupported.set(false);
+      return;
+    }
+
+    this.isSupported.set(this.webGpuSupport.hasAdapter());
+
+    // Se o modelo salvo não roda nesta GPU (por exemplo, um q4f16 numa máquina
+    // sem shader-f16), troca pela variante compatível de mesmo tamanho.
+    const selected = this.selectedModel();
+    if (!this.webGpuSupport.hasAdapter() || this.webGpuSupport.supportsModel(selected)) {
+      return;
+    }
+
+    const fallback =
+      getSameSizeModels(selected).find((model) => this.webGpuSupport.supportsModel(model)) ??
+      this.compatibleModels()[0];
+    if (fallback) {
+      this.settingsService.setAiModel(fallback.id);
+    }
+  }
 
   prepareForAnalysis(): void {
     if (this.isSupported()) {
@@ -38,6 +90,11 @@ export class CommitAiService {
   }
 
   async generateCommitMessage(diff: string): Promise<string> {
+    const selected = this.selectedModel();
+    if (this.webGpuSupport.detected() && !this.webGpuSupport.supportsModel(selected)) {
+      throw new Error("O modelo de IA selecionado não é compatível com a GPU deste computador.");
+    }
+
     const engine = await this.loadModel();
     this.isGenerating.set(true);
 
@@ -97,8 +154,12 @@ export class CommitAiService {
     this.isLoadingModel.set(true);
     this.progress.set(0);
     this.progressText.set(this.translationService.translate("changes.downloadingAi"));
+    const selectedModel = getAiModelOption(modelId);
     this.worker = new Worker(new URL("../workers/commit-ai.worker.ts", import.meta.url), {
       type: "module",
+      // O worker usa o nome para saber se precisa do fallback de adaptador que
+      // suporta `shader-f16` (modelos q4f16).
+      name: selectedModel.requiresShaderF16 ? AI_WORKER_F16_NAME : AI_WORKER_F32_NAME,
     });
 
     try {

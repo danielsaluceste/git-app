@@ -381,6 +381,29 @@ h3 {
   line-height: 1;
 }
 
+.model-precision {
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 999px;
+  padding: 0.18rem 0.4rem;
+  color: var(--app-muted-strong);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.model-notice {
+  margin: 0;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--app-surface-3);
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
 .tier-light {
   background: var(--app-info-surface);
   color: var(--app-info-text);

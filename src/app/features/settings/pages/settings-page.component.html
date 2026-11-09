@@ -79,7 +79,7 @@
         >
           <span class="model-picker-toggle-copy">
             <strong>{{ "settings.ai.modelTitle" | translate }}</strong>
-            <span>{{ selectedAiModel().name }} · {{ modelTierLabel(selectedAiModel()) }}</span>
+            <span>{{ selectedAiModel().name }} · {{ selectedAiModel().precision }} · {{ modelTierLabel(selectedAiModel()) }}</span>
           </span>
           <span class="model-picker-toggle-action">
             {{ (modelPickerOpen ? "settings.ai.closeModel" : "settings.ai.changeModel") | translate }}
@@ -94,7 +94,15 @@
               <span class="model-selected-label">{{ modelSizeLabel(selectedAiModel()) }}</span>
             </div>
 
-            @for (model of aiModels; track model.id) {
+            @if (hasUnsupportedModels()) {
+              <p class="model-notice">{{ "settings.ai.hiddenModels" | translate }}</p>
+            }
+
+            @if (aiModels().length === 0) {
+              <p class="model-notice">{{ "settings.ai.noCompatibleModels" | translate }}</p>
+            }
+
+            @for (model of aiModels(); track model.id) {
               <label class="model-option" [class.selected]="aiModel() === model.id">
                 <input
                   type="radio"
@@ -107,13 +115,14 @@
                 <span class="model-details">
                   <span class="model-name-row">
                     <strong>{{ model.name }}</strong>
+                    <span class="model-precision">{{ model.precision }}</span>
                     <span class="model-tier tier-{{ model.tier }}">{{ modelTierLabel(model) }}</span>
                     @if (model.recommended) {
                       <span class="model-recommended">{{ "settings.ai.recommended" | translate }}</span>
                     }
                   </span>
                   <span class="model-description">{{ modelDescription(model) }}</span>
-                  <span class="model-meta">{{ modelSizeLabel(model) }} · {{ modelHardwareLabel(model) }}</span>
+                  <span class="model-meta">{{ modelSizeLabel(model) }} · {{ modelGpuLabel(model) }} · {{ modelVramLabel(model) }}</span>
                 </span>
               </label>
             }
