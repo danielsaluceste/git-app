@@ -3,6 +3,10 @@ mod commands;
 mod config;
 mod git;
 mod models;
+#[cfg(target_os = "linux")]
+pub mod window_x11;
+
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +20,16 @@ pub fn run() {
         .manage(commands::github::GithubCredentialState::default())
         .manage(commands::watcher::WatcherState::default())
         .manage(commands::terminal::TerminalState::default())
+        .on_page_load(|webview, _payload| {
+            #[cfg(target_os = "linux")]
+            {
+                // O GTK4 do runtime CEF cria uma GtkApplication anônima e deixa
+                // WM_CLASS vazio; sem ele o GNOME não associa a janela ao
+                // .desktop do app (ícone genérico, sem agrupamento).
+                let app_name = webview.app_handle().package_info().name.clone();
+                window_x11::schedule_identity(webview.window(), app_name);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::repository::inspect_repository,
             commands::repository::clone_repository,
@@ -84,7 +98,8 @@ pub fn run() {
             commands::watcher::watch_repository,
             commands::watcher::unwatch_repository,
             commands::system::ping,
-            commands::system::toggle_devtools
+            commands::system::toggle_devtools,
+            commands::window::start_window_drag
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

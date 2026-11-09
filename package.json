@@ -9,6 +9,8 @@
     "test:watch": "vitest",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
+    "dev:icon": "node scripts/install-dev-desktop.mjs",
+    "dev:icon:remove": "node scripts/install-dev-desktop.mjs --uninstall",
     "build:desktop": "node scripts/build-release.mjs",
     "build:windows": "node scripts/build-release.mjs windows",
     "build:linux": "node scripts/build-release.mjs linux",

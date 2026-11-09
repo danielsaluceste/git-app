@@ -3,3 +3,4 @@ pub mod repository;
 pub mod system;
 pub mod watcher;
 pub mod terminal;
+pub mod window;

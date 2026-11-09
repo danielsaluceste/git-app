@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WorkspaceMenuComponent } from "../../features/workspaces/components/workspace-menu.component";
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
@@ -44,7 +45,11 @@ export class TopbarComponent {
       return this.toggleMaximize();
     }
 
-    return this.runWindowAction((appWindow) => appWindow.startDragging());
+    // O arrasto nativo não funciona no Linux com o runtime CEF: o clique
+    // acontece dentro da janela do Chromium, então o GTK nunca registra o
+    // botão pressionado. O comando faz o arrasto via X11 no Linux e delega
+    // para o runtime nas demais plataformas.
+    return this.runWindowAction(() => invoke<void>("start_window_drag"));
   }
 
   private runWindowAction(

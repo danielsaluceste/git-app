@@ -9,6 +9,7 @@ dependencies = [
  "keyring",
  "notify",
  "portable-pty",
+ "raw-window-handle",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -19,6 +20,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "tauri-runtime-cef",
+ "x11rb",
 ]
 
 [[package]]

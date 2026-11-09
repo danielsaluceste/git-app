@@ -42,6 +42,8 @@ No app real (GitLuna com a UI Angular carregada), a medição com CEF deu
   o mesmo executável atuar como processo de renderização/GPU/rede do Chromium.
 - `src-tauri/src/lib.rs` — `.runtime(cef_runtime::configure(...))`.
 - `src-tauri/src/cef_runtime.rs` — bootstrap do Linux (veja abaixo).
+- `src-tauri/src/window_x11.rs` — `WM_CLASS` via X11 e arrasto manual da janela
+  (veja as seções específicas abaixo).
 - `src-tauri/tauri.conf.json` — schema do Tauri 3.
 - `package.json` — `@tauri-apps/api` e plugins nas versões `3.0.0-alpha.*`.
 
@@ -97,6 +99,58 @@ O CLI do Tauri 3 detecta o `tauri-runtime-cef` no manifesto e inclui os arquivos
 CEF (`libcef.so`, `icudtl.dat`, `*.pak`, `locales/`, `v8_context_snapshot.bin`, …)
 ao lado do executável.
 
+## Ícone no painel do GNOME
+
+O GNOME **não** usa `_NET_WM_ICON` para o ícone de aplicativos com janela: ele pede
+o ícone ao `GDesktopAppInfo`, ou seja, procura um arquivo `.desktop` cujo
+`StartupWMClass` (ou o nome do arquivo) corresponda à classe da janela. Sem esse
+arquivo, a janela recebe o ícone genérico `application-x-executable`.
+
+Dois ajustes são necessários no Linux:
+
+1. **`WM_CLASS` correto.** O `GtkApplication` criado pelo `tauri-runtime-cef` é
+   anônimo, então o GTK deixa o `WM_CLASS` vazio. `src-tauri/src/window_x11.rs`
+   define `WM_CLASS = ("GitLuna", "GitLuna")` depois do carregamento da página
+   (via `x11rb`, sem dependência do GTK).
+2. **Um `.desktop` correspondente.** O pacote gerado pelo bundler
+   (`tauri-bundler` 3.x) já cria `GitLuna.desktop` com
+   `StartupWMClass = GitLuna`, então `.rpm`/`.deb`/AppImage funcionam sem passo
+   extra.
+
+No modo de desenvolvimento (`npx tauri dev`) não existe `.desktop` nenhum, por isso
+o ícone continua genérico. Para instalar uma entrada temporária que aponta para o
+binário de debug:
+
+```bash
+npm run dev:icon
+```
+
+Isso grava `~/.local/share/applications/GitLuna.desktop` com
+`Exec="…/src-tauri/target/debug/GitLuna"`, `Icon=…/src-tauri/icons/128x128.png` e
+`StartupWMClass=GitLuna`. Para remover:
+
+```bash
+npm run dev:icon:remove
+```
+
+Se o ícone não aparecer com o app já aberto, reinicie o GitLuna: o GNOME resolve a
+associação da janela no momento em que ela é mapeada.
+
+## Arrastar a janela (sem decoração)
+
+A janela usa `decorations: false`, então o arrasto é feito pela barra superior do
+app. No Linux, `Window::start_dragging()` do `tauri-winit-gtk4` chama
+`gtk_window_drag()` (GTK 4) e exige um `pointer_button_press` registrado pelo GTK.
+Com o CEF, o clique acontece na janela filha X11 do Chromium e o GTK nunca vê esse
+evento — o resultado é `NotSupportedError("window dragging requires a pointer button
+press")`.
+
+O comando `start_window_drag` (`src-tauri/src/commands/window.rs`) contorna isso:
+`window_x11.rs` lê a posição do ponteiro a cada 8 ms e envia
+`_NET_MOVERESIZE_WINDOW` para o Mutter, reproduzindo o movimento até soltar o botão
+(timeout de segurança de 60 s). No Windows/macOS o caminho continua sendo o
+`startDragging()` nativo do Tauri.
+
 ## Limitações conhecidas
 
 - O runtime CEF do Tauri 3 é **alpha**: as APIs podem mudar antes do 3.0 estável.
@@ -104,6 +158,8 @@ ao lado do executável.
   janela roda via XWayland. O frame pacing continua a 144 Hz, mas não é Wayland nativo.
 - A janela não tem decoração nativa (`decorations: false` no `tauri.conf.json`), como
   já era o caso no `main`.
+- Em `npx tauri dev` o ícone do app no painel do GNOME só aparece depois de
+  `npm run dev:icon` (o pacote final já traz o `.desktop`).
 - Diálogos usam o `xdg-desktop-portal` (não GTK 3).
 - O `chrome-sandbox` precisa de modo setuid (4755) para o sandbox do Chromium em
   pacotes `.deb`/`.rpm`; em AppImage o sandbox depende de user namespaces.
