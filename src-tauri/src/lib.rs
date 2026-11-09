@@ -11,7 +11,11 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .runtime(tauri_runtime_cef::Cef::default())
+        .runtime(
+            // `Vulkan` habilita o backend Vulkan do CEF: sem ele o Chromium não
+            // oferece adaptador WebGPU no Linux (a geração de IA usa WebGPU).
+            tauri_runtime_cef::Cef::default().enable_features(["Vulkan"]),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())

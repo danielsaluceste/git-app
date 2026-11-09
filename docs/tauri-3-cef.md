@@ -40,7 +40,8 @@ No app real (GitLuna com a UI Angular carregada), a medição com CEF deu
     para não linkar GTK 3 junto com o GTK 4 do CEF (`rfd` usa GTK 3 por padrão).
 - `src-tauri/src/main.rs` — atributo `#[tauri_runtime_cef::cef_entry_point]`, que faz
   o mesmo executável atuar como processo de renderização/GPU/rede do Chromium.
-- `src-tauri/src/lib.rs` — `.runtime(cef_runtime::configure(...))`.
+- `src-tauri/src/lib.rs` — `.runtime(tauri_runtime_cef::Cef::default())` e o
+  `enable_features(["Vulkan"])` que habilita o WebGPU (veja a seção de IA).
 - `src-tauri/src/cef_runtime.rs` — bootstrap do Linux (veja abaixo).
 - `src-tauri/src/window_x11.rs` — `WM_CLASS` via X11 e arrasto manual da janela
   (veja as seções específicas abaixo).
@@ -150,6 +151,38 @@ O comando `start_window_drag` (`src-tauri/src/commands/window.rs`) contorna isso
 `_NET_MOVERESIZE_WINDOW` para o Mutter, reproduzindo o movimento até soltar o botão
 (timeout de segurança de 60 s). No Windows/macOS o caminho continua sendo o
 `startDragging()` nativo do Tauri.
+
+## Geração por IA (WebGPU)
+
+A geração de mensagens usa `@mlc-ai/web-llm`, que depende de WebGPU. No CEF/Chromium
+do Linux o adaptador só aparece se o backend Vulkan estiver habilitado: sem isso
+`navigator.gpu.requestAdapter()` devolve `null` e o `web-llm` falha com
+`Unable to find a compatible GPU` (o console do Chromium registra
+`No available adapters`).
+
+A correção fica em `src-tauri/src/lib.rs`:
+
+```rust
+tauri_runtime_cef::Cef::default().enable_features(["Vulkan"])
+```
+
+`enable_features` é encaminhado aos processos filhos (é a mesma lista
+`--enable-features` que o Chromium repassa ao processo de GPU). Já
+`Cef::command_line_arg("enable-unsafe-webgpu")` **não** resolve: a documentação do
+runtime diz que os argumentos são aplicados só ao processo do navegador, e o
+processo de GPU não os recebe.
+
+Medido nesta máquina após a mudança:
+
+| Item | Resultado |
+| --- | --- |
+| Adaptador | NVIDIA Lovelace (hardware, `isFallbackAdapter: false`) |
+| `requestDevice()` | ok |
+| `requestAnimationFrame` | 144,59 fps |
+
+Sem o `Vulkan`, o Chromium oferece no máximo o SwiftShader
+(`vendor: google`, `isFallbackAdapter: true`) — e, na configuração padrão do app,
+nem isso.
 
 ## Limitações conhecidas
 
