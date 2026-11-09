@@ -15,12 +15,14 @@ name = "git_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "3.0.0-alpha.4", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["devtools"] }
-tauri-plugin-dialog = "2"
-tauri-plugin-opener = "2"
+tauri = { version = "3.0.0-alpha.5", features = [] }
+# Chromium Embedded Framework runtime (GTK 4 + Chromium, 144 Hz on high refresh displays)
+tauri-runtime-cef = { version = "3.0.0-alpha.6", features = ["devtools"] }
+tauri-plugin-dialog = { version = "3.0.0-alpha.4", default-features = false, features = ["xdg-portal"] }
+tauri-plugin-opener = "3.0.0-alpha.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -37,5 +39,5 @@ keyring = { version = "3", default-features = false, features = ["apple-native"]
 keyring = { version = "3", default-features = false, features = ["linux-native-sync-persistent", "crypto-rust"] }
 
 [target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
+tauri-plugin-updater = "3.0.0-alpha.3"
+tauri-plugin-process = "3.0.0-alpha.3"
