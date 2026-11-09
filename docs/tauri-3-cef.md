@@ -45,6 +45,8 @@ No app real (GitLuna com a UI Angular carregada), a medição com CEF deu
 - `src-tauri/src/cef_runtime.rs` — bootstrap do Linux (veja abaixo).
 - `src-tauri/src/window_x11.rs` — `WM_CLASS` via X11 e arrasto manual da janela
   (veja as seções específicas abaixo).
+- `src/app/core/workers/commit-ai.worker.ts` — fallback de adaptador WebGPU quando a
+  GPU preferida não expõe `shader-f16` (veja a seção de IA).
 - `src-tauri/tauri.conf.json` — schema do Tauri 3.
 - `package.json` — `@tauri-apps/api` e plugins nas versões `3.0.0-alpha.*`.
 
@@ -184,6 +186,29 @@ Sem o `Vulkan`, o Chromium oferece no máximo o SwiftShader
 (`vendor: google`, `isFallbackAdapter: true`) — e, na configuração padrão do app,
 nem isso.
 
+### `shader-f16` no Linux
+
+Os modelos `q4f16` do `web-llm` usam `enable f16;` nos shaders WGSL. No Chromium
+embutido pelo CEF 154 a feature `shader-f16` **não** é exposta no Linux para a GPU
+NVIDIA — o suporte chegou no Chromium 155/156. Como o `web-llm` sempre pede o
+adaptador de alto desempenho, o device era criado sem a feature e o carregamento
+falhava em `GPUPipelineError: [Invalid ShaderModule] ... entryPoint: "index_kernel"`.
+
+`src/app/core/workers/commit-ai.worker.ts` envolve `navigator.gpu.requestAdapter`:
+se o adaptador de alto desempenho não tiver `shader-f16`, tenta o de baixo consumo
+(neste notebook, a Intel Gen-12LP), que expõe a feature. O Chromium enumera os dois
+adaptadores, então não é preciso forçar ICD nem trocar o modelo.
+
+Verificado nesta máquina (Chromium 154):
+
+| Adaptador | `shader-f16` |
+| --- | --- |
+| NVIDIA Lovelace (`high-performance`) | não |
+| Intel Gen-12LP (`low-power`) | sim |
+
+Teste ponta a ponta: `Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC` carregado na Intel
+(“Finish loading on WebGPU - intel”) e resposta gerada.
+
 ## Limitações conhecidas
 
 - O runtime CEF do Tauri 3 é **alpha**: as APIs podem mudar antes do 3.0 estável.
@@ -193,6 +218,8 @@ nem isso.
   já era o caso no `main`.
 - Em `npx tauri dev` o ícone do app no painel do GNOME só aparece depois de
   `npm run dev:icon` (o pacote final já traz o `.desktop`).
+- No Linux a geração por IA roda na GPU integrada (Intel): no Chromium 154 a NVIDIA
+  ainda não expõe `shader-f16` e os modelos `q4f16` do `web-llm` dependem dele.
 - Diálogos usam o `xdg-desktop-portal` (não GTK 3).
 - O `chrome-sandbox` precisa de modo setuid (4755) para o sandbox do Chromium em
   pacotes `.deb`/`.rpm`; em AppImage o sandbox depende de user namespaces.
