@@ -40,6 +40,29 @@ pub fn ensure_preloaded() {
     linux::ensure_preloaded();
 }
 
+/// Removes Chromium's unused GLib work source from the default main context.
+///
+/// With `external_message_pump`, CEF runs the UI thread on `MessagePumpExternal`,
+/// but `base::MessagePumpGlib` still attaches its work source from its
+/// constructor. Since `MessagePumpGlib::Run` never executes, `state_` stays null,
+/// `WorkSourcePrepare` keeps returning a 0 ms timeout and the GTK loop spins at
+/// 100% of one core while idle. This is a known issue:
+/// <https://github.com/tauri-apps/tauri/issues/16189>.
+///
+/// Must run on the thread that owns the default GLib context, after CEF is
+/// initialized. Returns how many sources were destroyed.
+pub fn destroy_chromium_work_source() -> usize {
+    #[cfg(target_os = "linux")]
+    {
+        linux::destroy_chromium_work_source()
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        0
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod linux {
     use super::{PRELOAD_MARKER, RUNTIME_FILES};
@@ -113,5 +136,103 @@ mod linux {
                 source.display()
             );
         }
+    }
+
+    /// Destroys the work source Chromium's `MessagePumpGlib` attached to the
+    /// default GLib context. See [`super::destroy_chromium_work_source`].
+    pub fn destroy_chromium_work_source() -> usize {
+        use glib_sys as ffi;
+        use std::ffi::c_void;
+        use std::mem;
+
+        let Some(cef_base) = libcef_base() else {
+            return 0;
+        };
+
+        let mut destroyed = 0;
+        unsafe {
+            let context = ffi::g_main_context_default();
+            if context.is_null() {
+                return 0;
+            }
+
+            // Source ids are allocated in sequence; a fresh attach yields the next id.
+            let probe = ffi::g_idle_source_new();
+            if probe.is_null() {
+                return 0;
+            }
+            let upper = ffi::g_source_attach(probe, context);
+            ffi::g_source_destroy(probe);
+            ffi::g_source_unref(probe);
+
+            for id in 1..upper {
+                let source = ffi::g_main_context_find_source_by_id(context, id);
+                if source.is_null() {
+                    continue;
+                }
+
+                let funcs = (*source).source_funcs;
+                if funcs.is_null() {
+                    continue;
+                }
+
+                let Some(prepare) = (*funcs).prepare else {
+                    continue;
+                };
+
+                if module_base(prepare as *const c_void) != Some(cef_base) {
+                    continue;
+                }
+
+                if ffi::g_source_get_priority(source) != ffi::G_PRIORITY_DEFAULT_IDLE {
+                    continue;
+                }
+
+                // Chromium's work source polls a single pipe (its wakeup pipe).
+                // The X11 event source polls a socket and is left untouched.
+                let poll_fds = (*source).poll_fds;
+                if poll_fds.is_null() || !(*poll_fds).next.is_null() {
+                    continue;
+                }
+
+                let fd = (*(*poll_fds).data.cast::<ffi::GPollFD>()).fd;
+                let mut stat: libc::stat = mem::zeroed();
+                if libc::fstat(fd, &mut stat) != 0 {
+                    continue;
+                }
+                if (stat.st_mode & libc::S_IFMT) != libc::S_IFIFO {
+                    continue;
+                }
+
+                ffi::g_source_destroy(source);
+                destroyed += 1;
+            }
+        }
+
+        destroyed
+    }
+
+    fn module_base(address: *const std::ffi::c_void) -> Option<*mut std::ffi::c_void> {
+        let mut info: libc::Dl_info = unsafe { std::mem::zeroed() };
+        let found = unsafe { libc::dladdr(address, &mut info) };
+
+        (found != 0).then_some(info.dli_fbase)
+    }
+
+    fn libcef_base() -> Option<*mut std::ffi::c_void> {
+        let maps = std::fs::read_to_string("/proc/self/maps").ok()?;
+        let mut base: Option<usize> = None;
+
+        for line in maps.lines() {
+            if !line.contains("/libcef.so") {
+                continue;
+            }
+
+            let start = line.split('-').next()?;
+            let address = usize::from_str_radix(start.trim(), 16).ok()?;
+            base = Some(base.map_or(address, |current| current.min(address)));
+        }
+
+        base.map(|address| address as *mut std::ffi::c_void)
     }
 }

@@ -1,4 +1,4 @@
-﻿:host {
+:host {
   display: block;
 }
 
@@ -250,6 +250,12 @@ h3 {
   background: var(--app-accent-surface);
   color: var(--app-purple);
   font-size: 0.68rem;
+}
+
+.ssh-icon {
+  background: rgb(52 211 153 / 12%);
+  color: var(--app-positive-strong);
+  font-size: 0.62rem;
 }
 
 .option-copy {

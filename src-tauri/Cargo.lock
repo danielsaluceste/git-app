@@ -6,7 +6,10 @@ version = 4
 name = "GitLuna"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "glib-sys",
  "keyring",
+ "libc",
  "notify",
  "portable-pty",
  "raw-window-handle",

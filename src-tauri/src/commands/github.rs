@@ -285,6 +285,69 @@ pub async fn list_repositories(
     Ok(repositories)
 }
 
+#[tauri::command]
+pub async fn list_public_repositories(login: String) -> Result<Vec<GithubRepository>, String> {
+    let login = login.trim();
+
+    if login.is_empty()
+        || login.len() > 39
+        || !login
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-')
+    {
+        return Err("Informe um usuário do GitHub válido para listar os repositórios.".to_string());
+    }
+
+    let client = github_client()?;
+    let mut repositories = Vec::new();
+
+    for page in 1..=3 {
+        let response = client
+            .get(format!("https://api.github.com/users/{login}/repos"))
+            .header(ACCEPT, "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", GITHUB_API_VERSION)
+            .query(&[
+                ("per_page", "100".to_string()),
+                ("page", page.to_string()),
+                ("sort", "updated".to_string()),
+                ("type", "owner".to_string()),
+            ])
+            .send()
+            .await
+            .map_err(|error| {
+                format!("Não foi possível buscar os repositórios públicos do GitHub: {error}")
+            })?;
+
+        let status = response.status();
+        let page_repositories = response
+            .json::<Vec<GithubRepositoryResponse>>()
+            .await
+            .map_err(|error| format_github_response_error(status, error.to_string()))?;
+
+        let page_is_empty = page_repositories.is_empty();
+        repositories.extend(
+            page_repositories
+                .into_iter()
+                .map(|repository| GithubRepository {
+                    id: repository.id,
+                    name: repository.name,
+                    full_name: repository.full_name,
+                    description: repository.description,
+                    clone_url: repository.clone_url,
+                    html_url: repository.html_url,
+                    private: repository.private,
+                    owner_login: repository.owner.login,
+                }),
+        );
+
+        if page_is_empty {
+            break;
+        }
+    }
+
+    Ok(repositories)
+}
+
 #[tauri::command(async)]
 pub fn disconnect_account(
     state: State<'_, GithubCredentialState>,

@@ -7,6 +7,7 @@ import { LayoutService } from "../../../core/services/layout.service";
 import { GithubService } from "../../../core/services/github.service";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
+import { SshKeyService } from "../../../core/services/ssh-key.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { WorkspaceService } from "../../../core/services/workspace.service";
@@ -14,6 +15,7 @@ import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 
 type AddRepositoryMode = "options" | "clone";
 type CloneSource = "url" | "github";
+type CloneAuth = "account" | "ssh";
 
 interface CloneProgress {
   operationId: string;
@@ -33,6 +35,7 @@ interface CloneProgress {
 export class RepositoriesPageComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly githubService = inject(GithubService);
+  private readonly sshKeyService = inject(SshKeyService);
   private readonly workspaceService = inject(WorkspaceService);
   private readonly router = inject(Router);
   private readonly layoutService = inject(LayoutService);
@@ -50,12 +53,16 @@ export class RepositoriesPageComponent {
   isAddRepositoryModalOpen = false;
   addRepositoryMode: AddRepositoryMode = "options";
   cloneSource: CloneSource = "url";
+  cloneAuth: CloneAuth = "account";
   cloneUrl = "";
   cloneDestination = "";
   githubRepositories: GithubRepository[] = [];
   githubRepositoriesLoading = false;
   githubRepositoriesError = "";
   selectedGithubUserId: number | undefined;
+  selectedSshKeyPath: string | undefined;
+  manualRepository = "";
+  manualRepositoryError = "";
   selectedGithubRepositoryId: number | undefined;
   cloneOperationId = "";
   cloneProgress = 0;
@@ -64,15 +71,20 @@ export class RepositoriesPageComponent {
   cloneCancelRequested = false;
   private cloneProgressUnlisten: UnlistenFn | undefined;
   readonly githubConnections = this.githubService.workspaceConnections;
+  readonly sshConnections = this.sshKeyService.workspaceConnections;
 
   openAddRepositoryModal(): void {
     this.addRepositoryMode = "options";
     this.cloneUrl = "";
     this.cloneDestination = "";
     this.cloneSource = "url";
+    this.cloneAuth = "account";
     this.githubRepositories = [];
     this.githubRepositoriesError = "";
     this.selectedGithubUserId = undefined;
+    this.selectedSshKeyPath = this.sshConnections()[0]?.keyPath;
+    this.manualRepository = "";
+    this.manualRepositoryError = "";
     this.selectedGithubRepositoryId = undefined;
     this.isAddRepositoryModalOpen = true;
   }
@@ -93,15 +105,18 @@ export class RepositoriesPageComponent {
 
   selectGithubCloneOption(): void {
     const connections = this.githubConnections();
+    const sshConnections = this.sshConnections();
 
-    if (connections.length === 0) {
+    if (connections.length === 0 && sshConnections.length === 0) {
       this.goToIntegrations();
       return;
     }
 
     this.addRepositoryMode = "clone";
     this.cloneSource = "github";
-    this.selectedGithubUserId = connections[0].id;
+    this.cloneAuth = connections.length > 0 ? "account" : "ssh";
+    this.selectedGithubUserId = connections[0]?.id;
+    this.selectedSshKeyPath = sshConnections[0]?.keyPath;
     void this.loadGithubRepositories();
   }
 
@@ -112,10 +127,103 @@ export class RepositoriesPageComponent {
     this.selectedGithubRepositoryId = undefined;
 
     if (source === "github") {
-      const connections = this.githubConnections();
-      this.selectedGithubUserId ??= connections[0]?.id;
+      this.cloneAuth = this.githubConnections().length > 0 ? "account" : "ssh";
+      this.selectedGithubUserId ??= this.githubConnections()[0]?.id;
+      this.selectedSshKeyPath ??= this.sshConnections()[0]?.keyPath;
       void this.loadGithubRepositories();
     }
+  }
+
+  selectCloneAuth(auth: CloneAuth): void {
+    if (this.cloneAuth === auth) {
+      return;
+    }
+
+    this.cloneAuth = auth;
+    this.selectedGithubRepositoryId = undefined;
+    this.githubRepositories = [];
+    this.githubRepositoriesError = "";
+    this.manualRepositoryError = "";
+    void this.loadGithubRepositories();
+  }
+
+  selectSshConnectionFromEvent(event: Event): void {
+    const keyPath = (event.target as HTMLSelectElement).value;
+
+    if (keyPath) {
+      this.selectedSshKeyPath = keyPath;
+      this.selectedGithubRepositoryId = undefined;
+      this.manualRepositoryError = "";
+
+      if (this.cloneSource === "github") {
+        void this.loadGithubRepositories();
+      }
+    }
+  }
+
+  isSshCloneUrl(): boolean {
+    const url = this.cloneUrl.trim().toLowerCase();
+    return url.startsWith("git@") || url.startsWith("ssh://");
+  }
+
+  updateManualRepository(event: Event): void {
+    this.manualRepository = (event.target as HTMLInputElement).value;
+    this.manualRepositoryError = "";
+  }
+
+  addManualRepository(): void {
+    const fullName = this.normalizeManualRepository(this.manualRepository);
+
+    if (!fullName) {
+      this.manualRepositoryError = this.translationService.translate(
+        "repositories.sshPrivateManualError",
+      );
+      return;
+    }
+
+    const existing = this.githubRepositories.find(
+      (repository) => repository.fullName.toLowerCase() === fullName.toLowerCase(),
+    );
+
+    if (existing) {
+      this.selectedGithubRepositoryId = existing.id;
+      this.manualRepository = "";
+      this.manualRepositoryError = "";
+      return;
+    }
+
+    const [ownerLogin, name] = fullName.split("/");
+    const repository: GithubRepository = {
+      id: -Date.now(),
+      name,
+      fullName,
+      description: this.translationService.translate(
+        "repositories.sshPrivateManualDescription",
+      ),
+      cloneUrl: `https://github.com/${fullName}.git`,
+      htmlUrl: `https://github.com/${fullName}`,
+      private: true,
+      ownerLogin,
+    };
+
+    this.githubRepositories = [repository, ...this.githubRepositories];
+    this.selectedGithubRepositoryId = repository.id;
+    this.manualRepository = "";
+    this.manualRepositoryError = "";
+  }
+
+  sshPrivateAccountLogin(): string | undefined {
+    const connection = this.sshConnections().find(
+      (item) => item.keyPath === this.selectedSshKeyPath,
+    );
+
+    if (!connection?.login) {
+      return undefined;
+    }
+
+    return this.githubConnections().find(
+      (account) => account.login.toLowerCase() === connection.login?.toLowerCase(),
+    )?.login;
   }
 
   selectGithubAccount(userId: number): void {
@@ -139,6 +247,11 @@ export class RepositoriesPageComponent {
   }
 
   async loadGithubRepositories(): Promise<void> {
+    if (this.cloneAuth === "ssh") {
+      await this.loadSshRepositories();
+      return;
+    }
+
     if (!this.selectedGithubUserId) {
       this.githubRepositories = [];
       return;
@@ -152,6 +265,61 @@ export class RepositoriesPageComponent {
         this.activeWorkspace().id,
         this.selectedGithubUserId,
       );
+    } catch (error: unknown) {
+      this.githubRepositories = [];
+      this.githubRepositoriesError =
+        typeof error === "string"
+          ? error
+          : this.translationService.translate("repositories.githubLoadError");
+    } finally {
+      this.githubRepositoriesLoading = false;
+    }
+  }
+
+  private async loadSshRepositories(): Promise<void> {
+    const connection = this.sshConnections().find(
+      (item) => item.keyPath === this.selectedSshKeyPath,
+    );
+
+    if (!connection) {
+      this.githubRepositories = [];
+      this.githubRepositoriesError = this.translationService.translate(
+        "repositories.sshKeyRequired",
+      );
+      return;
+    }
+
+    this.githubRepositoriesLoading = true;
+    this.githubRepositoriesError = "";
+
+    try {
+      let login = connection.login;
+
+      if (!login) {
+        const test = await this.sshKeyService.testConnection(connection.keyPath);
+
+        if (test.status !== "authenticated" || !test.login) {
+          this.githubRepositories = [];
+          this.githubRepositoriesError = this.translationService.translate(
+            "repositories.sshLoginError",
+          );
+          return;
+        }
+
+        login = test.login;
+        this.sshKeyService.updateLogin(connection, login);
+      }
+
+      const matchingAccount = this.githubConnections().find(
+        (account) => account.login.toLowerCase() === login?.toLowerCase(),
+      );
+
+      this.githubRepositories = matchingAccount
+        ? await this.githubService.listRepositories(
+            this.activeWorkspace().id,
+            matchingAccount.id,
+          )
+        : await this.githubService.listPublicRepositories(login);
     } catch (error: unknown) {
       this.githubRepositories = [];
       this.githubRepositoriesError =
@@ -238,7 +406,16 @@ export class RepositoriesPageComponent {
     const selectedRepository = this.githubRepositories.find(
       (repository) => repository.id === this.selectedGithubRepositoryId,
     );
-    const remoteUrl = this.cloneSource === "github" ? selectedRepository?.cloneUrl ?? "" : this.cloneUrl;
+    const usesGithub = this.cloneSource === "github";
+    const usesGithubSsh = usesGithub && this.cloneAuth === "ssh";
+    const usesSsh = usesGithubSsh || (!usesGithub && this.isSshCloneUrl() && !!this.selectedSshKeyPath);
+    const remoteUrl = usesGithub
+      ? usesGithubSsh
+        ? selectedRepository
+          ? `git@github.com:${selectedRepository.fullName}.git`
+          : ""
+        : selectedRepository?.cloneUrl ?? ""
+      : this.cloneUrl;
 
     if (!remoteUrl.trim() || !this.cloneDestination.trim()) {
       this.toastService.warning(
@@ -248,7 +425,15 @@ export class RepositoriesPageComponent {
       return;
     }
 
-    if (this.cloneSource === "github" && !this.selectedGithubUserId) {
+    if (usesGithubSsh && !this.selectedSshKeyPath) {
+      this.toastService.warning(
+        this.translationService.translate("repositories.sshKeyRequired"),
+        this.translationService.translate("repositories.accountRequiredTitle"),
+      );
+      return;
+    }
+
+    if (usesGithub && !usesGithubSsh && !this.selectedGithubUserId) {
       this.toastService.warning(
         this.translationService.translate("repositories.accountRequired"),
         this.translationService.translate("repositories.accountRequiredTitle"),
@@ -270,16 +455,34 @@ export class RepositoriesPageComponent {
         this.cloneDestination,
         this.cloneOperationId,
         this.activeWorkspace().id,
-        this.cloneSource === "github" ? this.selectedGithubUserId : undefined,
+        usesGithub && !usesGithubSsh ? this.selectedGithubUserId : undefined,
+        usesSsh ? this.selectedSshKeyPath : undefined,
       );
+
+      if (usesSsh && this.selectedSshKeyPath) {
+        try {
+          await this.repositoryService.configureSshKey(
+            repositoryInfo.path,
+            this.selectedSshKeyPath,
+          );
+        } catch (error: unknown) {
+          this.toastService.warning(
+            typeof error === "string"
+              ? error
+              : this.translationService.translate("repositories.sshConfigError"),
+            this.translationService.translate("repositories.sshConfigErrorTitle"),
+          );
+        }
+      }
+
       const added = this.repositoryService.add({
         name: repositoryInfo.name,
         path: repositoryInfo.path,
         workspaceId: this.activeWorkspace().id,
         cloneSource: this.cloneSource,
-        authenticationSource: this.cloneSource === "github" ? "github" : "system",
-        githubConnectionId:
-          this.cloneSource === "github" ? this.selectedGithubUserId : undefined,
+        authenticationSource: usesSsh ? "ssh" : usesGithub ? "github" : "system",
+        githubConnectionId: usesGithub && !usesGithubSsh ? this.selectedGithubUserId : undefined,
+        sshKeyPath: usesSsh ? this.selectedSshKeyPath : undefined,
       });
 
       this.isAddRepositoryModalOpen = false;
@@ -370,6 +573,32 @@ export class RepositoriesPageComponent {
     }
 
     return `clone-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  private normalizeManualRepository(value: string): string | undefined {
+    const candidate = value
+      .trim()
+      .replace(/^https?:\/\/github\.com\//i, "")
+      .replace(/^ssh:\/\/git@github\.com\//i, "")
+      .replace(/^git@github\.com:/i, "")
+      .replace(/\.git$/i, "")
+      .replace(/\/+$/, "");
+
+    const parts = candidate.split("/").filter(Boolean);
+
+    if (parts.length !== 2) {
+      return undefined;
+    }
+
+    const [owner, name] = parts;
+    const validOwner = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(owner);
+    const validName = /^[A-Za-z0-9._-]+$/.test(name);
+
+    if (!validOwner || !validName) {
+      return undefined;
+    }
+
+    return `${owner}/${name}`;
   }
 
   private translateCloneStage(stage: string): string {

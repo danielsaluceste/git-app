@@ -19,6 +19,7 @@ tauri-build = { version = "3.0.0-alpha.4", features = [] }
 
 [dependencies]
 tauri = { version = "3.0.0-alpha.5", features = [] }
+base64 = "0.22"
 # Chromium Embedded Framework runtime (GTK 4 + Chromium, 144 Hz on high refresh displays)
 tauri-runtime-cef = { version = "3.0.0-alpha.6", features = ["devtools"] }
 tauri-plugin-dialog = { version = "3.0.0-alpha.4", default-features = false, features = ["xdg-portal"] }
@@ -41,6 +42,10 @@ keyring = { version = "3", default-features = false, features = ["linux-native-s
 # runtime CEF (GTK4 + janela filha do Chromium) não consegue definir.
 raw-window-handle = "0.6"
 x11rb = "0.13"
+# Workaround do GSource ocioso que o MessagePumpGlib do Chromium deixa no
+# contexto GLib e que mantém a thread principal em 100% de CPU (winit-gtk4).
+glib-sys = "0.22"
+libc = "0.2"
 
 [target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "3.0.0-alpha.3"

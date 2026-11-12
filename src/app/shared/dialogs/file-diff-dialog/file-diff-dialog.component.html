@@ -31,6 +31,10 @@
       </div>
     } @else if (error) {
       <div class="diff-state error-state">{{ error }}</div>
+    } @else if (safeImagePreview) {
+      <div class="image-preview">
+        <img [src]="safeImagePreview" [alt]="file.path" />
+      </div>
     } @else if (diff.trim()) {
       <pre class="diff-code">@for (line of diffSegments().headerLines; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}@for (hunk of diffSegments().hunks; track hunk.index) {<span class="diff-line diff-hunk diff-hunk-row"><span class="diff-hunk-code">{{ hunk.header }}</span>@if (hunkAction) {<button
               type="button"

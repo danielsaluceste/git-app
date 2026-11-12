@@ -28,6 +28,13 @@ pub struct RepositoryRemote {
 pub struct RepositoryOperation {
     pub kind: String,
     pub current_branch: Option<String>,
+    /// Branch/ref que representa o lado "ours" do conflito (sua versão).
+    pub target_branch: Option<String>,
+    /// Branch/ref que representa o lado "theirs" do conflito (versão recebida).
+    pub source_branch: Option<String>,
+    /// Commit de origem em um cherry-pick.
+    pub source_commit: Option<String>,
+    pub source_subject: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

@@ -7,6 +7,7 @@ import {
 } from "../../../core/models/repository.model";
 import { GithubService } from "../../../core/services/github.service";
 import { RepositoryService } from "../../../core/services/repository.service";
+import { SshKeyService } from "../../../core/services/ssh-key.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { TranslationService } from "../../../core/services/translation.service";
 import { ConfirmDialogComponent } from "../../../shared/dialogs/confirm-dialog/confirm-dialog.component";
@@ -21,15 +22,18 @@ import { TranslatePipe } from "../../../shared/pipes/translate.pipe";
 export class RepositorySettingsPageComponent {
   private readonly repositoryService = inject(RepositoryService);
   private readonly githubService = inject(GithubService);
+  private readonly sshKeyService = inject(SshKeyService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly githubConnections = this.githubService.workspaceConnections;
+  readonly sshConnections = this.sshKeyService.workspaceConnections;
 
   selectedSource: RepositoryAuthenticationSource = "system";
   selectedGithubConnectionId: number | undefined;
+  selectedSshKeyPath: string | undefined;
   isSaving = false;
   remote: RepositoryRemote = {};
   remoteUrl = "";
@@ -41,6 +45,7 @@ export class RepositorySettingsPageComponent {
     const repository = this.activeRepository();
     this.selectedSource = repository?.authenticationSource ?? "system";
     this.selectedGithubConnectionId = repository?.githubConnectionId;
+    this.selectedSshKeyPath = repository?.sshKeyPath;
     void this.loadRemote();
   }
 
@@ -128,6 +133,10 @@ export class RepositorySettingsPageComponent {
         (connection) => connection.isDefault,
       )?.id ?? this.githubConnections()[0]?.id;
     }
+
+    if (source === "ssh" && this.selectedSshKeyPath === undefined) {
+      this.selectedSshKeyPath = this.sshConnections()[0]?.keyPath;
+    }
   }
 
   selectGithubConnectionFromEvent(event: Event): void {
@@ -135,6 +144,14 @@ export class RepositorySettingsPageComponent {
 
     if (Number.isFinite(value) && value > 0) {
       this.selectedGithubConnectionId = value;
+    }
+  }
+
+  selectSshKeyFromEvent(event: Event): void {
+    const keyPath = (event.target as HTMLSelectElement).value;
+
+    if (keyPath) {
+      this.selectedSshKeyPath = keyPath;
     }
   }
 
@@ -146,7 +163,7 @@ export class RepositorySettingsPageComponent {
     void this.router.navigate(["/overview"]);
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const repository = this.activeRepository();
     if (!repository || this.isSaving) {
       return;
@@ -160,12 +177,40 @@ export class RepositorySettingsPageComponent {
       return;
     }
 
+    if (this.selectedSource === "ssh" && !this.selectedSshKeyPath) {
+      this.toastService.warning(
+        this.translationService.translate("repoSettings.sshRequired"),
+        this.translationService.translate("repoSettings.accountRequiredTitle"),
+      );
+      return;
+    }
+
     this.isSaving = true;
     const updated = this.repositoryService.updateAuthentication(
       repository,
       this.selectedSource,
       this.selectedGithubConnectionId,
+      this.selectedSshKeyPath,
     );
+
+    if (updated) {
+      try {
+        await this.repositoryService.configureSshKey(
+          repository.path,
+          this.selectedSource === "ssh" ? this.selectedSshKeyPath : undefined,
+        );
+      } catch (error: unknown) {
+        this.isSaving = false;
+        this.toastService.error(
+          typeof error === "string"
+            ? error
+            : this.translationService.translate("repoSettings.sshConfigError"),
+          this.translationService.translate("repoSettings.settingsTitle"),
+        );
+        return;
+      }
+    }
+
     this.isSaving = false;
 
     if (!updated) {
@@ -179,10 +224,23 @@ export class RepositorySettingsPageComponent {
     const account = this.githubConnections().find(
       (connection) => connection.id === this.selectedGithubConnectionId,
     );
+    const sshKey = this.sshConnections().find(
+      (connection) => connection.keyPath === this.selectedSshKeyPath,
+    );
+    let successMessage = this.translationService.translate("repoSettings.computerSync");
+
+    if (this.selectedSource === "github") {
+      successMessage = this.translationService.translate("repoSettings.githubSync", {
+        login: account?.login ?? "GitHub account",
+      });
+    } else if (this.selectedSource === "ssh") {
+      successMessage = this.translationService.translate("repoSettings.sshSync", {
+        name: sshKey?.keyName ?? "SSH",
+      });
+    }
+
     this.toastService.success(
-      this.selectedSource === "github"
-        ? this.translationService.translate("repoSettings.githubSync", { login: account?.login ?? "GitHub account" })
-        : this.translationService.translate("repoSettings.computerSync"),
+      successMessage,
       this.translationService.translate("repoSettings.savedTitle"),
     );
   }
@@ -195,6 +253,15 @@ export class RepositorySettingsPageComponent {
       return account
         ? `GitHub · @${account.login}`
         : this.translationService.translate("repoSettings.githubAccountUnavailable");
+    }
+
+    if (repository.authenticationSource === "ssh") {
+      const key = this.sshConnections().find(
+        (connection) => connection.keyPath === repository.sshKeyPath,
+      );
+      return key
+        ? this.translationService.translate("repoSettings.sshCredentials", { name: key.keyName })
+        : this.translationService.translate("repoSettings.sshUnavailable");
     }
 
     return this.translationService.translate("repoSettings.computerCredentials");

@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   display: grid;
   gap: 1.5rem;
   max-width: 1550px;
@@ -415,6 +415,80 @@ button:disabled {
 .clone-source-tabs button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.clone-auth-tabs button {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.7rem;
+}
+
+.clone-ssh-hint {
+  margin-top: -0.4rem;
+  color: var(--app-muted-strong);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.clone-ssh-hint.error {
+  margin-top: 0;
+  color: var(--app-danger-text);
+}
+
+.ssh-private-repo {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px dashed var(--app-border-subtle);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  background: rgb(15 23 42 / 30%);
+}
+
+.ssh-private-heading {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.ssh-private-heading strong {
+  color: var(--app-text-strong);
+  font-size: 0.74rem;
+}
+
+.ssh-private-heading small {
+  color: var(--app-muted-strong);
+  font-size: 0.68rem;
+}
+
+.ssh-private-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ssh-private-row input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  outline: 0;
+  background: var(--app-surface-0);
+  color: var(--app-text-bright);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.ssh-private-row input::placeholder {
+  color: var(--app-muted-strong);
+}
+
+.ssh-private-row input:focus {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
+}
+
+.ssh-private-row .secondary-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .github-clone-panel {

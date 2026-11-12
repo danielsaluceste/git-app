@@ -101,6 +101,22 @@
             <span class="selected-check" aria-hidden="true">✓</span>
           }
         </button>
+
+        <button
+          type="button"
+          class="auth-option"
+          [class.selected]="selectedSource === 'ssh'"
+          (click)="selectSource('ssh')"
+        >
+          <span class="option-icon ssh-icon" aria-hidden="true">SSH</span>
+          <span class="option-copy">
+            <strong>{{ "repoSettings.ssh" | translate }}</strong>
+            <small>{{ "repoSettings.sshDescription" | translate }}</small>
+          </span>
+          @if (selectedSource === "ssh") {
+            <span class="selected-check" aria-hidden="true">✓</span>
+          }
+        </button>
       </div>
 
       @if (selectedSource === "github") {
@@ -124,6 +140,36 @@
               <div>
                 <strong>{{ "repoSettings.noAccount" | translate }}</strong>
                 <span>{{ "repoSettings.connectAccount" | translate }}</span>
+              </div>
+              <button type="button" class="secondary-button" (click)="openIntegrations()">
+                {{ "repoSettings.openIntegrations" | translate }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (selectedSource === "ssh") {
+        <div class="github-account-picker">
+          @if (sshConnections().length > 0) {
+            <label>
+              <span>{{ "repoSettings.sshUsed" | translate }}</span>
+              <select
+                [value]="selectedSshKeyPath ?? ''"
+                (change)="selectSshKeyFromEvent($event)"
+              >
+                @for (connection of sshConnections(); track connection.keyPath) {
+                  <option [value]="connection.keyPath">
+                    {{ connection.keyName }}{{ connection.login ? " · @" + connection.login : "" }}
+                  </option>
+                }
+              </select>
+            </label>
+          } @else {
+            <div class="no-account-state">
+              <div>
+                <strong>{{ "repoSettings.noSsh" | translate }}</strong>
+                <span>{{ "repoSettings.connectSsh" | translate }}</span>
               </div>
               <button type="button" class="secondary-button" (click)="openIntegrations()">
                 {{ "repoSettings.openIntegrations" | translate }}

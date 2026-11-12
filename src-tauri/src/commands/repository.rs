@@ -4,6 +4,8 @@ use crate::models::repository::{
     RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
     RepositoryTag, UndoCandidate,
 };
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::Engine as _;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
@@ -84,6 +86,7 @@ pub async fn clone_repository(
     operation_id: String,
     workspace_id: Option<String>,
     github_user_id: Option<u64>,
+    ssh_key_path: Option<String>,
 ) -> Result<LocalRepositoryInfo, String> {
     let remote_url = url.trim();
     if remote_url.is_empty() || remote_url.chars().any(char::is_control) {
@@ -130,14 +133,19 @@ pub async fn clone_repository(
         folder_name.to_string(),
     ];
 
-    let github_access_token = match (workspace_id.as_deref(), github_user_id) {
-        (Some(workspace_id), Some(user_id)) => Some(github::get_access_token(
-            &github_state,
-            workspace_id,
-            user_id,
-        )?),
-        (_, None) => None,
-        _ => return Err("A conta do GitHub selecionada está incompleta.".to_string()),
+    let ssh_key_path = normalize_ssh_key_path(ssh_key_path)?;
+    let github_access_token = if ssh_key_path.is_some() {
+        None
+    } else {
+        match (workspace_id.as_deref(), github_user_id) {
+            (Some(workspace_id), Some(user_id)) => Some(github::get_access_token(
+                &github_state,
+                workspace_id,
+                user_id,
+            )?),
+            (_, None) => None,
+            _ => return Err("A conta do GitHub selecionada está incompleta.".to_string()),
+        }
     };
     let askpass = github_access_token
         .as_deref()
@@ -171,6 +179,9 @@ pub async fn clone_repository(
         command
             .env("GIT_ASKPASS", askpass.path())
             .env("ORANGIT_GITHUB_ASKPASS_TOKEN", access_token);
+    }
+    if let Some(key_path) = ssh_key_path.as_deref() {
+        command.env("GIT_SSH_COMMAND", ssh_command_for(key_path));
     }
     let child = command
         .spawn()
@@ -484,6 +495,34 @@ pub fn set_repository_remote_url(path: String, url: String) -> Result<Repository
     })
 }
 
+/// Define a chave SSH usada nas operações remotas deste repositório.
+///
+/// A configuração fica no `core.sshCommand` do repositório, então fetch, pull,
+/// push e tags passam a usar a mesma chave sem depender da configuração global.
+#[tauri::command(async)]
+pub fn set_repository_ssh_key(path: String, key_path: Option<String>) -> Result<(), String> {
+    ensure_repository(&path)?;
+
+    match normalize_ssh_key_path(key_path)? {
+        Some(key_path) => run_git_with_timeout(
+            &path,
+            &["config", "core.sshCommand", &ssh_command_for(&key_path)],
+            GIT_COMMAND_TIMEOUT,
+        )
+        .map(|_| ()),
+        None => {
+            // `git config --unset-all` retorna erro quando a chave não existe;
+            // nesse caso o repositório já está sem uma chave SSH configurada.
+            let _ = run_git_with_timeout(
+                &path,
+                &["config", "--unset-all", "core.sshCommand"],
+                GIT_COMMAND_TIMEOUT,
+            );
+            Ok(())
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn get_repository_operation(path: String) -> Result<Option<RepositoryOperation>, String> {
     run_blocking(move || get_repository_operation_impl(path)).await
@@ -495,10 +534,145 @@ fn get_repository_operation_impl(path: String) -> Result<Option<RepositoryOperat
         return Ok(None);
     };
 
+    let current_branch = run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok();
+    let (target_branch, source_branch, source_commit, source_subject) = match kind {
+        "merge" => (current_branch.clone(), merge_source_branch(&path), None, None),
+        "rebase" => (
+            rebase_onto_branch(&path),
+            rebase_head_branch(&path),
+            None,
+            None,
+        ),
+        "cherry-pick" => {
+            let (commit, subject) = cherry_pick_details(&path);
+            (current_branch.clone(), None, commit, subject)
+        }
+        _ => (current_branch.clone(), None, None, None),
+    };
+
     Ok(Some(RepositoryOperation {
         kind: kind.to_string(),
-        current_branch: run_git(&path, &["symbolic-ref", "--short", "HEAD"]).ok(),
+        current_branch,
+        target_branch,
+        source_branch,
+        source_commit,
+        source_subject,
     }))
+}
+
+fn read_git_state(path: &str, file_name: &str) -> Option<String> {
+    let git_dir = resolve_git_dir(path)?;
+    let content = std::fs::read_to_string(git_dir.join(file_name)).ok()?;
+    let trimmed = content.trim();
+
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn normalize_ref_name(value: &str) -> Option<String> {
+    let name = value.trim().split(['~', '^']).next().unwrap_or_default().trim();
+
+    if name.is_empty() || name == "undefined" {
+        return None;
+    }
+
+    let name = name.strip_prefix("refs/heads/").unwrap_or(name);
+    let name = name.strip_prefix("refs/remotes/").unwrap_or(name);
+
+    Some(name.to_string())
+}
+
+fn merge_source_branch(path: &str) -> Option<String> {
+    if let Some(message) = read_git_state(path, "MERGE_MSG") {
+        if let Some(branch) = parse_merge_source(&message) {
+            return Some(branch);
+        }
+    }
+
+    let output = run_git(
+        path,
+        &[
+            "name-rev",
+            "--name-only",
+            "--refs=refs/heads/*",
+            "--refs=refs/remotes/*",
+            "MERGE_HEAD",
+        ],
+    )
+    .ok()?;
+
+    normalize_ref_name(&output)
+}
+
+fn parse_merge_source(message: &str) -> Option<String> {
+    let first_line = message.lines().next()?.trim();
+
+    for prefix in [
+        "Merge branch ",
+        "Merge remote-tracking branch ",
+        "Merge tag ",
+        "Merge branches ",
+    ] {
+        if let Some(rest) = first_line.strip_prefix(prefix) {
+            let names = quoted_values(rest);
+
+            if !names.is_empty() {
+                return Some(names.join(", "));
+            }
+        }
+    }
+
+    None
+}
+
+fn quoted_values(value: &str) -> Vec<String> {
+    value
+        .split('\'')
+        .enumerate()
+        .filter(|(index, _)| index % 2 == 1)
+        .map(|(_, item)| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect()
+}
+
+fn rebase_head_branch(path: &str) -> Option<String> {
+    read_git_state(path, "rebase-merge/head-name")
+        .or_else(|| read_git_state(path, "rebase-apply/head-name"))
+        .and_then(|value| normalize_ref_name(&value))
+}
+
+fn rebase_onto_branch(path: &str) -> Option<String> {
+    let onto = read_git_state(path, "rebase-merge/onto")
+        .or_else(|| read_git_state(path, "rebase-apply/onto"))?;
+
+    let output = run_git(
+        path,
+        &[
+            "name-rev",
+            "--name-only",
+            "--refs=refs/heads/*",
+            "--refs=refs/remotes/*",
+            &onto,
+        ],
+    )
+    .ok()?;
+
+    normalize_ref_name(&output)
+}
+
+fn cherry_pick_details(path: &str) -> (Option<String>, Option<String>) {
+    let Some(hash) = read_git_state(path, "CHERRY_PICK_HEAD") else {
+        return (None, None);
+    };
+
+    let Ok(output) = run_git(path, &["show", "-s", "--format=%h%x1f%s", &hash]) else {
+        return (Some(hash), None);
+    };
+
+    let mut parts = output.trim().splitn(2, '\u{1f}');
+    let commit = parts.next().map(str::to_string).filter(|value| !value.is_empty());
+    let subject = parts.next().map(str::to_string).filter(|value| !value.is_empty());
+
+    (commit.or(Some(hash)), subject)
 }
 
 #[tauri::command]
@@ -1233,6 +1407,83 @@ pub async fn get_repository_file_diff(
     staged: bool,
 ) -> Result<String, String> {
     run_blocking(move || get_repository_file_diff_impl(path, file_path, staged)).await
+}
+
+#[tauri::command]
+pub async fn get_repository_file_preview(
+    path: String,
+    file_path: String,
+    staged: bool,
+) -> Result<Option<String>, String> {
+    run_blocking(move || get_repository_file_preview_impl(path, file_path, staged)).await
+}
+
+fn get_repository_file_preview_impl(
+    path: String,
+    file_path: String,
+    staged: bool,
+) -> Result<Option<String>, String> {
+    ensure_repository(&path)?;
+
+    if file_path.trim().is_empty() {
+        return Err("O arquivo selecionado não é válido.".to_string());
+    }
+
+    let file_path = file_path.trim().to_string();
+    let relative_path = validate_repository_file_path(&file_path)?;
+    let Some(mime_type) = image_mime_type(&file_path) else {
+        return Ok(None);
+    };
+
+    // Evita enviar imagens muito grandes pela ponte Tauri como base64.
+    const MAX_PREVIEW_BYTES: u64 = 20 * 1024 * 1024;
+
+    // Exibe o conteúdo da área que o usuário abriu: o snapshot do índice para
+    // arquivos preparados, ou a versão atual do disco para os não preparados.
+    let bytes = if staged {
+        let spec = format!(":0:{file_path}");
+        let size = run_git(&path, &["cat-file", "-s", spec.as_str()])
+            .ok()
+            .and_then(|value| value.parse::<u64>().ok());
+        if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
+            return Ok(None);
+        }
+        run_git_binary_with_timeout(&path, &["show", spec.as_str()], GIT_COMMAND_TIMEOUT).ok()
+    } else {
+        let working_path = PathBuf::from(&path).join(relative_path);
+        let size = std::fs::metadata(&working_path).ok().map(|metadata| metadata.len());
+        if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
+            return Ok(None);
+        }
+        std::fs::read(working_path).ok()
+    };
+    let Some(bytes) = bytes else {
+        return Ok(None);
+    };
+
+    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
+        return Ok(None);
+    }
+
+    Ok(Some(format!(
+        "data:{mime_type};base64,{}",
+        BASE64_STANDARD.encode(bytes)
+    )))
+}
+
+fn image_mime_type(file_path: &str) -> Option<&'static str> {
+    let extension = Path::new(file_path).extension()?.to_str()?.to_ascii_lowercase();
+    match extension.as_str() {
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "bmp" => Some("image/bmp"),
+        "ico" => Some("image/x-icon"),
+        "avif" => Some("image/avif"),
+        "svg" => Some("image/svg+xml"),
+        _ => None,
+    }
 }
 
 fn get_repository_file_diff_impl(
@@ -3224,14 +3475,68 @@ where
     run_git_process(command, timeout)
 }
 
+fn run_git_binary_with_timeout<I, S>(
+    path: &str,
+    args: I,
+    timeout: Duration,
+) -> Result<Vec<u8>, String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<std::ffi::OsStr>,
+{
+    let mut command = Command::new("git");
+    command
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(path)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let child = command
+        .spawn()
+        .map_err(|error| format!("Não foi possível executar o Git: {error}"))?;
+    collect_git_binary_output(child, timeout)
+}
+
+fn normalize_ssh_key_path(ssh_key_path: Option<String>) -> Result<Option<String>, String> {
+    let Some(raw_path) = ssh_key_path else {
+        return Ok(None);
+    };
+    let path = raw_path.trim();
+
+    if path.is_empty() {
+        return Ok(None);
+    }
+
+    if !Path::new(path).is_file() {
+        return Err("A chave SSH selecionada não foi encontrada neste computador.".to_string());
+    }
+
+    Ok(Some(path.to_string()))
+}
+
+fn ssh_command_for(key_path: &str) -> String {
+    let normalized = if cfg!(windows) {
+        key_path.replace('\\', "/")
+    } else {
+        key_path.to_string()
+    };
+    let quoted = format!("'{}'", normalized.replace('\'', "'\\''"));
+
+    format!(
+        "ssh -i {quoted} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    )
+}
+
 fn run_git_with_access_token<I, S>(
     path: &str,
     args: I,
     timeout: Duration,
     access_token: Option<&str>,
 ) -> Result<String, String>
-where
-    I: IntoIterator<Item = S>,
+where    I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,
 {
     let askpass = access_token.map(AskpassGuard::new).transpose()?;
@@ -3297,7 +3602,15 @@ fn run_git_with_input(path: &str, args: &[&str], input: &str) -> Result<String, 
     collect_git_output(child, GIT_COMMAND_TIMEOUT)
 }
 
-fn collect_git_output(mut child: Child, timeout: Duration) -> Result<String, String> {
+fn collect_git_output(child: Child, timeout: Duration) -> Result<String, String> {
+    let stdout = collect_git_binary_output(child, timeout)?;
+
+    // Preserve the existing text command behavior, including trimming only
+    // trailing whitespace from Git's output.
+    Ok(String::from_utf8_lossy(&stdout).trim_end().to_string())
+}
+
+fn collect_git_binary_output(mut child: Child, timeout: Duration) -> Result<Vec<u8>, String> {
     let mut stdout = child
         .stdout
         .take()
@@ -3366,11 +3679,7 @@ fn collect_git_output(mut child: Child, timeout: Duration) -> Result<String, Str
         return Err(String::from_utf8_lossy(&stderr).trim().to_string());
     }
 
-    // O status --porcelain usa os dois primeiros caracteres para indicar o
-    // estado do arquivo. O primeiro pode ser um espaco; por isso nao podemos
-    // usar `trim()`, que removeria esse caractere e quebraria o caminho do
-    // primeiro arquivo (por exemplo, `angular.json` viraria `ngular.json`).
-    Ok(String::from_utf8_lossy(&stdout).trim_end().to_string())
+    Ok(stdout)
 }
 
 fn run_git_lines(path: &str, args: &[&str]) -> Result<Vec<String>, String> {
@@ -3390,6 +3699,54 @@ mod tests {
 
     fn log_record(fields: &[&str]) -> String {
         format!("{}\x1e", fields.join("\x1f"))
+    }
+
+    #[test]
+    fn parse_merge_source_extrai_o_nome_da_branch() {
+        assert_eq!(
+            parse_merge_source("Merge branch 'feature/login' into main\n\n# Conflicts:"),
+            Some("feature/login".to_string())
+        );
+        assert_eq!(
+            parse_merge_source("Merge remote-tracking branch 'origin/main' into feature/x"),
+            Some("origin/main".to_string())
+        );
+        assert_eq!(
+            parse_merge_source("Merge branches 'a' and 'b' into main"),
+            Some("a, b".to_string())
+        );
+        assert_eq!(parse_merge_source("Merge commit 'abc123'"), None);
+    }
+
+    #[test]
+    fn normalize_ref_name_remove_prefixos_e_sufixos() {
+        assert_eq!(normalize_ref_name("refs/heads/main"), Some("main".to_string()));
+        assert_eq!(
+            normalize_ref_name("refs/remotes/origin/main"),
+            Some("origin/main".to_string())
+        );
+        assert_eq!(normalize_ref_name("feature~2"), Some("feature".to_string()));
+        assert_eq!(normalize_ref_name("undefined"), None);
+    }
+
+    #[test]
+    fn ssh_command_usa_a_chave_e_escapa_o_caminho() {
+        let command = ssh_command_for("/tmp/chave com espaço'ssh");
+
+        assert!(command.starts_with("ssh -i '"));
+        assert!(command.contains("chave com espaço"));
+        assert!(command.contains("IdentitiesOnly=yes"));
+        assert!(command.contains("BatchMode=yes"));
+        assert!(command.contains("StrictHostKeyChecking=accept-new"));
+    }
+
+    #[test]
+    fn normalize_ssh_key_path_rejeita_arquivo_inexistente() {
+        let result = normalize_ssh_key_path(Some("/caminho/que/nao/existe".to_string()));
+
+        assert!(result.is_err());
+        assert!(normalize_ssh_key_path(None).unwrap().is_none());
+        assert!(normalize_ssh_key_path(Some("   ".to_string())).unwrap().is_none());
     }
 
     #[test]

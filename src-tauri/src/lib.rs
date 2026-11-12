@@ -24,6 +24,25 @@ pub fn run() {
         .manage(commands::github::GithubCredentialState::default())
         .manage(commands::watcher::WatcherState::default())
         .manage(commands::terminal::TerminalState::default())
+        .setup(|_app| {
+            #[cfg(target_os = "linux")]
+            {
+                // Bug conhecido do tauri-runtime-cef: o MessagePumpGlib do
+                // Chromium deixa um GSource ocioso com timeout 0 no contexto
+                // GLib, e o loop do GTK passa a girar a 100% de CPU. O CEF já
+                // foi inicializado quando o setup roda, então removemos a fonte
+                // antes do event loop começar.
+                let destroyed = cef_runtime::destroy_chromium_work_source();
+
+                if destroyed == 0 {
+                    eprintln!(
+                        "GitLuna: Chromium GLib work source não encontrado; o app pode consumir CPU ocioso."
+                    );
+                }
+            }
+
+            Ok(())
+        })
         .on_page_load(|webview, _payload| {
             #[cfg(target_os = "linux")]
             {
@@ -41,6 +60,7 @@ pub fn run() {
             commands::repository::get_repository_references,
             commands::repository::get_repository_remote,
             commands::repository::set_repository_remote_url,
+            commands::repository::set_repository_ssh_key,
             commands::repository::get_repository_operation,
             commands::repository::continue_repository_operation,
             commands::repository::abort_repository_operation,
@@ -62,6 +82,7 @@ pub fn run() {
             commands::repository::undo_last_operation,
             commands::repository::get_repository_staged_diff,
             commands::repository::get_repository_file_diff,
+            commands::repository::get_repository_file_preview,
             commands::repository::stash_repository,
             commands::repository::apply_stash,
             commands::repository::apply_stash_files,
@@ -98,7 +119,12 @@ pub fn run() {
             commands::github::start_device_flow,
             commands::github::poll_device_flow,
             commands::github::list_repositories,
+            commands::github::list_public_repositories,
             commands::github::disconnect_account,
+            commands::ssh::list_ssh_keys,
+            commands::ssh::inspect_ssh_key,
+            commands::ssh::create_ssh_key,
+            commands::ssh::test_ssh_connection,
             commands::watcher::watch_repository,
             commands::watcher::unwatch_repository,
             commands::system::ping,

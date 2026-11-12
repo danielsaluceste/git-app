@@ -1,7 +1,7 @@
 import { GitFile } from "./git-file.model";
 
 export type RepositoryCloneSource = "local" | "url" | "github";
-export type RepositoryAuthenticationSource = "system" | "github";
+export type RepositoryAuthenticationSource = "system" | "github" | "ssh";
 
 export interface Repository {
   name: string;
@@ -10,6 +10,7 @@ export interface Repository {
   cloneSource?: RepositoryCloneSource;
   authenticationSource?: RepositoryAuthenticationSource;
   githubConnectionId?: number;
+  sshKeyPath?: string;
   currentBranch?: string;
   isDirty?: boolean;
 }
@@ -42,6 +43,10 @@ export type RepositoryOperationKind = "merge" | "rebase" | "cherry-pick";
 export interface RepositoryOperation {
   kind: RepositoryOperationKind;
   currentBranch?: string;
+  targetBranch?: string;
+  sourceBranch?: string;
+  sourceCommit?: string;
+  sourceSubject?: string;
 }
 
 export interface RepositoryStatus {

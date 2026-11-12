@@ -118,7 +118,7 @@
                 role="tab"
                 [attr.aria-selected]="cloneSource === 'github'"
                 [class.active]="cloneSource === 'github'"
-                [disabled]="isLoading || githubConnections().length === 0"
+                [disabled]="isLoading || (githubConnections().length === 0 && sshConnections().length === 0)"
                 (click)="selectCloneSource('github')"
               >
                 {{ "repositories.connectedGithub" | translate }}
@@ -127,23 +127,80 @@
 
             @if (cloneSource === "github") {
               <div class="github-clone-panel">
-                <label class="clone-field">
-                  <span>{{ "repositories.githubAccount" | translate }}</span>
-                  <select
-                    [value]="selectedGithubUserId ?? ''"
-                    [disabled]="isLoading || githubRepositoriesLoading"
-                    (change)="selectGithubAccountFromEvent($event)"
-                  >
-                    @for (connection of githubConnections(); track connection.id) {
-                      <option [value]="connection.id">@{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}</option>
-                    }
-                  </select>
-                </label>
+                @if (githubConnections().length > 0 && sshConnections().length > 0) {
+                  <div class="clone-source-tabs clone-auth-tabs" role="tablist" [attr.aria-label]="'repositories.authMethod' | translate">
+                    <button
+                      type="button"
+                      role="tab"
+                      [class.active]="cloneAuth === 'account'"
+                      [attr.aria-selected]="cloneAuth === 'account'"
+                      [disabled]="isLoading"
+                      (click)="selectCloneAuth('account')"
+                    >
+                      {{ "repositories.githubAccount" | translate }}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      [class.active]="cloneAuth === 'ssh'"
+                      [attr.aria-selected]="cloneAuth === 'ssh'"
+                      [disabled]="isLoading"
+                      (click)="selectCloneAuth('ssh')"
+                    >
+                      {{ "repositories.sshKey" | translate }}
+                    </button>
+                  </div>
+                }
+
+                @if (cloneAuth === "account") {
+                  <label class="clone-field">
+                    <span>{{ "repositories.githubAccount" | translate }}</span>
+                    <select
+                      [value]="selectedGithubUserId ?? ''"
+                      [disabled]="isLoading || githubRepositoriesLoading"
+                      (change)="selectGithubAccountFromEvent($event)"
+                    >
+                      @for (connection of githubConnections(); track connection.id) {
+                        <option [value]="connection.id">@{{ connection.login }}{{ connection.isDefault ? " · Principal" : "" }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else {
+                  @if (sshConnections().length > 0) {
+                    <label class="clone-field">
+                      <span>{{ "repositories.sshKey" | translate }}</span>
+                      <select
+                        [value]="selectedSshKeyPath ?? ''"
+                        [disabled]="isLoading || githubRepositoriesLoading"
+                        (change)="selectSshConnectionFromEvent($event)"
+                      >
+                        @for (connection of sshConnections(); track connection.keyPath) {
+                          <option [value]="connection.keyPath">
+                            {{ connection.keyName }}{{ connection.login ? " · @" + connection.login : "" }}
+                          </option>
+                        }
+                      </select>
+                    </label>
+                    <p class="clone-ssh-hint">
+                      @if (sshPrivateAccountLogin(); as login) {
+                        {{ "repositories.sshPrivateHintWithAccount" | translate: { login } }}
+                      } @else {
+                        {{ "repositories.sshPublicHint" | translate }}
+                      }
+                    </p>
+                  }
+                }
 
                 <div class="github-repositories-heading">
                   <div>
                     <span>{{ "repositories.repository" | translate }}</span>
-                    <small>{{ "repositories.repositoryDescription" | translate }}</small>
+                    <small>
+                      @if (cloneAuth === "ssh") {
+                        {{ (sshPrivateAccountLogin() ? "repositories.sshReposWithAccount" : "repositories.sshPublicRepos") | translate }}
+                      } @else {
+                        {{ "repositories.repositoryDescription" | translate }}
+                      }
+                    </small>
                   </div>
                   <button type="button" class="refresh-repositories-button" [disabled]="isLoading || githubRepositoriesLoading" (click)="loadGithubRepositories()" [title]="'repositories.refresh' | translate">
                     ↻
@@ -186,7 +243,39 @@
                   </div>
                 } @else {
                   <div class="github-repositories-empty">
-                    {{ "repositories.noGithubRepositories" | translate }}
+                    {{ (cloneAuth === "ssh" ? "repositories.noSshRepositories" : "repositories.noGithubRepositories") | translate }}
+                  </div>
+                }
+
+                @if (cloneAuth === "ssh") {
+                  <div class="ssh-private-repo">
+                    <div class="ssh-private-heading">
+                      <strong>{{ "repositories.sshPrivateManualTitle" | translate }}</strong>
+                      <small>{{ "repositories.sshPrivateManualHint" | translate }}</small>
+                    </div>
+                    <div class="ssh-private-row">
+                      <input
+                        type="text"
+                        [value]="manualRepository"
+                        [placeholder]="'repositories.sshPrivateManualPlaceholder' | translate"
+                        autocomplete="off"
+                        spellcheck="false"
+                        [disabled]="isLoading"
+                        (input)="updateManualRepository($event)"
+                        (keydown.enter)="$event.preventDefault(); addManualRepository()"
+                      />
+                      <button
+                        type="button"
+                        class="secondary-button"
+                        [disabled]="isLoading || !manualRepository.trim()"
+                        (click)="addManualRepository()"
+                      >
+                        {{ "repositories.sshPrivateManualAdd" | translate }}
+                      </button>
+                    </div>
+                    @if (manualRepositoryError) {
+                      <small class="clone-ssh-hint error">{{ manualRepositoryError }}</small>
+                    }
                   </div>
                 }
               </div>
@@ -203,6 +292,24 @@
                   [disabled]="isLoading"
                 />
               </label>
+
+              @if (isSshCloneUrl() && sshConnections().length > 0) {
+                <label class="clone-field">
+                  <span>{{ "repositories.sshKey" | translate }}</span>
+                  <select
+                    [value]="selectedSshKeyPath ?? ''"
+                    [disabled]="isLoading"
+                    (change)="selectSshConnectionFromEvent($event)"
+                  >
+                    @for (connection of sshConnections(); track connection.keyPath) {
+                      <option [value]="connection.keyPath">
+                        {{ connection.keyName }}{{ connection.login ? " · @" + connection.login : "" }}
+                      </option>
+                    }
+                  </select>
+                </label>
+                <p class="clone-ssh-hint">{{ "repositories.sshUrlHint" | translate }}</p>
+              }
             }
 
             <div class="clone-field">
@@ -224,7 +331,7 @@
             <p class="clone-hint">
               {{ "repositories.cloneHint" | translate }}
               @if (cloneSource === "github") {
-                <span> {{ "repositories.authSelected" | translate }}</span>
+                <span> {{ (cloneAuth === "ssh" ? "repositories.sshAuthSelected" : "repositories.authSelected") | translate }}</span>
               }
             </p>
 

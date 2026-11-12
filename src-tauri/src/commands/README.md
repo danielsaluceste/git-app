@@ -5,6 +5,7 @@ Este diretório contém os comandos expostos ao Angular pela ponte Tauri.
 Organize os comandos por recurso conforme o backend crescer:
 
 - `repository.rs`
+- `ssh.rs`
 - `status.rs`
 - `commit.rs`
 - `branch.rs`

@@ -44,6 +44,10 @@ export class GithubService {
     return invoke<GithubRepository[]>("list_repositories", { workspaceId, userId });
   }
 
+  listPublicRepositories(login: string): Promise<GithubRepository[]> {
+    return invoke<GithubRepository[]>("list_public_repositories", { login });
+  }
+
   addConnection(workspaceId: string, user: GithubUser): GithubConnection {
     const existing = this.connectionsState().find(
       (connection) => connection.workspaceId === workspaceId && connection.id === user.id,

@@ -89,6 +89,7 @@ export class RepositoryService {
     operationId: string,
     workspaceId?: string,
     githubUserId?: number,
+    sshKeyPath?: string,
   ): Promise<LocalRepositoryInfo> {
     return invoke<LocalRepositoryInfo>("clone_repository", {
       url,
@@ -96,6 +97,14 @@ export class RepositoryService {
       operationId,
       workspaceId: workspaceId ?? null,
       githubUserId: githubUserId ?? null,
+      sshKeyPath: sshKeyPath ?? null,
+    });
+  }
+
+  async configureSshKey(path: string, sshKeyPath?: string): Promise<void> {
+    await invoke("set_repository_ssh_key", {
+      path,
+      keyPath: sshKeyPath ?? null,
     });
   }
 
@@ -232,6 +241,10 @@ export class RepositoryService {
 
   async getFileDiff(path: string, filePath: string, staged: boolean): Promise<string> {
     return invoke<string>("get_repository_file_diff", { path, filePath, staged });
+  }
+
+  async getFilePreview(path: string, filePath: string, staged: boolean): Promise<string | null> {
+    return invoke<string | null>("get_repository_file_preview", { path, filePath, staged });
   }
 
   async stash(path: string, message?: string, filePaths?: string[]): Promise<void> {
@@ -601,8 +614,13 @@ export class RepositoryService {
     repository: Repository,
     source: RepositoryAuthenticationSource,
     githubConnectionId?: number,
+    sshKeyPath?: string,
   ): boolean {
     if (source === "github" && githubConnectionId === undefined) {
+      return false;
+    }
+
+    if (source === "ssh" && !sshKeyPath) {
       return false;
     }
 
@@ -610,6 +628,7 @@ export class RepositoryService {
       ...repository,
       authenticationSource: source,
       githubConnectionId: source === "github" ? githubConnectionId : undefined,
+      sshKeyPath: source === "ssh" ? sshKeyPath : undefined,
     };
     const repositories = this.repositoriesState().map((item) =>
       item.workspaceId === repository.workspaceId && item.path === repository.path

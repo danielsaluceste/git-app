@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output, ViewChild } from "@angular/core";
+import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
 import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
 import { TranslationService } from "../../../core/services/translation.service";
 import { DiffSegments, splitDiffHunks } from "../../utils/diff-hunks";
@@ -14,11 +15,16 @@ export type DiffHunkAction = "stage" | "unstage" | "";
 })
 export class FileDiffDialogComponent implements AfterViewInit {
   private readonly translationService = inject(TranslationService);
+  private readonly sanitizer = inject(DomSanitizer);
   private segmentsCache?: { diff: string; segments: DiffSegments };
   @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
+  safeImagePreview: SafeUrl | null = null;
 
   @Input() file!: GitFile;
   @Input() diff = "";
+  @Input("imagePreview") set imagePreview(value: string) {
+    this.safeImagePreview = value ? this.sanitizer.bypassSecurityTrustUrl(value) : null;
+  }
   @Input() loading = false;
   @Input() error = "";
   @Input() contextLabel = "";

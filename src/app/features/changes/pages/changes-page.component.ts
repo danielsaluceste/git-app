@@ -66,6 +66,7 @@ export class ChangesPageComponent {
   readonly selectedFile = signal<GitFile | undefined>(undefined);
   readonly selectedConflictFile = signal<GitFile | undefined>(undefined);
   readonly fileDiff = signal("");
+  readonly filePreview = signal("");
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
   readonly pendingHunk = signal<number | null>(null);
@@ -223,6 +224,7 @@ export class ChangesPageComponent {
         } else {
           this.selectedFile.set(undefined);
           this.fileDiff.set("");
+          this.filePreview.set("");
         }
       }
 
@@ -439,12 +441,17 @@ export class ChangesPageComponent {
 
     this.selectedFile.set(file);
     this.fileDiff.set("");
+    this.filePreview.set("");
     this.fileDiffError.set("");
     this.fileDiffLoading.set(true);
 
     try {
-      const diff = await this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged);
+      const [diff, preview] = await Promise.all([
+        this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged),
+        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged),
+      ]);
       this.fileDiff.set(diff);
+      this.filePreview.set(preview ?? "");
     } catch (error: unknown) {
       this.fileDiffError.set(this.getGitErrorMessage(error));
     } finally {
@@ -454,9 +461,13 @@ export class ChangesPageComponent {
 
   private async refreshSelectedFileDiffQuietly(repository: Repository, file: GitFile): Promise<void> {
     try {
-      const diff = await this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged);
+      const [diff, preview] = await Promise.all([
+        this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged),
+        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged),
+      ]);
       if (this.selectedFile()?.path === file.path) {
         this.fileDiff.set(diff);
+        this.filePreview.set(preview ?? "");
       }
     } catch {
       // Ignorar falhas silenciosas durante auto-refresh
@@ -561,6 +572,7 @@ export class ChangesPageComponent {
   closeFileDiff(): void {
     this.selectedFile.set(undefined);
     this.fileDiff.set("");
+    this.filePreview.set("");
     this.fileDiffError.set("");
     this.fileDiffLoading.set(false);
   }

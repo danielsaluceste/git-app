@@ -40,65 +40,207 @@
       }
     </div>
 
-    <div class="conflict-grid">
-      <section class="version-card ours-card">
-        <header class="version-heading">
-          <div>
-            <span class="version-kicker">{{ "conflict.yourVersion" | translate }}</span>
-            <strong>{{ "conflict.currentBranch" | translate }}</strong>
+    @if (document(); as conflictDocument) {
+      <div class="hunk-area">
+        <div class="branch-summary">
+          <div class="branch-pill ours">
+            <span class="branch-dot" aria-hidden="true"></span>
+            <span class="branch-copy">
+              <small>{{ oursVersionKicker() }}</small>
+              <strong [title]="oursVersionLabel()">{{ oursVersionLabel() }}</strong>
+            </span>
           </div>
-          <button type="button" class="version-action ours-action" [disabled]="isSaving()" (click)="useSide('ours')">
-            {{ sideLabel("ours", currentConflict.oursExists) }}
-          </button>
-        </header>
-        <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.ours, currentConflict.oursExists) }}</pre>
-      </section>
+          <span class="branch-arrow" aria-hidden="true">↔</span>
+          <div class="branch-pill theirs">
+            <span class="branch-dot" aria-hidden="true"></span>
+            <span class="branch-copy">
+              <small>{{ theirsVersionKicker() }}</small>
+              <strong [title]="theirsVersionLabel()">{{ theirsVersionLabel() }}</strong>
+            </span>
+          </div>
+          <div class="bulk-actions">
+            <button type="button" class="bulk-button" [disabled]="isSaving()" (click)="useAll('ours')">
+              {{ "conflict.bulkUseOurs" | translate }}
+            </button>
+            <button type="button" class="bulk-button" [disabled]="isSaving()" (click)="useAll('theirs')">
+              {{ "conflict.bulkUseTheirs" | translate }}
+            </button>
+          </div>
+        </div>
 
-      <section class="version-card theirs-card">
-        <header class="version-heading">
-          <div>
-            <span class="version-kicker">{{ "conflict.receivedVersion" | translate }}</span>
-            <strong>{{ "conflict.otherBranch" | translate }}</strong>
-          </div>
-          <button type="button" class="version-action theirs-action" [disabled]="isSaving()" (click)="useSide('theirs')">
-            {{ sideLabel("theirs", currentConflict.theirsExists) }}
-          </button>
-        </header>
-        <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.theirs, currentConflict.theirsExists) }}</pre>
-      </section>
+        <div class="hunk-list">
+          @for (hunk of hunks(); track hunk.id; let hunkIndex = $index) {
+            <article class="hunk-card" [class.resolved]="!!hunk.choice">
+              <header class="hunk-header">
+                <div class="hunk-title">
+                  <span class="hunk-index">{{ "conflict.hunk" | translate: { index: hunkIndex + 1 } }}</span>
+                  <span class="hunk-line">{{ "conflict.hunkLine" | translate: { line: hunk.startLine } }}</span>
+                </div>
+                <span class="hunk-status" [class.pending]="!hunk.choice">{{ hunkChoiceLabel(hunk) }}</span>
+              </header>
 
-      <section class="version-card result-card">
-        <header class="version-heading">
-          <div>
-            <span class="version-kicker">{{ "conflict.result" | translate }}</span>
-            <strong>{{ "conflict.savedResult" | translate }}</strong>
-          </div>
-          @if (currentConflict.baseExists && !currentConflict.isBinary) {
-            <button type="button" class="base-action" [disabled]="isSaving()" (click)="useBase()">{{ "conflict.useBase" | translate }}</button>
+              <div class="hunk-sides">
+                <div
+                  class="hunk-side ours"
+                  role="button"
+                  tabindex="0"
+                  [class.selected]="hunk.choice === 'ours'"
+                  [attr.aria-pressed]="hunk.choice === 'ours'"
+                  (click)="chooseHunk(hunk.id, 'ours')"
+                  (keydown.enter)="chooseHunk(hunk.id, 'ours')"
+                  (keydown.space)="$event.preventDefault(); chooseHunk(hunk.id, 'ours')"
+                >
+                  <span class="hunk-side-heading">
+                    <span>{{ oursVersionKicker() }}</span>
+                    <strong [title]="oursVersionLabel()">{{ oursVersionLabel() }}</strong>
+                  </span>
+                  <pre class="hunk-code">{{ hunkDisplay(hunk.ours) }}</pre>
+                  <span class="hunk-side-action">
+                    {{ (hunk.choice === "ours" ? "conflict.selectedPart" : "conflict.useThisPart") | translate }}
+                  </span>
+                </div>
+
+                <div
+                  class="hunk-side theirs"
+                  role="button"
+                  tabindex="0"
+                  [class.selected]="hunk.choice === 'theirs'"
+                  [attr.aria-pressed]="hunk.choice === 'theirs'"
+                  (click)="chooseHunk(hunk.id, 'theirs')"
+                  (keydown.enter)="chooseHunk(hunk.id, 'theirs')"
+                  (keydown.space)="$event.preventDefault(); chooseHunk(hunk.id, 'theirs')"
+                >
+                  <span class="hunk-side-heading">
+                    <span>{{ theirsVersionKicker() }}</span>
+                    <strong [title]="theirsVersionLabel()">{{ theirsVersionLabel() }}</strong>
+                  </span>
+                  <pre class="hunk-code">{{ hunkDisplay(hunk.theirs) }}</pre>
+                  <span class="hunk-side-action">
+                    {{ (hunk.choice === "theirs" ? "conflict.selectedPart" : "conflict.useThisPart") | translate }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="hunk-tools">
+                <button type="button" class="hunk-tool" [class.active]="hunk.choice === 'both'" [disabled]="isSaving()" (click)="chooseHunk(hunk.id, 'both')">
+                  {{ "conflict.useBoth" | translate }}
+                </button>
+                @if (hunk.base.length > 0) {
+                  <button type="button" class="hunk-tool" [disabled]="isSaving()" (click)="chooseBase(hunk.id)">
+                    {{ "conflict.useBasePart" | translate }}
+                  </button>
+                  <button type="button" class="hunk-tool" [disabled]="isSaving()" (click)="toggleHunkBase(hunk.id)">
+                    {{ (hunk.showBase ? "conflict.hideBase" : "conflict.showBase") | translate }}
+                  </button>
+                }
+                <button type="button" class="hunk-tool" [class.active]="hunk.editing" [disabled]="isSaving()" (click)="editHunk(hunk.id)">
+                  {{ (hunk.editing ? "conflict.finishEdit" : "conflict.editPart") | translate }}
+                </button>
+              </div>
+
+              @if (hunk.showBase) {
+                <pre class="hunk-base">{{ hunkDisplay(hunk.base) }}</pre>
+              }
+
+              @if (hunk.editing) {
+                <label class="hunk-editor">
+                  <span>{{ "conflict.editPartHint" | translate }}</span>
+                  <textarea
+                    [value]="hunk.custom"
+                    [disabled]="isSaving()"
+                    spellcheck="false"
+                    (input)="updateHunkCustom(hunk.id, $event)"
+                  ></textarea>
+                </label>
+              } @else if (hunk.choice) {
+                <div class="hunk-result">
+                  <span class="hunk-result-label">{{ "conflict.partResult" | translate }}</span>
+                  <pre class="hunk-result-code">{{ hunkResult(hunk) }}</pre>
+                </div>
+              }
+            </article>
           }
-        </header>
+        </div>
 
-        @if (currentConflict.isBinary) {
-          <div class="version-content result-placeholder">{{ "conflict.binaryResult" | translate }}</div>
-        } @else if (resultExists()) {
-          <textarea
-            [ngModel]="resultContent()"
-            (ngModelChange)="resultContent.set($event)"
-            [disabled]="isSaving()"
-            spellcheck="false"
-            [attr.aria-label]="'conflict.resultAria' | translate"
-          ></textarea>
-        } @else {
-          <div class="version-content result-placeholder">{{ "conflict.deleted" | translate }}</div>
-        }
-      </section>
-    </div>
+        <details class="full-preview">
+          <summary>{{ "conflict.fullPreview" | translate }}</summary>
+          @if (assembledContent(); as content) {
+            <pre>{{ content }}</pre>
+          } @else {
+            <p class="preview-pending">{{ "conflict.chooseAllPartsPreview" | translate }}</p>
+          }
+        </details>
+      </div>
+    } @else {
+      <div class="conflict-grid">
+        <section class="version-card ours-card">
+          <header class="version-heading">
+            <div>
+              <span class="version-kicker">{{ oursVersionKicker() }}</span>
+              <strong [title]="oursVersionLabel()">{{ oursVersionLabel() }}</strong>
+            </div>
+            <button type="button" class="version-action ours-action" [disabled]="isSaving()" (click)="useSide('ours')">
+              {{ sideLabel("ours", currentConflict.oursExists) }}
+            </button>
+          </header>
+          <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.ours, currentConflict.oursExists) }}</pre>
+        </section>
+
+        <section class="version-card theirs-card">
+          <header class="version-heading">
+            <div>
+              <span class="version-kicker">{{ theirsVersionKicker() }}</span>
+              <strong [title]="theirsVersionLabel()">{{ theirsVersionLabel() }}</strong>
+            </div>
+            <button type="button" class="version-action theirs-action" [disabled]="isSaving()" (click)="useSide('theirs')">
+              {{ sideLabel("theirs", currentConflict.theirsExists) }}
+            </button>
+          </header>
+          <pre class="version-content" [class.binary-content]="currentConflict.isBinary">{{ displayContent(currentConflict.theirs, currentConflict.theirsExists) }}</pre>
+        </section>
+
+        <section class="version-card result-card">
+          <header class="version-heading">
+            <div>
+              <span class="version-kicker">{{ "conflict.result" | translate }}</span>
+              <strong>{{ "conflict.savedResult" | translate }}</strong>
+            </div>
+            @if (currentConflict.baseExists && !currentConflict.isBinary) {
+              <button type="button" class="base-action" [disabled]="isSaving()" (click)="useBase()">{{ "conflict.useBase" | translate }}</button>
+            }
+          </header>
+
+          @if (currentConflict.isBinary) {
+            <div class="version-content result-placeholder">{{ "conflict.binaryResult" | translate }}</div>
+          } @else if (resultExists()) {
+            <textarea
+              [ngModel]="resultContent()"
+              (ngModelChange)="resultContent.set($event)"
+              [disabled]="isSaving()"
+              spellcheck="false"
+              [attr.aria-label]="'conflict.resultAria' | translate"
+            ></textarea>
+          } @else {
+            <div class="version-content result-placeholder">{{ "conflict.deleted" | translate }}</div>
+          }
+        </section>
+      </div>
+    }
 
     <footer class="conflict-footer">
-      <span>{{ "conflict.preparedNotice" | translate }}</span>
+      @if (document() && unresolvedHunks() > 0) {
+        <span class="footer-warning">{{ "conflict.unresolvedHunks" | translate: { count: unresolvedHunks() } }}</span>
+      } @else {
+        <span>{{ "conflict.preparedNotice" | translate }}</span>
+      }
       <div class="footer-actions">
         <button type="button" class="cancel-action" [disabled]="isSaving()" (click)="closed.emit()">{{ "conflict.cancel" | translate }}</button>
-        <button type="button" class="resolve-action" [disabled]="isSaving() || currentConflict.isBinary" (click)="markAsResolved()">
+        <button
+          type="button"
+          class="resolve-action"
+          [disabled]="isSaving() || currentConflict.isBinary || (!!document() && unresolvedHunks() > 0)"
+          (click)="markAsResolved()"
+        >
           {{ isSaving() ? ("conflict.saving" | translate) : ("conflict.markResolved" | translate) }}
         </button>
       </div>
