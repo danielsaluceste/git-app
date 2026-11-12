@@ -80,12 +80,17 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly actionBarScrolled = signal(false);
   readonly syncAction = signal<SyncAction>("");
   readonly selectedCommitFiles = signal<CommitFile[]>([]);
+  readonly commitDiffFileList = computed(() =>
+    this.selectedCommitFiles().map((file) => ({ ...file, isStaged: true })),
+  );
   readonly commitFilesLoading = signal(false);
   readonly commitFilesError = signal("");
   readonly selectedCommitFile = signal<GitFile | undefined>(undefined);
   readonly commitFileDiff = signal("");
+  readonly commitFilePreview = signal("");
   readonly commitFileDiffLoading = signal(false);
   readonly commitFileDiffError = signal("");
+  private commitFileDiffRequestId = 0;
   readonly isCheckingOut = signal(false);
   readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
   readonly isCherryPicking = signal(false);
@@ -937,29 +942,42 @@ export class HistoryPageComponent implements AfterViewInit {
       return;
     }
 
+    const requestId = ++this.commitFileDiffRequestId;
     this.selectedCommitFile.set({
       path: file.path,
       status: file.status,
       isStaged: true,
     });
     this.commitFileDiff.set("");
+    this.commitFilePreview.set("");
     this.commitFileDiffError.set("");
     this.commitFileDiffLoading.set(true);
 
     try {
-      this.commitFileDiff.set(
-        await this.repositoryService.getCommitFileDiff(repository.path, commit.hash, file.path),
-      );
+      const [diff, preview] = await Promise.all([
+        this.repositoryService.getCommitFileDiff(repository.path, commit.hash, file.path),
+        this.repositoryService.getCommitFilePreview(repository.path, commit.hash, file.path).catch(() => null),
+      ]);
+      if (requestId === this.commitFileDiffRequestId) {
+        this.commitFileDiff.set(diff);
+        this.commitFilePreview.set(preview ?? "");
+      }
     } catch (error: unknown) {
-      this.commitFileDiffError.set(this.getCommitFilesErrorMessage(error));
+      if (requestId === this.commitFileDiffRequestId) {
+        this.commitFileDiffError.set(this.getCommitFilesErrorMessage(error));
+      }
     } finally {
-      this.commitFileDiffLoading.set(false);
+      if (requestId === this.commitFileDiffRequestId) {
+        this.commitFileDiffLoading.set(false);
+      }
     }
   }
 
   closeCommitFile(): void {
+    this.commitFileDiffRequestId += 1;
     this.selectedCommitFile.set(undefined);
     this.commitFileDiff.set("");
+    this.commitFilePreview.set("");
     this.commitFileDiffError.set("");
     this.commitFileDiffLoading.set(false);
   }

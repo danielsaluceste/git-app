@@ -2037,6 +2037,54 @@ pub async fn get_commit_file_diff(
 }
 
 #[tauri::command]
+pub async fn get_commit_file_preview(
+    path: String,
+    commit_hash: String,
+    file_path: String,
+) -> Result<Option<String>, String> {
+    run_blocking(move || get_commit_file_preview_impl(path, commit_hash, file_path)).await
+}
+
+fn get_commit_file_preview_impl(
+    path: String,
+    commit_hash: String,
+    file_path: String,
+) -> Result<Option<String>, String> {
+    ensure_repository(&path)?;
+    validate_commit_hash(&commit_hash)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+    let Some(mime_type) = image_mime_type(&relative_path) else {
+        return Ok(None);
+    };
+
+    let spec = format!("{commit_hash}:{relative_path}");
+    const MAX_PREVIEW_BYTES: u64 = 20 * 1024 * 1024;
+    let size = run_git(&path, &["cat-file", "-s", spec.as_str()])
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok());
+    if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
+        return Ok(None);
+    }
+
+    let Some(bytes) = run_git_binary_with_timeout(
+        &path,
+        &["show", spec.as_str()],
+        GIT_COMMAND_TIMEOUT,
+    )
+    .ok() else {
+        return Ok(None);
+    };
+    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
+        return Ok(None);
+    }
+
+    Ok(Some(format!(
+        "data:{mime_type};base64,{}",
+        BASE64_STANDARD.encode(bytes)
+    )))
+}
+
+#[tauri::command]
 pub async fn get_file_blame(path: String, file_path: String) -> Result<Vec<BlameLine>, String> {
     run_blocking(move || get_file_blame_impl(path, file_path)).await
 }

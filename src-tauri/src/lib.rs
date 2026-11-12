@@ -93,6 +93,7 @@ pub fn run() {
             commands::repository::get_repository_commits,
             commands::repository::get_commit_files,
             commands::repository::get_commit_file_diff,
+            commands::repository::get_commit_file_preview,
             commands::repository::get_file_blame,
             commands::repository::get_file_history,
             commands::repository::fetch_repository,

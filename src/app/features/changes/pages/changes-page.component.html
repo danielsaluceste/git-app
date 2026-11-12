@@ -383,12 +383,14 @@
   @if (selectedFile(); as file) {
     <app-file-diff-dialog
       [file]="file"
+      [files]="selectedTabFiles()"
       [diff]="fileDiff()"
       [imagePreview]="filePreview()"
       [loading]="fileDiffLoading()"
       [error]="fileDiffError()"
       [hunkAction]="hunkActionFor(file)"
       [pendingHunk]="pendingHunk()"
+      (fileSelected)="openFileDiff($event)"
       (hunkActionRequested)="requestHunkAction($event)"
       (closed)="closeFileDiff()"
     />

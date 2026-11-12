@@ -410,10 +410,13 @@
   @if (selectedCommitFile(); as file) {
     <app-file-diff-dialog
       [file]="file"
+      [files]="commitDiffFileList()"
       [diff]="commitFileDiff()"
+      [imagePreview]="commitFilePreview()"
       [loading]="commitFileDiffLoading()"
       [error]="commitFileDiffError()"
       [contextLabel]="('history.fileCommit' | translate) + ' ' + (selectedCommit()?.shortHash || '')"
+      (fileSelected)="openCommitFile($event)"
       (closed)="closeCommitFile()"
     />
   }

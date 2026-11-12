@@ -329,6 +329,10 @@ export class RepositoryService {
     return invoke<string>("get_commit_file_diff", { path, commitHash, filePath });
   }
 
+  async getCommitFilePreview(path: string, commitHash: string, filePath: string): Promise<string | null> {
+    return invoke<string | null>("get_commit_file_preview", { path, commitHash, filePath });
+  }
+
   async fetch(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {
     await invoke("fetch_repository", {
       path,

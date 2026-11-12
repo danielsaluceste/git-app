@@ -65,6 +65,14 @@ export class ChangesPageComponent {
   ));
   readonly selectedFile = signal<GitFile | undefined>(undefined);
   readonly selectedConflictFile = signal<GitFile | undefined>(undefined);
+  readonly selectedTabFiles = computed(() => {
+    const file = this.selectedFile();
+    const files = this.status()?.files ?? [];
+    if (!file) {
+      return [];
+    }
+    return file.isStaged ? this.stagedFiles(files) : this.unstagedFiles(files);
+  });
   readonly fileDiff = signal("");
   readonly filePreview = signal("");
   readonly fileDiffLoading = signal(false);
@@ -76,6 +84,7 @@ export class ChangesPageComponent {
   readonly fileContextMenu = signal<FileContextMenu | undefined>(undefined);
   readonly pendingDiscardFile = signal<GitFile | undefined>(undefined);
   private pendingAiDiff = "";
+  private fileDiffRequestId = 0;
   private statusLoadVersion = 0;
   private lastLoadedRepoKey = "";
   private lastLoadedRefreshVersion = -1;
@@ -222,9 +231,11 @@ export class ChangesPageComponent {
           this.selectedFile.set(selected);
           void this.refreshSelectedFileDiffQuietly(repository, selected);
         } else {
+          this.fileDiffRequestId += 1;
           this.selectedFile.set(undefined);
           this.fileDiff.set("");
           this.filePreview.set("");
+          this.fileDiffLoading.set(false);
         }
       }
 
@@ -439,6 +450,7 @@ export class ChangesPageComponent {
       return;
     }
 
+    const requestId = ++this.fileDiffRequestId;
     this.selectedFile.set(file);
     this.fileDiff.set("");
     this.filePreview.set("");
@@ -448,14 +460,21 @@ export class ChangesPageComponent {
     try {
       const [diff, preview] = await Promise.all([
         this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged),
-        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged),
+        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged).catch(() => null),
       ]);
+      if (requestId !== this.fileDiffRequestId) {
+        return;
+      }
       this.fileDiff.set(diff);
       this.filePreview.set(preview ?? "");
     } catch (error: unknown) {
-      this.fileDiffError.set(this.getGitErrorMessage(error));
+      if (requestId === this.fileDiffRequestId) {
+        this.fileDiffError.set(this.getGitErrorMessage(error));
+      }
     } finally {
-      this.fileDiffLoading.set(false);
+      if (requestId === this.fileDiffRequestId) {
+        this.fileDiffLoading.set(false);
+      }
     }
   }
 
@@ -463,9 +482,10 @@ export class ChangesPageComponent {
     try {
       const [diff, preview] = await Promise.all([
         this.repositoryService.getFileDiff(repository.path, file.path, file.isStaged),
-        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged),
+        this.repositoryService.getFilePreview(repository.path, file.path, file.isStaged).catch(() => null),
       ]);
-      if (this.selectedFile()?.path === file.path) {
+      const selected = this.selectedFile();
+      if (selected?.path === file.path && selected.isStaged === file.isStaged) {
         this.fileDiff.set(diff);
         this.filePreview.set(preview ?? "");
       }
@@ -570,6 +590,7 @@ export class ChangesPageComponent {
   }
 
   closeFileDiff(): void {
+    this.fileDiffRequestId += 1;
     this.selectedFile.set(undefined);
     this.fileDiff.set("");
     this.filePreview.set("");

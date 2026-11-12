@@ -3,6 +3,7 @@
   class="diff-dialog"
   (cancel)="onCancel($event)"
   (click)="onBackdropClick($event)"
+  (keydown)="onDialogKeydown($event)"
   aria-labelledby="file-diff-title"
 >
   <header class="diff-header">
@@ -23,31 +24,59 @@
     <span>{{ contextLabel || ((file.isStaged ? "diffDialog.staged" : "diffDialog.unstaged") | translate) }}</span>
   </div>
 
-  <div class="diff-content">
-    @if (loading) {
-      <div class="diff-state">
-        <span class="loading-spinner" aria-hidden="true"></span>
-        {{ "diffDialog.loading" | translate }}
+  <div class="diff-main">
+    <aside class="file-sidebar" [attr.aria-label]="'diffDialog.fileList' | translate">
+      <div class="file-sidebar-heading">
+        <span>{{ "diffDialog.fileList" | translate }}</span>
+        <span class="file-sidebar-count">{{ files.length }}</span>
       </div>
-    } @else if (error) {
-      <div class="diff-state error-state">{{ error }}</div>
-    } @else if (safeImagePreview) {
-      <div class="image-preview">
-        <img [src]="safeImagePreview" [alt]="file.path" />
-      </div>
-    } @else if (diff.trim()) {
-      <pre class="diff-code">@for (line of diffSegments().headerLines; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}@for (hunk of diffSegments().hunks; track hunk.index) {<span class="diff-line diff-hunk diff-hunk-row"><span class="diff-hunk-code">{{ hunk.header }}</span>@if (hunkAction) {<button
+      <nav class="file-sidebar-list">
+        @for (item of files; track item.path + ':' + item.isStaged) {
+          <button
+            #fileButton
+            type="button"
+            class="file-list-item"
+            [class.selected]="isSelectedFile(item)"
+            [class.status-added]="item.status === 'added'"
+            [class.status-deleted]="item.status === 'deleted'"
+            [class.status-renamed]="item.status === 'renamed'"
+            [attr.aria-current]="isSelectedFile(item) ? 'true' : null"
+            [attr.title]="item.path + ' · ' + statusLabel(item.status)"
+            (click)="selectFile(item)"
+          >
+            <span class="file-list-status">{{ statusCode(item.status) }}</span>
+            <span class="file-list-path">{{ item.path }}</span>
+          </button>
+        }
+      </nav>
+    </aside>
+
+    <div class="diff-content">
+      @if (loading) {
+        <div class="diff-state">
+          <span class="loading-spinner" aria-hidden="true"></span>
+          {{ "diffDialog.loading" | translate }}
+        </div>
+      } @else if (error) {
+        <div class="diff-state error-state">{{ error }}</div>
+      } @else if (safeImagePreview) {
+        <div class="image-preview">
+          <img [src]="safeImagePreview" [alt]="file.path" />
+        </div>
+      } @else if (diff.trim()) {
+        <pre class="diff-code">@for (line of diffSegments().headerLines; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}@for (hunk of diffSegments().hunks; track hunk.index) {<span class="diff-line diff-hunk diff-hunk-row"><span class="diff-hunk-code">{{ hunk.header }}</span>@if (hunkAction) {<button
               type="button"
               class="hunk-action"
               [disabled]="pendingHunk !== null"
               [attr.aria-label]="(hunkAction === 'stage' ? 'diffDialog.stageHunk' : 'diffDialog.unstageHunk') | translate"
               (click)="requestHunkAction(hunk.index)"
-            >{{ pendingHunk === hunk.index ? "…" : ((hunkAction === "stage" ? "diffDialog.stageHunk" : "diffDialog.unstageHunk") | translate) }}</button>}</span>@for (line of hunk.body; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}}</pre>
-    } @else {
-      <div class="diff-state">
-        {{ "diffDialog.noDiff" | translate }}
-      </div>
-    }
+              >{{ pendingHunk === hunk.index ? "…” : ((hunkAction === "stage" ? "diffDialog.stageHunk" : "diffDialog.unstageHunk") | translate) }}</button>}</span>@for (line of hunk.body; track $index) {<span class="diff-line" [class]="'diff-line ' + diffLineClass(line)">{{ line || " " }}</span>}}</pre>
+      } @else {
+        <div class="diff-state">
+          {{ "diffDialog.noDiff" | translate }}
+        </div>
+      }
+    </div>
   </div>
 
   <footer class="diff-footer">
