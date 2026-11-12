@@ -9,6 +9,8 @@ import {
 } from "@angular/core";
 import { Router } from "@angular/router";
 import { Repository } from "../../core/models/repository.model";
+import { Commit } from "../../core/models/commit.model";
+import { GitFile } from "../../core/models/git-file.model";
 import { UndoCandidate } from "../../core/models/undo.model";
 import { RepositoryService } from "../../core/services/repository.service";
 import { SessionService } from "../../core/services/session.service";
@@ -18,7 +20,7 @@ import { ConfirmDialogComponent } from "../../shared/dialogs/confirm-dialog/conf
 import { TranslatePipe } from "../../shared/pipes/translate.pipe";
 import { filterPaletteItems } from "./palette-filter";
 
-type PaletteGroup = "actions" | "navigation" | "repositories" | "branches";
+type PaletteGroup = "actions" | "navigation" | "repositories" | "branches" | "files" | "commits";
 
 interface PaletteItem {
   id: string;
@@ -51,6 +53,9 @@ export class CommandPaletteComponent {
   readonly undoCandidate = signal<UndoCandidate | undefined>(undefined);
   readonly pendingUndo = signal(false);
   readonly isUndoing = signal(false);
+  readonly changedFiles = signal<GitFile[]>([]);
+  readonly recentCommits = signal<Commit[]>([]);
+  private searchLoadId = 0;
 
   readonly items = computed<PaletteItem[]>(() => {
     const translate = (key: string, params?: Record<string, string>): string =>
@@ -63,6 +68,8 @@ export class CommandPaletteComponent {
       this.navigationItem("changes", "changes.title", "±", "/changes"),
       this.navigationItem("overview", "history.title", "◎", "/overview"),
       this.navigationItem("branches", "repository.branches", "⑂", "/branches"),
+      this.navigationItem("compare", "compare.title", "⇄", "/compare"),
+      this.navigationItem("worktrees", "worktrees.title", "⌘", "/worktrees"),
       this.navigationItem("stashes", "stashes.title", "▤", "/stashes"),
       this.navigationItem("terminal", "terminal.title", ">_", "/terminal"),
       this.navigationItem("integrations", "nav.integrations", "⇄", "/integrations"),
@@ -94,6 +101,31 @@ export class CommandPaletteComponent {
           run: () => void this.checkoutBranch(repository, branch),
         });
       }
+    }
+
+    for (const file of this.changedFiles()) {
+      const sideLabel = translate(file.isStaged ? "palette.stagedFile" : "palette.unstagedFile");
+      items.push({
+        id: `file:${file.path}:${file.isStaged ? "staged" : "unstaged"}`,
+        group: "files",
+        label: file.path,
+        hint: `${translate(`diff.${file.status}`)} · ${sideLabel}`,
+        symbol: file.status === "added" ? "A" : file.status === "deleted" ? "D" : "M",
+        run: () => void this.router.navigate(["/changes"], {
+          queryParams: { openFile: file.path, openFileSide: file.isStaged ? "staged" : "unstaged" },
+        }),
+      });
+    }
+
+    for (const commit of this.recentCommits()) {
+      items.push({
+        id: `commit:${commit.hash}`,
+        group: "commits",
+        label: commit.subject || commit.shortHash,
+        hint: `${commit.shortHash} · ${commit.authorName}`,
+        symbol: "●",
+        run: () => void this.router.navigate(["/overview"], { queryParams: { openCommit: commit.hash } }),
+      });
     }
 
     const undo = this.undoCandidate();
@@ -170,6 +202,7 @@ export class CommandPaletteComponent {
     // Deixa o Angular renderizar o diálogo antes de focar o campo.
     setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
     void this.loadUndoCandidate();
+    void this.loadSearchItems();
   }
 
   close(): void {
@@ -200,6 +233,10 @@ export class CommandPaletteComponent {
         return this.translationService.translate("palette.repositories");
       case "branches":
         return this.translationService.translate("palette.branches");
+      case "files":
+        return this.translationService.translate("palette.files");
+      case "commits":
+        return this.translationService.translate("palette.commits");
     }
   }
 
@@ -285,6 +322,41 @@ export class CommandPaletteComponent {
     } catch {
       this.undoCandidate.set(undefined);
     }
+  }
+
+  private async loadSearchItems(): Promise<void> {
+    const repository = this.repositoryService.activeRepository();
+    const requestId = ++this.searchLoadId;
+    if (!repository) {
+      this.changedFiles.set([]);
+      this.recentCommits.set([]);
+      return;
+    }
+
+    const [statusResult, commitsResult] = await Promise.allSettled([
+      this.repositoryService.getStatus(repository.path),
+      this.repositoryService.getCommits(repository.path, true, 0, 100),
+    ]);
+    const currentRepository = this.repositoryService.activeRepository();
+    if (requestId !== this.searchLoadId || currentRepository?.path !== repository.path) {
+      return;
+    }
+
+    if (statusResult.status === "fulfilled") {
+      const files: GitFile[] = [];
+      for (const file of statusResult.value.files) {
+        if (file.isStaged) {
+          files.push({ ...file, isStaged: true });
+        }
+        if (!file.isStaged || file.isUnstaged) {
+          files.push({ ...file, isStaged: false });
+        }
+      }
+      this.changedFiles.set(files);
+    } else {
+      this.changedFiles.set([]);
+    }
+    this.recentCommits.set(commitsResult.status === "fulfilled" ? commitsResult.value : []);
   }
 
   private getUndoErrorMessage(error: unknown): string {

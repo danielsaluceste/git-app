@@ -1,5 +1,10 @@
 export type GitFileStatus = "added" | "modified" | "deleted" | "renamed" | "untracked" | "conflicted";
 
+export interface ImagePreviewPair {
+  before: string | null;
+  after: string | null;
+}
+
 export interface GitFile {
   path: string;
   status: GitFileStatus;

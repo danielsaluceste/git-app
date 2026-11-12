@@ -16,7 +16,7 @@ import { fromEvent, filter } from "rxjs";
 import { NavigationEnd, Router } from "@angular/router";
 import { Commit } from "../../../core/models/commit.model";
 import { CommitFile } from "../../../core/models/commit-file.model";
-import { GitFile } from "../../../core/models/git-file.model";
+import { GitFile, ImagePreviewPair } from "../../../core/models/git-file.model";
 import { Repository } from "../../../core/models/repository.model";
 import { RepositoryService } from "../../../core/services/repository.service";
 import { ToastService } from "../../../core/services/toast.service";
@@ -87,10 +87,12 @@ export class HistoryPageComponent implements AfterViewInit {
   readonly commitFilesError = signal("");
   readonly selectedCommitFile = signal<GitFile | undefined>(undefined);
   readonly commitFileDiff = signal("");
-  readonly commitFilePreview = signal("");
+  readonly commitFilePreview = signal<ImagePreviewPair | null>(null);
   readonly commitFileDiffLoading = signal(false);
   readonly commitFileDiffError = signal("");
   private commitFileDiffRequestId = 0;
+  private pendingPaletteCommitHash = "";
+  private commitsRepositoryPath = "";
   readonly isCheckingOut = signal(false);
   readonly pendingCheckoutCommit = signal<Commit | undefined>(undefined);
   readonly isCherryPicking = signal(false);
@@ -231,6 +233,12 @@ export class HistoryPageComponent implements AfterViewInit {
           return;
         }
 
+        const openCommit = this.router.parseUrl(event.urlAfterRedirects).queryParams["openCommit"];
+        if (typeof openCommit === "string") {
+          this.pendingPaletteCommitHash = openCommit;
+          this.openPendingPaletteCommit();
+        }
+
         const repository = this.activeRepository();
         if (!repository) {
           return;
@@ -241,6 +249,7 @@ export class HistoryPageComponent implements AfterViewInit {
         if (repoKey === this.lastLoadedRepoKey &&
             refreshVersion === this.lastLoadedRefreshVersion &&
             this.commits().length > 0) {
+          this.openPendingPaletteCommit();
           return;
         }
 
@@ -327,6 +336,7 @@ export class HistoryPageComponent implements AfterViewInit {
 
     if (cachedCommits && (this.commits().length === 0 || resetPagination)) {
       this.commits.set(cachedCommits);
+      this.commitsRepositoryPath = repository.path;
       this.historyOffset = cachedCommits.length;
       this.hasMoreCommits.set(cachedCommits.length === this.historyPageSize);
     }
@@ -357,6 +367,7 @@ export class HistoryPageComponent implements AfterViewInit {
       this.setCurrentBranch(references.currentBranch);
       this.aheadCount.set(status.aheadCount);
       this.behindCount.set(status.behindCount);
+      this.commitsRepositoryPath = repository.path;
 
       const currentList = this.commits();
       // Compara a lista inteira, não só as pontas: commits que entram no meio
@@ -381,6 +392,7 @@ export class HistoryPageComponent implements AfterViewInit {
           this.selectedCommitFiles.set([]);
         }
       }
+      this.openPendingPaletteCommit();
     } catch (error: unknown) {
       if (loadVersion !== this.overviewLoadVersion) {
         return;
@@ -413,6 +425,27 @@ export class HistoryPageComponent implements AfterViewInit {
     this.commitFilesError.set("");
     this.selectedCommitFile.set(undefined);
     void this.loadCommitFiles(commit);
+  }
+
+  private openPendingPaletteCommit(): void {
+    const hash = this.pendingPaletteCommitHash;
+    const repository = this.activeRepository();
+    if (!hash || !repository ||
+        this.commitsRepositoryPath.replaceAll("\\", "/").toLowerCase() !== repository.path.replaceAll("\\", "/").toLowerCase()) {
+      return;
+    }
+
+    const commit = this.commits().find((item) => item.hash === hash);
+    if (!commit) {
+      return;
+    }
+    this.pendingPaletteCommitHash = "";
+    this.selectCommit(commit);
+    void this.router.navigate([], {
+      queryParams: { openCommit: null },
+      queryParamsHandling: "merge",
+      replaceUrl: true,
+    });
   }
 
   closeCommitDetails(): void {
@@ -949,7 +982,7 @@ export class HistoryPageComponent implements AfterViewInit {
       isStaged: true,
     });
     this.commitFileDiff.set("");
-    this.commitFilePreview.set("");
+    this.commitFilePreview.set(null);
     this.commitFileDiffError.set("");
     this.commitFileDiffLoading.set(true);
 
@@ -960,7 +993,7 @@ export class HistoryPageComponent implements AfterViewInit {
       ]);
       if (requestId === this.commitFileDiffRequestId) {
         this.commitFileDiff.set(diff);
-        this.commitFilePreview.set(preview ?? "");
+        this.commitFilePreview.set(preview);
       }
     } catch (error: unknown) {
       if (requestId === this.commitFileDiffRequestId) {
@@ -977,7 +1010,7 @@ export class HistoryPageComponent implements AfterViewInit {
     this.commitFileDiffRequestId += 1;
     this.selectedCommitFile.set(undefined);
     this.commitFileDiff.set("");
-    this.commitFilePreview.set("");
+    this.commitFilePreview.set(null);
     this.commitFileDiffError.set("");
     this.commitFileDiffLoading.set(false);
   }

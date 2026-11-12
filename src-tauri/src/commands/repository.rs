@@ -1,8 +1,8 @@
 use crate::commands::github;
 use crate::models::repository::{
-    BlameLine, CommitFile, ConflictFile, LocalRepositoryInfo, RepositoryCommit, RepositoryFile,
-    RepositoryOperation, RepositoryReferences, RepositoryRemote, RepositoryStatus,
-    RepositoryTag, UndoCandidate,
+    BlameLine, BranchComparison, CommitFile, ConflictFile, ImagePreviewPair, LocalRepositoryInfo,
+    RepositoryCommit, RepositoryFile, RepositoryOperation, RepositoryReferences, RepositoryRemote,
+    RepositoryStatus, RepositoryTag, RepositoryWorktree, UndoCandidate,
 };
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
@@ -452,6 +452,373 @@ fn get_repository_references_impl(path: String) -> Result<RepositoryReferences, 
         tags,
         stashes,
     })
+}
+
+#[tauri::command]
+pub async fn get_repository_worktrees(path: String) -> Result<Vec<RepositoryWorktree>, String> {
+    run_blocking(move || get_repository_worktrees_impl(path)).await
+}
+
+fn get_repository_worktrees_impl(path: String) -> Result<Vec<RepositoryWorktree>, String> {
+    ensure_repository(&path)?;
+    let output = run_git_with_timeout(
+        &path,
+        &["worktree", "list", "--porcelain", "-z"],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+    let current_path = normalize_worktree_path(Path::new(&path));
+    let mut worktrees = Vec::new();
+    let mut record = WorktreeRecord::default();
+
+    for field in output.split('\0') {
+        if field.is_empty() {
+            if let Some(worktree) = record.finish(&current_path) {
+                worktrees.push(worktree);
+            }
+            continue;
+        }
+
+        let Some((key, value)) = field.split_once(' ') else {
+            if field == "bare" {
+                record.is_bare = true;
+            } else if field == "detached" {
+                record.is_detached = true;
+            }
+            continue;
+        };
+
+        match key {
+            "worktree" => record.path = Some(value.to_string()),
+            "HEAD" => record.head = Some(value.to_string()),
+            "branch" => record.branch = value.strip_prefix("refs/heads/").map(ToOwned::to_owned),
+            _ => {}
+        }
+    }
+    if let Some(worktree) = record.finish(&current_path) {
+        worktrees.push(worktree);
+    }
+
+    Ok(worktrees)
+}
+
+#[derive(Default)]
+struct WorktreeRecord {
+    path: Option<String>,
+    branch: Option<String>,
+    head: Option<String>,
+    is_bare: bool,
+    is_detached: bool,
+}
+
+impl WorktreeRecord {
+    fn finish(&mut self, current_path: &str) -> Option<RepositoryWorktree> {
+        let path = self.path.take()?;
+        let normalized_path = normalize_worktree_path(Path::new(&path));
+        let worktree = RepositoryWorktree {
+            path,
+            branch: self.branch.take(),
+            head: self.head.take(),
+            is_current: normalized_path == current_path,
+            is_bare: self.is_bare,
+            is_detached: self.is_detached,
+        };
+        self.is_bare = false;
+        self.is_detached = false;
+        Some(worktree)
+    }
+}
+
+fn normalize_worktree_path(path: &Path) -> String {
+    path.canonicalize()
+        .unwrap_or_else(|_| path.to_path_buf())
+        .to_string_lossy()
+        .replace('\\', "/")
+        .trim_end_matches('/')
+        .to_lowercase()
+}
+
+#[tauri::command]
+pub async fn add_repository_worktree(
+    path: String,
+    destination: String,
+    branch: String,
+    start_point: String,
+    create_branch: bool,
+) -> Result<(), String> {
+    run_blocking(move || {
+        add_repository_worktree_impl(path, destination, branch, start_point, create_branch)
+    })
+    .await
+}
+
+fn add_repository_worktree_impl(
+    path: String,
+    destination: String,
+    branch: String,
+    start_point: String,
+    create_branch: bool,
+) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let destination = validate_worktree_destination(&path, &destination)?;
+    let branch = branch.trim();
+    let start_point = start_point.trim();
+    if create_branch {
+        validate_branch_name(&path, branch)?;
+        validate_start_point(&path, start_point)?;
+    } else {
+        validate_start_point(&path, branch)?;
+    }
+
+    let operation_lock = repository_operation_lock(&path);
+    let _operation_guard = operation_lock
+        .lock()
+        .map_err(|_| "Não foi possível criar a worktree: o bloqueio do repositório foi interrompido.".to_string())?;
+    let destination = destination.to_string_lossy().to_string();
+    let result = if create_branch {
+        run_git_with_timeout(
+            &path,
+            &["worktree", "add", "-b", branch, "--", &destination, start_point],
+            GIT_BRANCH_OPERATION_TIMEOUT,
+        )
+    } else {
+        run_git_with_timeout(
+            &path,
+            &["worktree", "add", "--", &destination, branch],
+            GIT_BRANCH_OPERATION_TIMEOUT,
+        )
+    };
+    result.map(|_| ())
+}
+
+fn validate_worktree_destination(repository_path: &str, destination: &str) -> Result<PathBuf, String> {
+    let destination = destination.trim();
+    let target = PathBuf::from(destination);
+    if destination.is_empty()
+        || destination.chars().any(char::is_control)
+        || !target.is_absolute()
+    {
+        return Err("Escolha um caminho absoluto válido para a worktree.".to_string());
+    }
+
+    let parent = target
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .ok_or_else(|| "Escolha uma pasta de destino válida.".to_string())?;
+    if !parent.is_dir() {
+        return Err("A pasta de destino da worktree não existe.".to_string());
+    }
+    if target.exists() {
+        if !target.is_dir()
+            || std::fs::read_dir(&target)
+                .map_err(|error| format!("Não foi possível acessar a pasta de destino: {error}"))?
+                .next()
+                .is_some()
+        {
+            return Err("Escolha uma pasta de destino vazia ou inexistente.".to_string());
+        }
+    }
+
+    let canonical_repository = Path::new(repository_path)
+        .canonicalize()
+        .unwrap_or_else(|_| PathBuf::from(repository_path));
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|error| format!("Não foi possível acessar a pasta de destino: {error}"))?;
+    let file_name = target
+        .file_name()
+        .ok_or_else(|| "Escolha um nome de pasta válido para a worktree.".to_string())?;
+    let canonical_target = canonical_parent.join(file_name);
+    if normalize_worktree_path(&canonical_target) == normalize_worktree_path(&canonical_repository)
+        || canonical_target.starts_with(&canonical_repository)
+    {
+        return Err("Crie a worktree fora da pasta do repositório atual.".to_string());
+    }
+
+    Ok(target)
+}
+
+#[tauri::command]
+pub async fn remove_repository_worktree(path: String, worktree_path: String) -> Result<(), String> {
+    run_blocking(move || remove_repository_worktree_impl(path, worktree_path)).await
+}
+
+fn remove_repository_worktree_impl(path: String, worktree_path: String) -> Result<(), String> {
+    ensure_repository(&path)?;
+    let worktree_path = PathBuf::from(worktree_path.trim());
+    let canonical_path = worktree_path
+        .canonicalize()
+        .map_err(|_| "A pasta da worktree não foi encontrada.".to_string())?;
+    if normalize_worktree_path(&canonical_path) == normalize_worktree_path(Path::new(&path)) {
+        return Err("A worktree atual não pode ser removida daqui.".to_string());
+    }
+
+    let known_worktrees = get_repository_worktrees_impl(path.clone())?;
+    if !known_worktrees
+        .iter()
+        .any(|worktree| normalize_worktree_path(Path::new(&worktree.path)) == normalize_worktree_path(&canonical_path))
+    {
+        return Err("A pasta selecionada não pertence a este repositório.".to_string());
+    }
+
+    let operation_lock = repository_operation_lock(&path);
+    let _operation_guard = operation_lock
+        .lock()
+        .map_err(|_| "Não foi possível remover a worktree: o bloqueio do repositório foi interrompido.".to_string())?;
+    let worktree_path = canonical_path.to_string_lossy().to_string();
+    run_git_with_timeout(
+        &path,
+        &["worktree", "remove", "--", &worktree_path],
+        GIT_BRANCH_OPERATION_TIMEOUT,
+    )
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub async fn compare_repository_branches(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+) -> Result<BranchComparison, String> {
+    run_blocking(move || compare_repository_branches_impl(path, base_branch, target_branch)).await
+}
+
+fn compare_repository_branches_impl(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+) -> Result<BranchComparison, String> {
+    ensure_repository(&path)?;
+    validate_start_point(&path, &base_branch)?;
+    validate_start_point(&path, &target_branch)?;
+    if base_branch == target_branch {
+        return Err("Escolha duas referências diferentes para comparar.".to_string());
+    }
+
+    let range = format!("{base_branch}...{target_branch}");
+    let counts = run_git_with_timeout(
+        &path,
+        &["rev-list", "--left-right", "--count", range.as_str()],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+    let mut counts = counts.split_whitespace();
+    let base_only_count = counts.next().and_then(|value| value.parse().ok()).unwrap_or(0);
+    let target_only_count = counts.next().and_then(|value| value.parse().ok()).unwrap_or(0);
+    let names = run_git_with_timeout(
+        &path,
+        &["diff", "--name-status", "--find-renames", range.as_str(), "--"],
+        GIT_DIFF_TIMEOUT,
+    )?;
+    let files = names
+        .lines()
+        .filter_map(|line| {
+            let fields: Vec<&str> = line.split('\t').collect();
+            let code = *fields.first()?;
+            let file_path = if code.starts_with('R') || code.starts_with('C') {
+                *fields.last()?
+            } else {
+                *fields.get(1)?
+            };
+            let status = match code.chars().next()? {
+                'A' => "added",
+                'D' => "deleted",
+                'R' | 'C' => "renamed",
+                _ => "modified",
+            };
+            Some(CommitFile {
+                path: file_path.to_string(),
+                status: status.to_string(),
+            })
+        })
+        .collect();
+
+    Ok(BranchComparison {
+        base_branch,
+        target_branch,
+        base_only_count,
+        target_only_count,
+        files,
+    })
+}
+
+#[tauri::command]
+pub async fn get_branch_comparison_file_diff(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+    file_path: String,
+) -> Result<String, String> {
+    run_blocking(move || {
+        get_branch_comparison_file_diff_impl(path, base_branch, target_branch, file_path)
+    })
+    .await
+}
+
+fn get_branch_comparison_file_diff_impl(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+    file_path: String,
+) -> Result<String, String> {
+    ensure_repository(&path)?;
+    validate_start_point(&path, &base_branch)?;
+    validate_start_point(&path, &target_branch)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+    let range = format!("{base_branch}...{target_branch}");
+    run_git_with_timeout(
+        &path,
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--unified=3",
+            range.as_str(),
+            "--",
+            relative_path.as_str(),
+        ],
+        GIT_DIFF_TIMEOUT,
+    )
+}
+
+#[tauri::command]
+pub async fn get_branch_comparison_file_preview(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+    file_path: String,
+) -> Result<Option<ImagePreviewPair>, String> {
+    run_blocking(move || {
+        get_branch_comparison_file_preview_impl(path, base_branch, target_branch, file_path)
+    })
+    .await
+}
+
+fn get_branch_comparison_file_preview_impl(
+    path: String,
+    base_branch: String,
+    target_branch: String,
+    file_path: String,
+) -> Result<Option<ImagePreviewPair>, String> {
+    ensure_repository(&path)?;
+    validate_start_point(&path, &base_branch)?;
+    validate_start_point(&path, &target_branch)?;
+    let relative_path = validate_relative_file_path(&file_path)?;
+    let Some(mime_type) = image_mime_type(&relative_path) else {
+        return Ok(None);
+    };
+    let merge_base = run_git_with_timeout(
+        &path,
+        &["merge-base", &base_branch, &target_branch],
+        GIT_COMMAND_TIMEOUT,
+    )?;
+    let before_spec = format!("{}:{relative_path}", merge_base.trim());
+    let after_spec = format!("{target_branch}:{relative_path}");
+    let before = git_image_data_url(&path, &before_spec, mime_type);
+    let after = git_image_data_url(&path, &after_spec, mime_type);
+    if before.is_none() && after.is_none() {
+        return Ok(None);
+    }
+
+    Ok(Some(ImagePreviewPair { before, after }))
 }
 
 #[tauri::command(async)]
@@ -1414,7 +1781,7 @@ pub async fn get_repository_file_preview(
     path: String,
     file_path: String,
     staged: bool,
-) -> Result<Option<String>, String> {
+) -> Result<Option<ImagePreviewPair>, String> {
     run_blocking(move || get_repository_file_preview_impl(path, file_path, staged)).await
 }
 
@@ -1422,7 +1789,7 @@ fn get_repository_file_preview_impl(
     path: String,
     file_path: String,
     staged: bool,
-) -> Result<Option<String>, String> {
+) -> Result<Option<ImagePreviewPair>, String> {
     ensure_repository(&path)?;
 
     if file_path.trim().is_empty() {
@@ -1435,40 +1802,28 @@ fn get_repository_file_preview_impl(
         return Ok(None);
     };
 
-    // Evita enviar imagens muito grandes pela ponte Tauri como base64.
-    const MAX_PREVIEW_BYTES: u64 = 20 * 1024 * 1024;
-
-    // Exibe o conteúdo da área que o usuário abriu: o snapshot do índice para
-    // arquivos preparados, ou a versão atual do disco para os não preparados.
-    let bytes = if staged {
-        let spec = format!(":0:{file_path}");
-        let size = run_git(&path, &["cat-file", "-s", spec.as_str()])
-            .ok()
-            .and_then(|value| value.parse::<u64>().ok());
-        if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
-            return Ok(None);
-        }
-        run_git_binary_with_timeout(&path, &["show", spec.as_str()], GIT_COMMAND_TIMEOUT).ok()
+    // O lado esquerdo representa o estado anterior à mudança selecionada;
+    // o direito representa o snapshot preparado ou o working tree.
+    let (before, after) = if staged {
+        let previous_spec = format!("HEAD:{file_path}");
+        let current_spec = format!(":0:{file_path}");
+        (
+            git_image_data_url(&path, &previous_spec, mime_type),
+            git_image_data_url(&path, &current_spec, mime_type),
+        )
     } else {
         let working_path = PathBuf::from(&path).join(relative_path);
-        let size = std::fs::metadata(&working_path).ok().map(|metadata| metadata.len());
-        if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
-            return Ok(None);
-        }
-        std::fs::read(working_path).ok()
+        let index_spec = format!(":0:{file_path}");
+        (
+            git_image_data_url(&path, &index_spec, mime_type),
+            working_image_data_url(Path::new(&path), &working_path, mime_type),
+        )
     };
-    let Some(bytes) = bytes else {
-        return Ok(None);
-    };
-
-    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
+    if before.is_none() && after.is_none() {
         return Ok(None);
     }
 
-    Ok(Some(format!(
-        "data:{mime_type};base64,{}",
-        BASE64_STANDARD.encode(bytes)
-    )))
+    Ok(Some(ImagePreviewPair { before, after }))
 }
 
 fn image_mime_type(file_path: &str) -> Option<&'static str> {
@@ -1484,6 +1839,47 @@ fn image_mime_type(file_path: &str) -> Option<&'static str> {
         "svg" => Some("image/svg+xml"),
         _ => None,
     }
+}
+
+const MAX_IMAGE_PREVIEW_BYTES: u64 = 20 * 1024 * 1024;
+
+fn image_data_url(mime_type: &str, bytes: &[u8]) -> Option<String> {
+    if bytes.is_empty() || bytes.len() as u64 > MAX_IMAGE_PREVIEW_BYTES {
+        return None;
+    }
+    Some(format!(
+        "data:{mime_type};base64,{}",
+        BASE64_STANDARD.encode(bytes)
+    ))
+}
+
+fn git_image_data_url(path: &str, object_spec: &str, mime_type: &str) -> Option<String> {
+    let size = run_git(path, &["cat-file", "-s", object_spec])
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok());
+    if !matches!(size, Some(size) if size > 0 && size <= MAX_IMAGE_PREVIEW_BYTES) {
+        return None;
+    }
+    let bytes = run_git_binary_with_timeout(path, &["show", object_spec], GIT_COMMAND_TIMEOUT).ok()?;
+    image_data_url(mime_type, &bytes)
+}
+
+fn working_image_data_url(repository_path: &Path, path: &Path, mime_type: &str) -> Option<String> {
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return None;
+    }
+    let repository_path = repository_path.canonicalize().ok()?;
+    let image_path = path.canonicalize().ok()?;
+    if !image_path.starts_with(&repository_path) {
+        return None;
+    }
+    let size = metadata.len();
+    if size == 0 || size > MAX_IMAGE_PREVIEW_BYTES {
+        return None;
+    }
+    let bytes = std::fs::read(image_path).ok()?;
+    image_data_url(mime_type, &bytes)
 }
 
 fn get_repository_file_diff_impl(
@@ -2041,7 +2437,7 @@ pub async fn get_commit_file_preview(
     path: String,
     commit_hash: String,
     file_path: String,
-) -> Result<Option<String>, String> {
+) -> Result<Option<ImagePreviewPair>, String> {
     run_blocking(move || get_commit_file_preview_impl(path, commit_hash, file_path)).await
 }
 
@@ -2049,7 +2445,7 @@ fn get_commit_file_preview_impl(
     path: String,
     commit_hash: String,
     file_path: String,
-) -> Result<Option<String>, String> {
+) -> Result<Option<ImagePreviewPair>, String> {
     ensure_repository(&path)?;
     validate_commit_hash(&commit_hash)?;
     let relative_path = validate_relative_file_path(&file_path)?;
@@ -2057,31 +2453,17 @@ fn get_commit_file_preview_impl(
         return Ok(None);
     };
 
-    let spec = format!("{commit_hash}:{relative_path}");
-    const MAX_PREVIEW_BYTES: u64 = 20 * 1024 * 1024;
-    let size = run_git(&path, &["cat-file", "-s", spec.as_str()])
-        .ok()
-        .and_then(|value| value.parse::<u64>().ok());
-    if !matches!(size, Some(size) if size > 0 && size <= MAX_PREVIEW_BYTES) {
+    let previous = get_commit_first_parent(&path, &commit_hash)?;
+    let before = previous
+        .map(|parent| format!("{parent}:{relative_path}"))
+        .and_then(|spec| git_image_data_url(&path, &spec, mime_type));
+    let after_spec = format!("{commit_hash}:{relative_path}");
+    let after = git_image_data_url(&path, &after_spec, mime_type);
+    if before.is_none() && after.is_none() {
         return Ok(None);
     }
 
-    let Some(bytes) = run_git_binary_with_timeout(
-        &path,
-        &["show", spec.as_str()],
-        GIT_COMMAND_TIMEOUT,
-    )
-    .ok() else {
-        return Ok(None);
-    };
-    if bytes.is_empty() || bytes.len() as u64 > MAX_PREVIEW_BYTES {
-        return Ok(None);
-    }
-
-    Ok(Some(format!(
-        "data:{mime_type};base64,{}",
-        BASE64_STANDARD.encode(bytes)
-    )))
+    Ok(Some(ImagePreviewPair { before, after }))
 }
 
 #[tauri::command]

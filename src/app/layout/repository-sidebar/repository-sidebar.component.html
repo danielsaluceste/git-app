@@ -49,6 +49,14 @@
       <span aria-hidden="true">⑂</span>
       {{ "repository.branches" | translate }}
     </a>
+    <a routerLink="/compare" routerLinkActive="active">
+      <span aria-hidden="true">⇄</span>
+      <span>{{ "compare.title" | translate }}</span>
+    </a>
+    <a routerLink="/worktrees" routerLinkActive="active">
+      <span aria-hidden="true">⌘</span>
+      <span>{{ "worktrees.title" | translate }}</span>
+    </a>
     <a routerLink="/terminal" routerLinkActive="active">
       <span aria-hidden="true">&gt;_</span>
       <span>{{ "terminal.title" | translate }}</span>

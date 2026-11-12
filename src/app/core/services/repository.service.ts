@@ -12,6 +12,8 @@ import {
   RepositoryStatus,
   RepositoryReferences,
   RepositorySignature,
+  RepositoryWorktree,
+  BranchComparison,
   PullResult,
   RepositoryAuthenticationSource,
   ConflictFile,
@@ -21,6 +23,7 @@ import { CommitFile } from "../models/commit-file.model";
 import { BlameLine } from "../models/blame.model";
 import { UndoCandidate } from "../models/undo.model";
 import { CreateTagRequest, GitTag } from "../models/tag.model";
+import { ImagePreviewPair } from "../models/git-file.model";
 
 const STORAGE_KEY = "git-app.repositories";
 const OPEN_REPOSITORIES_KEY = "git-app.open-repositories";
@@ -122,6 +125,57 @@ export class RepositoryService {
       this.repositoryReferencesState.set(references);
     }
     return references;
+  }
+
+  async getWorktrees(path: string): Promise<RepositoryWorktree[]> {
+    return invoke<RepositoryWorktree[]>("get_repository_worktrees", { path });
+  }
+
+  async addWorktree(
+    path: string,
+    destination: string,
+    branch: string,
+    startPoint: string,
+    createBranch: boolean,
+  ): Promise<void> {
+    await invoke("add_repository_worktree", {
+      path,
+      destination,
+      branch,
+      startPoint,
+      createBranch,
+    });
+  }
+
+  async removeWorktree(path: string, worktreePath: string): Promise<void> {
+    await invoke("remove_repository_worktree", { path, worktreePath });
+  }
+
+  async compareBranches(path: string, baseBranch: string, targetBranch: string): Promise<BranchComparison> {
+    return invoke<BranchComparison>("compare_repository_branches", { path, baseBranch, targetBranch });
+  }
+
+  async getBranchComparisonDiff(
+    path: string,
+    baseBranch: string,
+    targetBranch: string,
+    filePath: string,
+  ): Promise<string> {
+    return invoke<string>("get_branch_comparison_file_diff", { path, baseBranch, targetBranch, filePath });
+  }
+
+  async getBranchComparisonPreview(
+    path: string,
+    baseBranch: string,
+    targetBranch: string,
+    filePath: string,
+  ): Promise<ImagePreviewPair | null> {
+    return invoke<ImagePreviewPair | null>("get_branch_comparison_file_preview", {
+      path,
+      baseBranch,
+      targetBranch,
+      filePath,
+    });
   }
 
   async getRemote(path: string): Promise<RepositoryRemote> {
@@ -243,8 +297,8 @@ export class RepositoryService {
     return invoke<string>("get_repository_file_diff", { path, filePath, staged });
   }
 
-  async getFilePreview(path: string, filePath: string, staged: boolean): Promise<string | null> {
-    return invoke<string | null>("get_repository_file_preview", { path, filePath, staged });
+  async getFilePreview(path: string, filePath: string, staged: boolean): Promise<ImagePreviewPair | null> {
+    return invoke<ImagePreviewPair | null>("get_repository_file_preview", { path, filePath, staged });
   }
 
   async stash(path: string, message?: string, filePaths?: string[]): Promise<void> {
@@ -329,8 +383,8 @@ export class RepositoryService {
     return invoke<string>("get_commit_file_diff", { path, commitHash, filePath });
   }
 
-  async getCommitFilePreview(path: string, commitHash: string, filePath: string): Promise<string | null> {
-    return invoke<string | null>("get_commit_file_preview", { path, commitHash, filePath });
+  async getCommitFilePreview(path: string, commitHash: string, filePath: string): Promise<ImagePreviewPair | null> {
+    return invoke<ImagePreviewPair | null>("get_commit_file_preview", { path, commitHash, filePath });
   }
 
   async fetch(path: string, workspaceId?: string, githubUserId?: number): Promise<void> {

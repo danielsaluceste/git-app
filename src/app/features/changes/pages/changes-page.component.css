@@ -29,6 +29,52 @@
   gap: 0.55rem;
 }
 
+.change-filter-toggle {
+  position: relative;
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  background: var(--app-surface-1);
+  color: var(--app-muted-strong);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.change-filter-toggle svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.change-filter-toggle:hover,
+.change-filter-toggle:focus-visible,
+.change-filter-toggle.is-open,
+.change-filter-toggle.has-filters {
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-hover);
+  outline: none;
+}
+
+.filter-active-dot {
+  position: absolute;
+  top: 0.32rem;
+  right: 0.32rem;
+  width: 0.38rem;
+  height: 0.38rem;
+  border: 1px solid var(--app-surface-1);
+  border-radius: 50%;
+  background: var(--app-accent);
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   color: var(--app-accent);
@@ -69,6 +115,195 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.change-filters {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.8rem;
+  grid-column: 1 / -1;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.75rem;
+  padding: 0.65rem;
+  background: var(--app-surface-2);
+}
+
+.change-search {
+  display: flex;
+  min-width: min(100%, 15rem);
+  min-height: 2.7rem;
+  flex: 0 1 22rem;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.6rem;
+  padding: 0 0.75rem;
+  background: var(--app-surface-1);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.change-search:focus-within {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 12%);
+}
+
+.change-search-icon {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--app-muted);
+}
+
+.change-search-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.change-search input {
+  min-width: 0;
+  width: 100%;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--app-text-bright);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.change-search input::placeholder {
+  color: var(--app-muted-strong);
+}
+
+.change-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clear-file-search {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.35rem;
+  padding: 0;
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.clear-file-search:hover {
+  background: var(--app-border-subtle);
+  color: var(--app-text-bright);
+}
+
+.change-status-filter {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 34rem;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.change-filter-label {
+  flex: 0 0 auto;
+  color: var(--app-muted-strong);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.change-status-options {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.change-status-options::-webkit-scrollbar {
+  display: none;
+}
+
+.change-status-option {
+  min-height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.58rem;
+  background: transparent;
+  color: var(--app-muted-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.change-status-option:hover {
+  border-color: var(--app-border-subtle);
+  background: var(--app-surface-1);
+  color: var(--app-text-bright);
+}
+
+.change-status-option.active {
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-pale);
+}
+
+.change-status-option:focus-visible,
+.clear-file-search:focus-visible,
+.clear-change-filters:focus-visible {
+  outline: 2px solid var(--app-accent-hover);
+  outline-offset: 2px;
+}
+
+.clear-change-filters {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  color: var(--app-muted-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.clear-change-filters:hover {
+  border-color: var(--app-border-subtle);
+  background: var(--app-surface-1);
+  color: var(--app-accent-hover);
+}
+
+.clear-change-filters span {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .refresh-button,
@@ -414,6 +649,10 @@ h3 {
   min-height: 0;
   overflow: hidden;
   gap: 1.15rem;
+}
+
+.changes-layout.filters-open {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 :host-context(:root[data-theme="neo-brutalist"]) .changes-layout {
@@ -1108,13 +1347,82 @@ textarea:focus {
 
   .changes-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(15rem, 1fr));
+    align-content: start;
+    overflow-y: auto;
   }
 
+  .changes-layout.filters-open {
+    grid-template-rows: auto repeat(2, minmax(15rem, 1fr));
+  }
+
+  :host-context(:root[data-theme="neo-brutalist"]) .changes-layout {
+    overflow-y: auto;
+  }
+
+  .change-filters {
+    align-items: stretch;
+  }
+
+  .change-search {
+    flex-basis: 100%;
+  }
+
+  .change-status-filter {
+    flex-basis: 100%;
+  }
+
+  .clear-change-filters {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .change-status-filter {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .change-status-options {
+    width: 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .clear-change-filters {
+    margin-left: auto;
+  }
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-filters,
+:host-context(:root[data-theme="neo-brutalist"]) .change-search,
+:host-context(:root[data-theme="neo-brutalist"]) .change-status-option.active {
+  border: 2px solid var(--app-border);
+  border-radius: var(--app-small-radius);
+  box-shadow: 3px 3px 0 var(--app-shadow-color);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-search {
+  min-height: 2.8rem;
+  background: var(--app-surface-3);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-search:focus-within {
+  border-color: var(--app-border);
+  box-shadow: 1px 1px 0 var(--app-shadow-color);
+  transform: translate(2px, 2px);
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-status-option.active {
+  background: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 /* Ações do cabeçalho alinhadas ao padrão neo-brutalista usado em Branches. */
 :host-context(:root[data-theme="neo-brutalist"]) .stash-header-button,
-:host-context(:root[data-theme="neo-brutalist"]) .refresh-button {
+:host-context(:root[data-theme="neo-brutalist"]) .refresh-button,
+:host-context(:root[data-theme="neo-brutalist"]) .change-filter-toggle {
   min-height: 2.45rem;
   border: 2px solid var(--app-border) !important;
   border-radius: 999px;
@@ -1137,6 +1445,18 @@ textarea:focus {
 :host-context(:root[data-theme="neo-brutalist"]) .refresh-button {
   background: var(--app-surface-1) !important;
   color: var(--app-text-bright) !important;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-filter-toggle {
+  padding: 0;
+  background: var(--app-surface-1) !important;
+  color: var(--app-text-bright) !important;
+}
+
+:host-context(:root[data-theme="neo-brutalist"]) .change-filter-toggle.is-open,
+:host-context(:root[data-theme="neo-brutalist"]) .change-filter-toggle.has-filters {
+  background: var(--app-accent) !important;
+  color: var(--app-on-accent) !important;
 }
 
 :host-context(:root[data-theme="neo-brutalist"]) .stash-header-button:hover:not(:disabled),

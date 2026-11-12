@@ -1,0 +1,318 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.page {
+  display: grid;
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-heading,
+.heading-actions,
+.form-heading,
+.form-actions,
+.worktree-card,
+.worktree-card-title,
+.worktree-card-actions,
+.path-picker {
+  display: flex;
+  align-items: center;
+}
+
+.page-heading,
+.form-heading {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heading-actions,
+.worktree-card-actions,
+.form-actions {
+  gap: 0.55rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--app-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h2 {
+  color: var(--app-text-bright);
+  font-size: 2rem;
+}
+
+h3 {
+  color: var(--app-text-bright);
+  font-size: 1rem;
+}
+
+.description {
+  max-width: 55rem;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  color: var(--app-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refresh-button,
+.create-button,
+.open-button,
+.remove-button,
+.icon-button,
+.cancel-button,
+.confirm-button,
+.path-picker button,
+.branch-mode-toggle button {
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.58rem 0.8rem;
+  background: var(--app-surface-1);
+  color: var(--app-text-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.create-button,
+.confirm-button {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  color: var(--app-on-accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.worktree-intro,
+.worktree-form,
+.worktree-card {
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--app-surface-2);
+}
+
+.worktree-intro {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.worktree-intro-icon {
+  color: var(--app-accent);
+  font-size: 1.25rem;
+}
+
+.worktree-intro p,
+.worktree-card-copy small {
+  color: var(--app-muted);
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.worktree-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.branch-mode-toggle {
+  display: flex;
+  gap: 0.4rem;
+  border-radius: 0.6rem;
+  padding: 0.25rem;
+  background: var(--app-surface-0);
+}
+
+.branch-mode-toggle button {
+  flex: 1;
+  border-color: transparent;
+  background: transparent;
+  color: var(--app-muted);
+}
+
+.branch-mode-toggle button.selected {
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.worktree-form label {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.worktree-form label > span {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.worktree-form input,
+.worktree-form select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--app-border);
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--app-surface-0);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.path-picker {
+  gap: 0.4rem;
+}
+
+.path-picker input {
+  flex: 1;
+}
+
+.destination-preview {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
+.destination-preview code {
+  overflow-wrap: anywhere;
+  color: var(--app-text);
+}
+
+.form-actions {
+  justify-content: end;
+}
+
+.form-error {
+  color: var(--app-danger-text);
+  font-size: 0.75rem;
+}
+
+.worktree-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.worktree-card {
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+}
+
+.worktree-card.current {
+  border-color: var(--app-accent-border);
+  background: linear-gradient(135deg, var(--app-accent-surface), var(--app-surface-2));
+}
+
+.worktree-card-icon {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 0.6rem;
+  color: var(--app-accent);
+}
+
+.worktree-card-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.22rem;
+}
+
+.worktree-card-title {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.worktree-card-title strong {
+  color: var(--app-text-bright);
+  font-size: 0.86rem;
+}
+
+.current-badge {
+  border-radius: 999px;
+  padding: 0.18rem 0.45rem;
+  background: var(--app-accent-surface);
+  color: var(--app-accent-soft);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.worktree-card-copy code {
+  overflow: hidden;
+  color: var(--app-muted);
+  font-family: var(--app-font-mono);
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worktree-card-copy small {
+  font-size: 0.65rem;
+}
+
+.remove-button {
+  width: 2rem;
+  padding: 0.35rem;
+  color: var(--app-danger-text);
+  font-size: 1.1rem;
+}
+
+.empty-state,
+.loading-state {
+  padding: 2rem;
+  color: var(--app-muted);
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .heading-actions > button {
+    flex: 1;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .worktree-card {
+    align-items: flex-start;
+  }
+
+  .worktree-card-actions {
+    flex-direction: column;
+  }
+}

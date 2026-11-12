@@ -1,4 +1,5 @@
 import { GitFile } from "./git-file.model";
+import { CommitFile } from "./commit-file.model";
 
 export type RepositoryCloneSource = "local" | "url" | "github";
 export type RepositoryAuthenticationSource = "system" | "github" | "ssh";
@@ -26,6 +27,23 @@ export interface RepositoryReferences {
   remoteBranches: string[];
   tags: string[];
   stashes: string[];
+}
+
+export interface RepositoryWorktree {
+  path: string;
+  branch?: string;
+  head?: string;
+  isCurrent: boolean;
+  isBare: boolean;
+  isDetached: boolean;
+}
+
+export interface BranchComparison {
+  baseBranch: string;
+  targetBranch: string;
+  baseOnlyCount: number;
+  targetOnlyCount: number;
+  files: CommitFile[];
 }
 
 export interface RepositoryRemote {

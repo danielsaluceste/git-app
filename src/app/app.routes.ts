@@ -24,12 +24,26 @@ export const routes: Routes = [
             (module) => module.StashesPageComponent,
           ),
       },
-  {
-    path: "overview",
-    component: HistoryPageComponent,
-  },
+      {
+        path: "overview",
+        component: HistoryPageComponent,
+      },
       { path: "history", redirectTo: "overview", pathMatch: "full" },
       { path: "branches", component: BranchesPageComponent },
+      {
+        path: "compare",
+        loadComponent: () =>
+          import("./features/compare/pages/compare-page.component").then(
+            (module) => module.ComparePageComponent,
+          ),
+      },
+      {
+        path: "worktrees",
+        loadComponent: () =>
+          import("./features/worktrees/pages/worktrees-page.component").then(
+            (module) => module.WorktreesPageComponent,
+          ),
+      },
       {
         path: "terminal",
         loadComponent: () =>

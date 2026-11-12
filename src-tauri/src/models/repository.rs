@@ -18,6 +18,34 @@ pub struct RepositoryReferences {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RepositoryWorktree {
+    pub path: String,
+    pub branch: Option<String>,
+    pub head: Option<String>,
+    pub is_current: bool,
+    pub is_bare: bool,
+    pub is_detached: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImagePreviewPair {
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BranchComparison {
+    pub base_branch: String,
+    pub target_branch: String,
+    pub base_only_count: usize,
+    pub target_only_count: usize,
+    pub files: Vec<CommitFile>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RepositoryRemote {
     pub name: Option<String>,
     pub url: Option<String>,

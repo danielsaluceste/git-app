@@ -1,0 +1,140 @@
+<section class="page worktrees-page">
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">{{ "worktrees.eyebrow" | translate }}</p>
+        <h2>{{ "worktrees.title" | translate }}</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <div class="heading-actions">
+        <button type="button" class="refresh-button" [disabled]="isLoading() || isSaving()" (click)="load(activeRepository())">↻ {{ "worktrees.refresh" | translate }}</button>
+        <button type="button" class="create-button" [disabled]="isSaving()" (click)="openCreateForm()">＋ {{ "worktrees.create" | translate }}</button>
+      </div>
+    </header>
+
+    <section class="worktree-intro panel">
+      <span class="worktree-intro-icon" aria-hidden="true">⑂</span>
+      <p>{{ "worktrees.description" | translate }}</p>
+    </section>
+
+    @if (formOpen()) {
+      <section class="panel worktree-form">
+        <div class="form-heading">
+          <div>
+            <p class="eyebrow">{{ "worktrees.create" | translate }}</p>
+            <h3>{{ "worktrees.newWorkspace" | translate }}</h3>
+          </div>
+          <button type="button" class="icon-button" [disabled]="isSaving()" (click)="cancelCreate()">×</button>
+        </div>
+
+        <div class="branch-mode-toggle">
+          <button type="button" [class.selected]="createNewBranch()" (click)="createNewBranch.set(true)">{{ "worktrees.newBranch" | translate }}</button>
+          <button type="button" [class.selected]="!createNewBranch()" (click)="createNewBranch.set(false)">{{ "worktrees.existingBranch" | translate }}</button>
+        </div>
+
+        @if (createNewBranch()) {
+          <div class="form-grid">
+            <label>
+              <span>{{ "worktrees.branchName" | translate }}</span>
+              <input [ngModel]="newBranchName()" (ngModelChange)="setNewBranchName($event)" [disabled]="isSaving()" placeholder="feature/minha-tarefa" />
+            </label>
+            <label>
+              <span>{{ "worktrees.startPoint" | translate }}</span>
+              <select [ngModel]="startPoint()" (ngModelChange)="startPoint.set($event)" [disabled]="isSaving()">
+                @for (branch of startPointOptions(); track branch) {
+                  <option [value]="branch">{{ branch }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        } @else {
+          <label class="full-field">
+            <span>{{ "worktrees.existingBranch" | translate }}</span>
+            <select [ngModel]="selectedBranch()" (ngModelChange)="selectedBranch.set($event)" [disabled]="isSaving()">
+              @for (branch of references()?.localBranches ?? []; track branch) {
+                <option [value]="branch">{{ branch }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <div class="form-grid destination-fields">
+          <label>
+            <span>{{ "worktrees.parentFolder" | translate }}</span>
+            <div class="path-picker">
+              <input [ngModel]="destinationParent()" (ngModelChange)="destinationParent.set($event)" [disabled]="isSaving()" [placeholder]="'worktrees.parentPlaceholder' | translate" />
+              <button type="button" [disabled]="isSaving()" (click)="chooseParentFolder()">{{ "worktrees.chooseFolder" | translate }}</button>
+            </div>
+          </label>
+          <label>
+            <span>{{ "worktrees.folderName" | translate }}</span>
+            <input [ngModel]="folderName()" (ngModelChange)="folderName.set($event)" [disabled]="isSaving()" placeholder="minha-tarefa" />
+          </label>
+        </div>
+        @if (destinationPath()) {
+          <p class="destination-preview"><span>{{ "worktrees.destination" | translate }}</span><code>{{ destinationPath() }}</code></p>
+        }
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+        <div class="form-actions">
+          <button type="button" class="cancel-button" [disabled]="isSaving()" (click)="cancelCreate()">{{ "workspace.cancel" | translate }}</button>
+          <button type="button" class="confirm-button" [disabled]="isSaving()" (click)="createWorktree()">
+            {{ (isSaving() ? "worktrees.creating" : "worktrees.createAndOpen") | translate }}
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <div class="panel loading-state">{{ "worktrees.loading" | translate }}</div>
+    } @else if (worktrees().length > 0) {
+      <section class="worktree-list">
+        @for (worktree of worktrees(); track worktree.path) {
+          <article class="panel worktree-card" [class.current]="worktree.isCurrent">
+            <div class="worktree-card-icon" aria-hidden="true">{{ worktree.isCurrent ? "●" : "⑂" }}</div>
+            <div class="worktree-card-copy">
+              <div class="worktree-card-title">
+                <strong>{{ worktree.branch || (worktree.isDetached ? ("worktrees.detached" | translate) : ("worktrees.bare" | translate)) }}</strong>
+                @if (worktree.isCurrent) {
+                  <span class="current-badge">{{ "worktrees.current" | translate }}</span>
+                }
+              </div>
+              <code [title]="worktree.path">{{ worktree.path }}</code>
+              @if (worktree.head) {
+                <small>{{ "worktrees.commit" | translate }} · {{ worktree.head.slice(0, 10) }}</small>
+              }
+            </div>
+            <div class="worktree-card-actions">
+              @if (!worktree.isCurrent) {
+                <button type="button" class="open-button" [disabled]="isSaving()" (click)="openWorktree(worktree)">{{ "worktrees.open" | translate }}</button>
+                <button type="button" class="remove-button" [disabled]="isSaving()" (click)="requestRemoval(worktree)" [title]="'worktrees.remove' | translate">×</button>
+              }
+            </div>
+          </article>
+        }
+      </section>
+    } @else {
+      <div class="panel empty-state">
+        <h3>{{ "worktrees.noWorktrees" | translate }}</h3>
+      </div>
+    }
+  } @else {
+    <p class="eyebrow">{{ "worktrees.eyebrow" | translate }}</p>
+    <h2>{{ "worktrees.title" | translate }}</h2>
+    <div class="panel empty-state"><p>{{ "worktrees.noRepository" | translate }}</p></div>
+  }
+</section>
+
+@if (pendingRemoval(); as worktree) {
+  <app-confirm-dialog
+    [title]="'worktrees.removeTitle' | translate"
+    [message]="'worktrees.removeMessage' | translate: { branch: worktree.branch || worktree.path }"
+    [messageHighlight]="worktree.path"
+    [confirmLabel]="'worktrees.remove' | translate"
+    [cancelLabel]="'workspace.cancel' | translate"
+    [destructive]="true"
+    (confirmed)="removeWorktree()"
+    (cancelled)="cancelRemoval()"
+  />
+}

@@ -1,0 +1,97 @@
+<section class="compare-page">
+  @if (activeRepository(); as repository) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">{{ "compare.eyebrow" | translate }}</p>
+        <h2>{{ "compare.title" | translate }}</h2>
+        <p class="description" [title]="repository.path">{{ repository.path }}</p>
+      </div>
+      <button type="button" class="refresh-button" [disabled]="isLoading() || isComparing()" (click)="loadReferences()">↻ {{ "compare.refresh" | translate }}</button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="panel loading-state">{{ "compare.loadingBranches" | translate }}</div>
+    } @else {
+      <section class="panel compare-controls">
+        <label>
+          <span>{{ "compare.baseBranch" | translate }}</span>
+          <select [ngModel]="baseBranch()" (ngModelChange)="baseBranch.set($event)" [disabled]="isComparing()">
+            @for (branch of branchOptions(); track branch) {
+              <option [value]="branch">{{ branch }}</option>
+            }
+          </select>
+        </label>
+        <span class="compare-arrow" aria-hidden="true">→</span>
+        <label>
+          <span>{{ "compare.targetBranch" | translate }}</span>
+          <select [ngModel]="targetBranch()" (ngModelChange)="targetBranch.set($event)" [disabled]="isComparing()">
+            @for (branch of branchOptions(); track branch) {
+              <option [value]="branch">{{ branch }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="compare-button" [disabled]="isComparing() || !baseBranch() || !targetBranch()" (click)="compare()">
+          {{ (isComparing() ? "compare.comparing" : "compare.action") | translate }}
+        </button>
+      </section>
+
+      @if (compareError()) {
+        <div class="compare-error">{{ compareError() }}</div>
+      }
+
+      @if (comparison(); as result) {
+        <section class="comparison-summary">
+          <div class="panel comparison-stat">
+            <span class="stat-icon ahead" aria-hidden="true">↑</span>
+            <div><strong>{{ result.targetOnlyCount }}</strong><span>{{ "compare.targetOnly" | translate: { branch: result.targetBranch } }}</span></div>
+          </div>
+          <div class="panel comparison-stat">
+            <span class="stat-icon behind" aria-hidden="true">↓</span>
+            <div><strong>{{ result.baseOnlyCount }}</strong><span>{{ "compare.baseOnly" | translate: { branch: result.baseBranch } }}</span></div>
+          </div>
+          <div class="panel comparison-stat">
+            <span class="stat-icon files" aria-hidden="true">▤</span>
+            <div><strong>{{ result.files.length }}</strong><span>{{ "compare.changedFiles" | translate }}</span></div>
+          </div>
+        </section>
+
+        <section class="panel comparison-files">
+          <div class="panel-heading">
+            <div><h3>{{ "compare.filesTitle" | translate }}</h3><p>{{ result.baseBranch }} → {{ result.targetBranch }}</p></div>
+          </div>
+          @if (result.files.length > 0) {
+            <div class="comparison-file-list">
+              @for (file of result.files; track file.path) {
+                <button type="button" class="comparison-file" (click)="openComparisonFile(file)" [title]="file.path">
+                  <span class="file-status" [class.status-added]="file.status === 'added'" [class.status-deleted]="file.status === 'deleted'" [class.status-renamed]="file.status === 'renamed'">{{ statusCode(file.status) }}</span>
+                  <span>{{ file.path }}</span>
+                  <span class="file-arrow" aria-hidden="true">›</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="empty-files">{{ "compare.noChangedFiles" | translate }}</div>
+          }
+        </section>
+      }
+    }
+  } @else {
+    <p class="eyebrow">{{ "compare.eyebrow" | translate }}</p>
+    <h2>{{ "compare.title" | translate }}</h2>
+    <div class="panel empty-state">{{ "compare.noRepository" | translate }}</div>
+  }
+
+  @if (selectedFile(); as file) {
+    <app-file-diff-dialog
+      [file]="file"
+      [files]="compareFiles()"
+      [diff]="fileDiff()"
+      [imagePreview]="filePreview()"
+      [loading]="fileDiffLoading()"
+      [error]="fileDiffError()"
+      [contextLabel]="('compare.fileContext' | translate) + ' ' + baseBranch() + ' → ' + targetBranch()"
+      (fileSelected)="openFile($event)"
+      (closed)="closeFile()"
+    />
+  }
+</section>

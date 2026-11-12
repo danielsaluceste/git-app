@@ -1,11 +1,18 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output, QueryList, ViewChild, ViewChildren } from "@angular/core";
 import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
-import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
+import { GitFile, GitFileStatus, ImagePreviewPair } from "../../../core/models/git-file.model";
 import { TranslationService } from "../../../core/services/translation.service";
 import { DiffSegments, splitDiffHunks } from "../../utils/diff-hunks";
 import { TranslatePipe } from "../../pipes/translate.pipe";
 
 export type DiffHunkAction = "stage" | "unstage" | "";
+
+interface SplitDiffRow {
+  before: string;
+  after: string;
+  beforeClass: string;
+  afterClass: string;
+}
 
 @Component({
   selector: "app-file-diff-dialog",
@@ -19,13 +26,16 @@ export class FileDiffDialogComponent implements AfterViewInit {
   private segmentsCache?: { diff: string; segments: DiffSegments };
   @ViewChild("dialog", { static: true }) dialog!: ElementRef<HTMLDialogElement>;
   @ViewChildren("fileButton") fileButtons!: QueryList<ElementRef<HTMLButtonElement>>;
-  safeImagePreview: SafeUrl | null = null;
+  safeImageBefore: SafeUrl | null = null;
+  safeImageAfter: SafeUrl | null = null;
+  viewMode: "unified" | "side-by-side" = "unified";
 
   @Input() file!: GitFile;
   @Input() files: GitFile[] = [];
   @Input() diff = "";
-  @Input("imagePreview") set imagePreview(value: string) {
-    this.safeImagePreview = value ? this.sanitizer.bypassSecurityTrustUrl(value) : null;
+  @Input("imagePreview") set imagePreview(value: ImagePreviewPair | null) {
+    this.safeImageBefore = value?.before ? this.sanitizer.bypassSecurityTrustUrl(value.before) : null;
+    this.safeImageAfter = value?.after ? this.sanitizer.bypassSecurityTrustUrl(value.after) : null;
   }
   @Input() loading = false;
   @Input() error = "";
@@ -138,6 +148,48 @@ export class FileDiffDialogComponent implements AfterViewInit {
     }
 
     return this.segmentsCache.segments;
+  }
+
+  get hasImagePreview(): boolean {
+    return !!this.safeImageBefore || !!this.safeImageAfter;
+  }
+
+  splitHunkBody(body: string[]): SplitDiffRow[] {
+    const rows: SplitDiffRow[] = [];
+    let index = 0;
+    while (index < body.length) {
+      const line = body[index];
+      if (line.startsWith("-")) {
+        const removed: string[] = [];
+        const added: string[] = [];
+        while (index < body.length && body[index].startsWith("-")) {
+          removed.push(body[index++].slice(1));
+        }
+        while (index < body.length && body[index].startsWith("+")) {
+          added.push(body[index++].slice(1));
+        }
+        const count = Math.max(removed.length, added.length);
+        for (let row = 0; row < count; row += 1) {
+          rows.push({
+            before: removed[row] ?? "",
+            after: added[row] ?? "",
+            beforeClass: removed[row] === undefined ? "diff-empty" : "diff-removed",
+            afterClass: added[row] === undefined ? "diff-empty" : "diff-added",
+          });
+        }
+        continue;
+      }
+      if (line.startsWith("+")) {
+        rows.push({ before: "", after: line.slice(1), beforeClass: "diff-empty", afterClass: "diff-added" });
+      } else if (line.startsWith("\\")) {
+        rows.push({ before: line, after: line, beforeClass: "diff-context", afterClass: "diff-context" });
+      } else {
+        const context = line.startsWith(" ") ? line.slice(1) : line;
+        rows.push({ before: context, after: context, beforeClass: "diff-context", afterClass: "diff-context" });
+      }
+      index += 1;
+    }
+    return rows;
   }
 
   requestHunkAction(index: number): void {

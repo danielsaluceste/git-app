@@ -6,6 +6,19 @@
         <h2>{{ "changes.title" | translate }}</h2>
       </div>
       <div class="page-heading-actions">
+        <button
+          type="button"
+          class="change-filter-toggle app-tooltip"
+          [class.is-open]="showChangeFilters()"
+          [class.has-filters]="hasFileFilter()"
+          [attr.data-tooltip]="(showChangeFilters() ? 'changes.hideFilters' : 'changes.searchFilters') | translate"
+          [attr.aria-label]="'changes.showHideFilters' | translate"
+          [attr.aria-expanded]="showChangeFilters()"
+          (click)="toggleChangeFilters()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.2 7.1v5.2l-3.6 1.8v-7L4 5Z" /></svg>
+          @if (hasFileFilter()) { <span class="filter-active-dot" aria-hidden="true"></span> }
+        </button>
         <button type="button" class="stash-header-button" [disabled]="isLoading() || isSaving()" (click)="openStashForm()">
           <span aria-hidden="true">▣</span>
           {{ "changes.stash" | translate }}
@@ -75,29 +88,62 @@
       }
 
       <app-fixed-bottom-layout>
-        <div fixed-layout-content class="changes-layout">
+        <div fixed-layout-content class="changes-layout" [class.filters-open]="showChangeFilters()">
+        @if (showChangeFilters()) {
+        <div class="change-filters">
+          <label class="change-search">
+            <span class="change-search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+            </span>
+            <input
+              #changeSearch
+              type="search"
+              [value]="fileSearch()"
+              (input)="setFileSearch($event)"
+              [placeholder]="'changes.searchFiles' | translate"
+              [attr.aria-label]="'changes.searchFiles' | translate"
+            />
+            @if (fileSearch()) {
+              <button type="button" class="clear-file-search" [attr.aria-label]="'changes.clearFilters' | translate" (click)="clearFileSearch()">×</button>
+            }
+          </label>
+          <div class="change-status-filter">
+            <span class="change-filter-label">{{ "changes.filterStatus" | translate }}</span>
+            <div class="change-status-options" role="group" [attr.aria-label]="'changes.filterStatus' | translate">
+              <button type="button" class="change-status-option" [class.active]="fileStatusFilter() === 'all'" [attr.aria-pressed]="fileStatusFilter() === 'all'" (click)="setFileStatusFilter('all')">{{ "changes.filterAll" | translate }}</button>
+              @for (status of filterStatuses; track status) {
+                <button type="button" class="change-status-option" [class.active]="fileStatusFilter() === status" [attr.aria-pressed]="fileStatusFilter() === status" (click)="setFileStatusFilter(status)">{{ filterStatusLabel(status) }}</button>
+              }
+            </div>
+          </div>
+          @if (hasFileFilter()) {
+            <button type="button" class="clear-change-filters" (click)="clearFileFilters()"><span aria-hidden="true">↺</span>{{ "changes.clearFilters" | translate }}</button>
+          }
+        </div>
+        }
+
         <section class="panel files-panel">
           <div class="panel-heading">
             <div>
               <div class="panel-title-row">
                 <h3>{{ "changes.unstaged" | translate }}</h3>
-                <span class="file-count">{{ unstagedFiles(repositoryStatus.files).length }}</span>
+                <span class="file-count">{{ filteredUnstagedFiles().length }}</span>
               </div>
               <p>{{ "changes.workingTree" | translate }}</p>
             </div>
             <button
               type="button"
               class="text-button"
-              [disabled]="isSaving() || unstagedFiles(repositoryStatus.files).length === 0"
-              (click)="stageAll(repositoryStatus.files)"
+              [disabled]="isSaving() || filteredUnstagedFiles().length === 0"
+              (click)="stageAll(filteredUnstagedFiles())"
             >
-              {{ "changes.stageAll" | translate }}
+              {{ (hasFileFilter() ? "changes.stageVisible" : "changes.stageAll") | translate }}
             </button>
           </div>
 
-          @if (unstagedFiles(repositoryStatus.files).length > 0) {
+          @if (filteredUnstagedFiles().length > 0) {
             <div class="file-list">
-              @for (file of unstagedFiles(repositoryStatus.files); track file.path) {
+              @for (file of filteredUnstagedFiles(); track file.path) {
                 <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
                   <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="('changes.viewFileChanges' | translate) + ': ' + file.path">
                     <span
@@ -127,7 +173,7 @@
           } @else {
             <div class="empty-files">
               <span class="empty-files-icon" aria-hidden="true">✓</span>
-                    <span>{{ "changes.noUnstaged" | translate }}</span>
+              <span>{{ (hasFileFilter() ? "changes.noMatches" : "changes.noUnstaged") | translate }}</span>
             </div>
           }
         </section>
@@ -137,23 +183,23 @@
             <div>
               <div class="panel-title-row">
                 <h3>{{ "changes.staged" | translate }}</h3>
-                <span class="file-count staged-count">{{ stagedFiles(repositoryStatus.files).length }}</span>
+                <span class="file-count staged-count">{{ filteredStagedFiles().length }}</span>
               </div>
               <p>{{ "changes.nextCommit" | translate }}</p>
             </div>
             <button
               type="button"
               class="text-button"
-              [disabled]="isSaving() || stagedFiles(repositoryStatus.files).length === 0"
-              (click)="unstageAll(repositoryStatus.files)"
+              [disabled]="isSaving() || filteredStagedFiles().length === 0"
+              (click)="unstageAll(filteredStagedFiles())"
             >
-              {{ "changes.unstageAll" | translate }}
+              {{ (hasFileFilter() ? "changes.unstageVisible" : "changes.unstageAll") | translate }}
             </button>
           </div>
 
-          @if (stagedFiles(repositoryStatus.files).length > 0) {
+          @if (filteredStagedFiles().length > 0) {
             <div class="file-list">
-              @for (file of stagedFiles(repositoryStatus.files); track file.path) {
+              @for (file of filteredStagedFiles(); track file.path) {
                 <div class="file-row" (contextmenu)="openFileContextMenu($event, file)">
                   <button type="button" class="file-details-button" [disabled]="isSaving()" (click)="openFileDiff(file)" [title]="('changes.viewFileChanges' | translate) + ': ' + file.path">
                     <span
@@ -176,7 +222,7 @@
           } @else {
             <div class="empty-files staged-empty">
               <span class="empty-files-icon" aria-hidden="true">✓</span>
-              <span>{{ "changes.noStaged" | translate }}</span>
+              <span>{{ (hasFileFilter() ? "changes.noMatches" : "changes.noStaged") | translate }}</span>
             </div>
           }
         </section>

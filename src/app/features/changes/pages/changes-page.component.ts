@@ -1,10 +1,20 @@
-import { Component, computed, effect, HostListener, inject, signal, untracked } from "@angular/core";
-import { DestroyRef } from "@angular/core";
+import {
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  HostListener,
+  inject,
+  signal,
+  untracked,
+  ViewChild,
+} from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { NavigationEnd, Router } from "@angular/router";
 import { filter } from "rxjs";
-import { GitFile, GitFileStatus } from "../../../core/models/git-file.model";
+import { GitFile, GitFileStatus, ImagePreviewPair } from "../../../core/models/git-file.model";
 import { AiModelId } from "../../../core/models/ai-model.model";
 import { Repository, RepositoryOperation, RepositoryStatus } from "../../../core/models/repository.model";
 import { CommitAiService } from "../../../core/services/commit-ai.service";
@@ -26,6 +36,9 @@ interface FileContextMenu {
   y: number;
 }
 
+type ChangeStatusFilter = "all" | "new" | Exclude<GitFileStatus, "added" | "untracked">;
+type ChangeStatusOption = Exclude<ChangeStatusFilter, "all">;
+
 @Component({
   selector: "app-changes-page",
   imports: [ConfirmDialogComponent, FileDiffDialogComponent, FileHistoryDialogComponent, FixedBottomLayoutComponent, ConflictResolverComponent, StashDialogComponent, FormsModule, TranslatePipe],
@@ -40,9 +53,14 @@ export class ChangesPageComponent {
   private readonly toastService = inject(ToastService);
   private readonly translationService = inject(TranslationService);
   private readonly destroyRef = inject(DestroyRef);
+  @ViewChild("changeSearch") private changeSearch?: ElementRef<HTMLInputElement>;
 
   readonly activeRepository = this.repositoryService.activeRepository;
   readonly status = signal<RepositoryStatus | undefined>(undefined);
+  readonly fileSearch = signal("");
+  readonly fileStatusFilter = signal<ChangeStatusFilter>("all");
+  readonly showChangeFilters = signal(false);
+  readonly filterStatuses: ChangeStatusOption[] = ["new", "modified", "deleted", "renamed", "conflicted"];
   readonly operation = signal<RepositoryOperation | undefined>(undefined);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
@@ -73,8 +91,10 @@ export class ChangesPageComponent {
     }
     return file.isStaged ? this.stagedFiles(files) : this.unstagedFiles(files);
   });
+  readonly filteredStagedFiles = computed(() => this.stagedFiles(this.filterChangeFiles(this.status()?.files ?? [])));
+  readonly filteredUnstagedFiles = computed(() => this.unstagedFiles(this.filterChangeFiles(this.status()?.files ?? [])));
   readonly fileDiff = signal("");
-  readonly filePreview = signal("");
+  readonly filePreview = signal<ImagePreviewPair | null>(null);
   readonly fileDiffLoading = signal(false);
   readonly fileDiffError = signal("");
   readonly pendingHunk = signal<number | null>(null);
@@ -85,6 +105,8 @@ export class ChangesPageComponent {
   readonly pendingDiscardFile = signal<GitFile | undefined>(undefined);
   private pendingAiDiff = "";
   private fileDiffRequestId = 0;
+  private pendingPaletteFile?: { path: string; side: "staged" | "unstaged" };
+  private statusRepositoryPath = "";
   private statusLoadVersion = 0;
   private lastLoadedRepoKey = "";
   private lastLoadedRefreshVersion = -1;
@@ -128,6 +150,15 @@ export class ChangesPageComponent {
       .subscribe((event) => {
         if (!this.isCurrentRoute(event.urlAfterRedirects)) {
           return;
+        }
+
+        const query = this.router.parseUrl(event.urlAfterRedirects).queryParams;
+        if (typeof query["openFile"] === "string") {
+          this.pendingPaletteFile = {
+            path: query["openFile"],
+            side: query["openFileSide"] === "unstaged" ? "unstaged" : "staged",
+          };
+          this.tryOpenPendingPaletteFile();
         }
 
         const repository = this.activeRepository();
@@ -187,6 +218,7 @@ export class ChangesPageComponent {
       this.isLoading.set(false);
       this.status.set(undefined);
       this.operation.set(undefined);
+      this.statusRepositoryPath = "";
       return false;
     }
 
@@ -196,6 +228,7 @@ export class ChangesPageComponent {
 
     if (cachedStatus) {
       this.status.set(cachedStatus);
+      this.statusRepositoryPath = repository.path;
     }
     if (cachedOperation !== undefined) {
       this.operation.set(cachedOperation ?? undefined);
@@ -217,7 +250,9 @@ export class ChangesPageComponent {
         return false;
       }
       this.status.set(repositoryStatus);
+      this.statusRepositoryPath = repository.path;
       this.operation.set(operation ?? undefined);
+      this.tryOpenPendingPaletteFile();
 
       const currentSelected = this.selectedFile();
       if (currentSelected) {
@@ -234,7 +269,7 @@ export class ChangesPageComponent {
           this.fileDiffRequestId += 1;
           this.selectedFile.set(undefined);
           this.fileDiff.set("");
-          this.filePreview.set("");
+          this.filePreview.set(null);
           this.fileDiffLoading.set(false);
         }
       }
@@ -255,6 +290,28 @@ export class ChangesPageComponent {
         this.isLoading.set(false);
       }
     }
+  }
+
+  private tryOpenPendingPaletteFile(): void {
+    const pending = this.pendingPaletteFile;
+    const repository = this.activeRepository();
+    const status = this.status();
+    if (!pending || !repository || !status ||
+        this.statusRepositoryPath.replaceAll("\\", "/").toLowerCase() !== repository.path.replaceAll("\\", "/").toLowerCase()) {
+      return;
+    }
+
+    const files = pending.side === "staged" ? this.stagedFiles(status.files) : this.unstagedFiles(status.files);
+    const file = files.find((candidate) => candidate.path === pending.path);
+    this.pendingPaletteFile = undefined;
+    if (file) {
+      void this.openFileDiff(file);
+    }
+    void this.router.navigate([], {
+      queryParams: { openFile: null, openFileSide: null },
+      queryParamsHandling: "merge",
+      replaceUrl: true,
+    });
   }
 
   private restoreCommitDraft(repository: Repository | undefined): void {
@@ -305,6 +362,54 @@ export class ChangesPageComponent {
     return files
       .filter((file) => !file.isStaged || file.isUnstaged)
       .map((file) => (file.isStaged ? { ...file, isStaged: false } : file));
+  }
+
+  private filterChangeFiles(files: GitFile[]): GitFile[] {
+    const query = this.fileSearch().trim().toLocaleLowerCase("pt-BR");
+    const selectedStatus = this.fileStatusFilter();
+    return files.filter((file) => {
+      const matchesQuery = !query || file.path.toLocaleLowerCase("pt-BR").includes(query);
+      const matchesStatus = selectedStatus === "all"
+        || (selectedStatus === "new"
+          ? file.status === "added" || file.status === "untracked"
+          : file.status === selectedStatus);
+      return matchesQuery && matchesStatus;
+    });
+  }
+
+  filterStatusLabel(status: ChangeStatusOption): string {
+    return status === "new"
+      ? this.translationService.translate("changes.filterNew")
+      : this.statusLabel(status);
+  }
+
+  hasFileFilter(): boolean {
+    return !!this.fileSearch().trim() || this.fileStatusFilter() !== "all";
+  }
+
+  clearFileFilters(): void {
+    this.fileSearch.set("");
+    this.fileStatusFilter.set("all");
+  }
+
+  clearFileSearch(): void {
+    this.fileSearch.set("");
+  }
+
+  toggleChangeFilters(): void {
+    const shouldShow = !this.showChangeFilters();
+    this.showChangeFilters.set(shouldShow);
+    if (shouldShow) {
+      queueMicrotask(() => this.changeSearch?.nativeElement.focus());
+    }
+  }
+
+  setFileSearch(event: Event): void {
+    this.fileSearch.set((event.target as HTMLInputElement).value);
+  }
+
+  setFileStatusFilter(status: ChangeStatusFilter): void {
+    this.fileStatusFilter.set(status);
   }
 
   setCommitMessage(message: string): void {
@@ -453,7 +558,7 @@ export class ChangesPageComponent {
     const requestId = ++this.fileDiffRequestId;
     this.selectedFile.set(file);
     this.fileDiff.set("");
-    this.filePreview.set("");
+    this.filePreview.set(null);
     this.fileDiffError.set("");
     this.fileDiffLoading.set(true);
 
@@ -466,7 +571,7 @@ export class ChangesPageComponent {
         return;
       }
       this.fileDiff.set(diff);
-      this.filePreview.set(preview ?? "");
+      this.filePreview.set(preview);
     } catch (error: unknown) {
       if (requestId === this.fileDiffRequestId) {
         this.fileDiffError.set(this.getGitErrorMessage(error));
@@ -487,7 +592,7 @@ export class ChangesPageComponent {
       const selected = this.selectedFile();
       if (selected?.path === file.path && selected.isStaged === file.isStaged) {
         this.fileDiff.set(diff);
-        this.filePreview.set(preview ?? "");
+        this.filePreview.set(preview);
       }
     } catch {
       // Ignorar falhas silenciosas durante auto-refresh
@@ -593,7 +698,7 @@ export class ChangesPageComponent {
     this.fileDiffRequestId += 1;
     this.selectedFile.set(undefined);
     this.fileDiff.set("");
-    this.filePreview.set("");
+    this.filePreview.set(null);
     this.fileDiffError.set("");
     this.fileDiffLoading.set(false);
   }
